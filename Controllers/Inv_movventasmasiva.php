@@ -161,6 +161,24 @@ class Inv_movventasmasiva extends Controllers
 			$hv->getColumnDimension($col)->setWidth($w);
 		}
 
+		/* ---------- HOJA 4: DISTRIBUIDORES (catálogo cli_clientes) ---------- */
+		$hd = $ss->createSheet();
+		$hd->setTitle('Distribuidores');
+		$hd->fromArray(['CODIGO_CLIENTE', 'RAZON_SOCIAL', 'NOMBRE_COMERCIAL'], null, 'A1');
+		$hd->getStyle('A1:C1')->getFont()->setBold(true);
+		$hd->getStyle('A1:C1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFD9E1F2');
+		$clientesAct = $this->model->selectClientesActivos();
+		$rc = 2;
+		foreach ($clientesAct as $c) {
+			$hd->setCellValueExplicit('A' . $rc, (string) ($c['codigo_cliente'] ?? ''), $T);
+			$hd->setCellValueExplicit('B' . $rc, (string) ($c['razon_social'] ?? $c['nombre'] ?? ''), $T);
+			$hd->setCellValueExplicit('C' . $rc, (string) ($c['nombre_comercial'] ?? ''), $T);
+			$rc++;
+		}
+		foreach (['A' => 18, 'B' => 45, 'C' => 45] as $col => $w) {
+			$hd->getColumnDimension($col)->setWidth($w);
+		}
+
 		$ss->setActiveSheetIndex(2);
 
 		$filename = 'Layout_Ventas_VINs_' . date('Ymd_His') . '.xlsx';

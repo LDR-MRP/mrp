@@ -193,16 +193,16 @@ class Lgs_planeacionesService {
             if (empty($destinatarios)) return;
 
             $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
-            $asunto = "⚠️ AVISO: Planeación {$folio} REABIERTA para Reajuste";
+            $asunto = "⚠️ SOLICITUD DE REAPERTURA: Planeación {$folio} requiere autorización";
             $html = "
             <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
                 <div style='background-color: #D97706; color: #ffffff; padding: 22px; text-align: center;'>
-                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Planeación Reabierta para Edición</h2>
+                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Solicitud de Reapertura de Planeación</h2>
                     <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
                 </div>
                 <div style='padding: 24px; background-color: #ffffff;'>
                     <p style='font-size: 14px; color: #334155;'>
-                        El usuario <strong>{$userName}</strong> ha reabierto la planeación de envíos para realizar ajustes y modificaciones antes de su despacho. Los envíos asociados han regresado a estado editable.
+                        El usuario <strong>{$userName}</strong> ha solicitado la reapertura de la planeación de envíos <strong>{$folio}</strong> para realizar ajustes. Esta solicitud requiere su aprobación o denegación en el Panel de Aprobaciones antes de desbloquear los envíos.
                     </p>
                     <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
                         <tr style='border-bottom: 1px solid #F1F5F9;'>
@@ -223,8 +223,8 @@ class Lgs_planeacionesService {
                         </tr>
                     </table>
                     <div style='text-align: center; margin-top: 24px;'>
-                        <a href='{$baseUrl}/Lgs_planeaciones' style='background-color: #D97706; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
-                            Ver Planeación en Sistema
+                        <a href='{$baseUrl}/Lgs_aprobaciones' style='background-color: #D97706; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                            Aprobar o Denegar en Panel de Aprobaciones
                         </a>
                     </div>
                 </div>

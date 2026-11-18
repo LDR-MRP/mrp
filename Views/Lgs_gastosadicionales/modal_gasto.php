@@ -207,7 +207,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fs-12 fw-bold text-dark">Monto Total ($ sin IVA) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" min="0" id="monto_abierto" name="monto_abierto" class="form-control fw-bold text-primary" placeholder="0.00">
+                            <input type="number" step="0.00001" min="0" id="monto_abierto" name="monto_abierto" class="form-control fw-bold text-primary" placeholder="0.00">
                         </div>
                         <div class="col-12">
                             <span class="badge bg-soft-info text-info border border-info px-2 py-1 fs-11">

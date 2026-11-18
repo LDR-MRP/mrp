@@ -334,6 +334,91 @@ WHERE NOT EXISTS (
     SELECT 1 FROM `lgs_cat_distribuidores` WHERE `nombre` = d.nombre
 );
 
+-- 5.2.1 Consolidar posibles distribuidores duplicados y garantizar índice UNIQUE en nombre
+UPDATE `lgs_cat_ubicaciones` u
+INNER JOIN (
+    SELECT MIN(id_distribuidor) AS id_canon
+    FROM `lgs_cat_distribuidores`
+    WHERE UPPER(TRIM(nombre)) = 'CARROCERA L GODINEZ PREMIUM'
+) d ON d.id_canon IS NOT NULL
+SET u.`id_distribuidor` = d.id_canon
+WHERE u.`id_ubicacion` IN (141, 156, 157);
+
+UPDATE `lgs_cat_ubicaciones` u
+INNER JOIN (
+    SELECT MIN(id_distribuidor) AS id_canon
+    FROM `lgs_cat_distribuidores`
+    WHERE UPPER(TRIM(nombre)) = 'XIAN MOTORS'
+) d ON d.id_canon IS NOT NULL
+SET u.`id_distribuidor` = d.id_canon
+WHERE u.`id_ubicacion` IN (137, 22);
+
+UPDATE `lgs_cat_ubicaciones`
+SET `activo` = 0
+WHERE `id_ubicacion` = 137
+  AND EXISTS (
+      SELECT 1 FROM (SELECT id_ubicacion FROM `lgs_cat_ubicaciones` WHERE id_ubicacion = 161 AND activo = 1) AS xian_act
+  );
+
+UPDATE `lgs_cat_distribuidores`
+SET `activo` = 0
+WHERE `id_distribuidor` = 18;
+
+UPDATE `lgs_cat_distribuidores` d
+INNER JOIN (
+    SELECT UPPER(TRIM(nombre)) AS nom_norm, MIN(id_distribuidor) AS id_canon, MAX(activo) AS max_activo
+    FROM `lgs_cat_distribuidores`
+    GROUP BY UPPER(TRIM(nombre))
+    HAVING COUNT(*) > 1
+) m ON d.id_distribuidor = m.id_canon
+SET d.`activo` = m.max_activo;
+
+UPDATE `lgs_cat_ubicaciones` u
+INNER JOIN `lgs_cat_distribuidores` d_old ON u.id_distribuidor = d_old.id_distribuidor
+INNER JOIN (
+    SELECT UPPER(TRIM(nombre)) AS nom_norm, MIN(id_distribuidor) AS id_canon
+    FROM `lgs_cat_distribuidores`
+    GROUP BY UPPER(TRIM(nombre))
+) m ON UPPER(TRIM(d_old.nombre)) = m.nom_norm
+SET u.`id_distribuidor` = m.id_canon
+WHERE u.`id_distribuidor` <> m.id_canon;
+
+UPDATE `lgs_envios_nodos` n
+INNER JOIN `lgs_cat_distribuidores` d_old ON n.id_distribuidor = d_old.id_distribuidor
+INNER JOIN (
+    SELECT UPPER(TRIM(nombre)) AS nom_norm, MIN(id_distribuidor) AS id_canon
+    FROM `lgs_cat_distribuidores`
+    GROUP BY UPPER(TRIM(nombre))
+) m ON UPPER(TRIM(d_old.nombre)) = m.nom_norm
+SET n.`id_distribuidor` = m.id_canon
+WHERE n.`id_distribuidor` <> m.id_canon;
+
+DELETE d1
+FROM `lgs_cat_distribuidores` d1
+INNER JOIN `lgs_cat_distribuidores` d2
+  ON UPPER(TRIM(d1.nombre)) = UPPER(TRIM(d2.nombre))
+ AND d1.id_distribuidor > d2.id_distribuidor;
+
+UPDATE `lgs_cat_distribuidores`
+SET `nombre` = TRIM(`nombre`)
+WHERE `nombre` <> TRIM(`nombre`);
+
+SET @idx_dist_exists := (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'lgs_cat_distribuidores'
+      AND INDEX_NAME = 'uq_distribuidor_nombre'
+);
+SET @sql_idx_dist := IF(
+    @idx_dist_exists = 0,
+    'ALTER TABLE `lgs_cat_distribuidores` ADD UNIQUE KEY `uq_distribuidor_nombre` (`nombre`)',
+    'SELECT 1 INTO @__noop'
+);
+PREPARE stmt_idx_dist FROM @sql_idx_dist;
+EXECUTE stmt_idx_dist;
+DEALLOCATE PREPARE stmt_idx_dist;
+
 
 -- 5.3 Desactivar ubicaciones ficticias / nombres genéricos en lgs_cat_ubicaciones (activo = 0)
 UPDATE `lgs_cat_ubicaciones`

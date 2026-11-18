@@ -1194,7 +1194,7 @@ class Ped_pedidos extends Controllers
             if (empty($_SESSION['ped_revision_csrf'])) $_SESSION['ped_revision_csrf'] = bin2hex(random_bytes(24));
 
 
-            $data['page_functions_js'] = ["modulos/clientes_pedidos/pedidos/gestionar.js", "orders/pedido_pdf.js", "modulos/clientes_pedidos/pedidos/revision_comercial.js", "orders/propuesta_comercial_pdf.js", "modulos/clientes_pedidos/pedidos/historial_reporte.js"];
+            $data['page_functions_js'] = ["modulos/clientes_pedidos/pedidos/gestionar.js", "modulos/clientes_pedidos/pedidos/asignacion_vins.js", "orders/pedido_pdf.js", "modulos/clientes_pedidos/pedidos/revision_comercial.js", "orders/propuesta_comercial_pdf.js", "modulos/clientes_pedidos/pedidos/historial_reporte.js"];
 
             $this->views->getView($this, 'gestionar', $data);
 
@@ -1246,6 +1246,96 @@ class Ped_pedidos extends Controllers
             }
             echo json_encode(['status'=>true,'msg'=>'Operación realizada correctamente','data'=>$result],JSON_UNESCAPED_UNICODE);
         } catch(Throwable $e) { http_response_code(422); error_log('revisionComercialApi: '.$e->getMessage()); echo json_encode(['status'=>false,'msg'=>$e->getMessage()],JSON_UNESCAPED_UNICODE); }
+    }
+
+    /** API: Consultar partidas y VINs asignados a un pedido */
+    public function getAsignacionesPedido(int $idpedido = 0): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (empty($_SESSION['login'])) {
+            http_response_code(401);
+            echo json_encode(['status' => false, 'msg' => 'Sesión no válida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $id = $idpedido > 0 ? $idpedido : intval($_GET['idpedido'] ?? $_POST['idpedido'] ?? 0);
+        try {
+            $res = $this->model->getAsignacionesPedido($id);
+            echo json_encode(['status' => true, 'data' => $res], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $e) {
+            http_response_code(400);
+            echo json_encode(['status' => false, 'msg' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /** API: Consultar VINs PT (wms_almacenes.pt = 1) disponibles para una partida del pedido */
+    public function getVinsDisponiblesParaPedido(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (empty($_SESSION['login'])) {
+            http_response_code(401);
+            echo json_encode(['status' => false, 'msg' => 'Sesión no válida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $idDetalle = intval($_GET['idpedido_detalle'] ?? $_POST['idpedido_detalle'] ?? 0);
+        $q = trim((string)($_GET['q'] ?? $_POST['q'] ?? ''));
+        try {
+            $vins = $this->model->getVinsDisponiblesParaPedido($idDetalle, $q);
+            echo json_encode(['status' => true, 'data' => $vins], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $e) {
+            http_response_code(400);
+            echo json_encode(['status' => false, 'msg' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /** API: Asignar un VIN PT específico a una partida del pedido */
+    public function asignarVinPedido(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (empty($_SESSION['login'])) {
+            http_response_code(401);
+            echo json_encode(['status' => false, 'msg' => 'Sesión no válida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = $_POST;
+        }
+        $idPedido  = intval($input['idpedido'] ?? 0);
+        $idDetalle = intval($input['idpedido_detalle'] ?? 0);
+        $idSerie   = intval($input['id_numeros_serie'] ?? 0);
+        $idUsuario = intval($_SESSION['idUser'] ?? $_SESSION['userData']['idusuario'] ?? $_SESSION['userData']['id_usuario'] ?? 0);
+        try {
+            $res = $this->model->asignarVinPedido($idPedido, $idDetalle, $idSerie, $idUsuario);
+            echo json_encode(['status' => true, 'msg' => "VIN {$res['numero_serie']} asignado correctamente al pedido.", 'data' => $res], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $e) {
+            http_response_code(422);
+            echo json_encode(['status' => false, 'msg' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /** API: Liberar un VIN previamente asignado al pedido */
+    public function liberarVinPedido(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (empty($_SESSION['login'])) {
+            http_response_code(401);
+            echo json_encode(['status' => false, 'msg' => 'Sesión no válida'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = $_POST;
+        }
+        $idAsig    = intval($input['id_asignacion'] ?? 0);
+        $motivo    = trim((string)($input['motivo'] ?? ''));
+        $idUsuario = intval($_SESSION['idUser'] ?? $_SESSION['userData']['idusuario'] ?? $_SESSION['userData']['id_usuario'] ?? 0);
+        try {
+            $res = $this->model->liberarVinPedido($idAsig, $idUsuario, $motivo);
+            echo json_encode(['status' => true, 'msg' => "VIN {$res['numero_serie']} liberado correctamente.", 'data' => $res], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $e) {
+            http_response_code(422);
+            echo json_encode(['status' => false, 'msg' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
     }
 }
 

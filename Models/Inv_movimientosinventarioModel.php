@@ -492,7 +492,8 @@ class Inv_movimientosinventarioModel extends Mysql
     {
         $r = $this->select(
             "SELECT cve_almacen, descripcion,
-                    (UPPER(TRIM(cve_almacen)) REGEXP '(^|-)ALM-PT(-|$)'
+                    (COALESCE(pt, 0) = 1
+                     OR UPPER(TRIM(cve_almacen)) REGEXP '(^|-)ALM-PT(-|$)'
                      OR UPPER(TRIM(cve_almacen)) = 'ALM-TRANSITO'
                      OR UPPER(TRIM(descripcion)) IN ('ALMACEN DE TRANSITO', 'ALMACÉN DE TRANSITO', 'ALMACÉN DE TRÁNSITO')) AS permitido
              FROM wms_almacenes WHERE idalmacen = ?",

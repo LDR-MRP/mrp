@@ -57,8 +57,31 @@ class Lgs_costosModel extends Mysql
      * MÓDULO 2: TARIFAS POR PROVEEDOR
      * ==========================================
      */
+    private function ensurePrecisionColumnas(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        try {
+            $sql = "ALTER TABLE `lgs_tarifas_proveedores`
+                      MODIFY COLUMN `costo_por_km` DECIMAL(14,5) NOT NULL DEFAULT 0.00000,
+                      MODIFY COLUMN `precio_plano` DECIMAL(14,5) NOT NULL DEFAULT 0.00000,
+                      MODIFY COLUMN `factor` DECIMAL(14,8) NOT NULL DEFAULT 1.00000000,
+                      MODIFY COLUMN `precio_slc` DECIMAL(14,5) DEFAULT 0.00000,
+                      MODIFY COLUMN `precio_sll` DECIMAL(14,5) DEFAULT 0.00000";
+            $this->conexion->exec($sql);
+        } catch (Throwable $e) {
+            error_log("Error al ajustar precisión decimal en lgs_tarifas_proveedores: " . $e->getMessage());
+        }
+    }
+
     public function selectTarifasProveedor(?int $idProveedor = null): array
     {
+        $this->ensurePrecisionColumnas();
+
         // 1. Segmentos
         $sqlSegmentos = "SELECT id_segmento, nombre, descripcion FROM lgs_cat_segmentos WHERE activo = 2 ORDER BY id_segmento ASC";
         $segmentos = $this->select_all($sqlSegmentos) ?: [];
@@ -172,13 +195,20 @@ class Lgs_costosModel extends Mysql
                                 break;
                             }
                         }
+                        if ($costoPorKm > 0) {
+                            $rawUnit = $costoPorKm * $f;
+                            $snap2 = round($rawUnit, 2);
+                            if (round($f, 4) == $f && abs($rawUnit - $snap2) > 0 && abs($rawUnit - $snap2) <= 0.002) {
+                                $f = $snap2 / $costoPorKm;
+                            }
+                        }
                     } else {
                         if ($tipoTraslado === 3) {
                             // Plataforma (1 a 3 unidades): asume un cobro equivalente a mover un lowboy ($80)
-                            $f = max(0.20, (80.0 / ($costoPorKm > 0 ? $costoPorKm : 27.0)) / $u);
+                            $f = round(max(0.20, (80.0 / ($costoPorKm > 0 ? $costoPorKm : 27.0)) / $u), 5);
                         } else {
                             // Descuento progresivo estimado por defecto (-2% por VIN)
-                            $f = max(0.20, 1.0 - (($u - 1) * 0.02));
+                            $f = round(max(0.20, 1.0 - (($u - 1) * 0.02)), 5);
                         }
                     }
                     $factores15[$u] = $f;
@@ -235,6 +265,8 @@ class Lgs_costosModel extends Mysql
         bool $esPersonalizada = false
     ): void
     {
+        $this->ensurePrecisionColumnas();
+
         $provVal = $idProveedor;
         $flagPersonalizada = $esPersonalizada ? 1 : 0;
 
@@ -251,23 +283,23 @@ class Lgs_costosModel extends Mysql
         if (!empty($madrinaSegs)) {
             foreach ($madrinaSegs as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
-                $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
-                $precioPlano = floatval($seg['precio_plano'] ?? 0);
-                $precioSlcSegment = floatval($seg['precio_slc'] ?? 0);
-                $precioSllSegment = floatval($seg['precio_sll'] ?? 0);
+                $costoPorKm = round(floatval($seg['costo_por_km'] ?? 0), 5);
+                $precioPlano = round(floatval($seg['precio_plano'] ?? 0), 5);
+                $precioSlcSegment = round(floatval($seg['precio_slc'] ?? 0), 5);
+                $precioSllSegment = round(floatval($seg['precio_sll'] ?? 0), 5);
 
                 if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
                     foreach ($seg['factores'] as $unidad => $valIngresado) {
                         $u = intval($unidad);
-                        $precioReal = floatval($valIngresado);
+                        $precioReal = round(floatval($valIngresado), 5);
                         if ($u >= 2 && $u <= 9) {
-                            $fFinal = ($costoPorKm > 0) ? ($precioReal / $costoPorKm) : 1.0;
+                            $fFinal = ($costoPorKm > 0) ? round($precioReal / $costoPorKm, 8) : 1.0;
                             $stmtIns->execute([$provVal, 1, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                         }
                     }
                 } else {
-                    $valIngresado = floatval($seg['factor'] ?? 0);
-                    $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? ($valIngresado / $costoPorKm) : 1.0;
+                    $valIngresado = round(floatval($seg['factor'] ?? 0), 5);
+                    $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? round($valIngresado / $costoPorKm, 8) : 1.0;
                     $stmtIns->execute([$provVal, 1, $idSegmento, 2, 9, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                 }
             }
@@ -277,10 +309,10 @@ class Lgs_costosModel extends Mysql
         if (!empty($choferSegs)) {
             foreach ($choferSegs as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
-                $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
-                $precioPlano = floatval($seg['precio_plano'] ?? 0);
-                $precioSlc = floatval($seg['precio_slc'] ?? 0);
-                $precioSll = floatval($seg['precio_sll'] ?? 0);
+                $costoPorKm = round(floatval($seg['costo_por_km'] ?? 0), 5);
+                $precioPlano = round(floatval($seg['precio_plano'] ?? 0), 5);
+                $precioSlc = round(floatval($seg['precio_slc'] ?? 0), 5);
+                $precioSll = round(floatval($seg['precio_sll'] ?? 0), 5);
                 $stmtIns->execute([$provVal, 2, $idSegmento, 1, 1, $costoPorKm, $precioPlano, $precioSlc, $precioSll, 1.00, $flagPersonalizada]);
             }
         }
@@ -288,25 +320,25 @@ class Lgs_costosModel extends Mysql
         if (!empty($plataformaSegs)) {
             foreach ($plataformaSegs as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
-                $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
-                $precioPlano = floatval($seg['precio_plano'] ?? 0);
-                $precioSlcSegment = floatval($seg['precio_slc'] ?? 0);
-                $precioSllSegment = floatval($seg['precio_sll'] ?? 0);
+                $costoPorKm = round(floatval($seg['costo_por_km'] ?? 0), 5);
+                $precioPlano = round(floatval($seg['precio_plano'] ?? 0), 5);
+                $precioSlcSegment = round(floatval($seg['precio_slc'] ?? 0), 5);
+                $precioSllSegment = round(floatval($seg['precio_sll'] ?? 0), 5);
 
                 if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
                     foreach ($seg['factores'] as $unidad => $valIngresado) {
                         $u = intval($unidad);
-                        $precioReal = floatval($valIngresado);
+                        $precioReal = round(floatval($valIngresado), 5);
                         if ($u >= 1 && $u <= 4) {
-                            $fFinal = ($costoPorKm > 0) ? ($precioReal / $costoPorKm) : 1.0;
-                            $precioSlc = isset($seg['slc'][$u]) ? floatval($seg['slc'][$u]) : $precioSlcSegment;
-                            $precioSll = isset($seg['sll'][$u]) ? floatval($seg['sll'][$u]) : $precioSllSegment;
+                            $fFinal = ($costoPorKm > 0) ? round($precioReal / $costoPorKm, 8) : 1.0;
+                            $precioSlc = isset($seg['slc'][$u]) ? round(floatval($seg['slc'][$u]), 5) : $precioSlcSegment;
+                            $precioSll = isset($seg['sll'][$u]) ? round(floatval($seg['sll'][$u]), 5) : $precioSllSegment;
                             $stmtIns->execute([$provVal, 3, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlc, $precioSll, $fFinal, $flagPersonalizada]);
                         }
                     }
                 } else {
-                    $valIngresado = floatval($seg['factor'] ?? 0);
-                    $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? ($valIngresado / $costoPorKm) : 1.0;
+                    $valIngresado = round(floatval($seg['factor'] ?? 0), 5);
+                    $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? round($valIngresado / $costoPorKm, 8) : 1.0;
                     $stmtIns->execute([$provVal, 3, $idSegmento, 1, 4, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                 }
             }
@@ -402,9 +434,9 @@ class Lgs_costosModel extends Mysql
                 $bCost = (float)$b['costo_por_km'];
 
                 for ($u = 1; $u <= 10; $u++) {
-                    $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 2);
-                    $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 2);
-                    if (abs($pUnit - $bUnit) > 0.01) {
+                    $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 5);
+                    $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 5);
+                    if (abs($pUnit - $bUnit) > 0.00001) {
                         $diferencias[] = [
                             'tipo' => 'Madrina',
                             'id_segmento' => $idSeg,
@@ -412,7 +444,7 @@ class Lgs_costosModel extends Mysql
                             'unidad' => $u,
                             'precio_proveedor' => $pUnit,
                             'precio_global' => $bUnit,
-                            'diferencia' => round($pUnit - $bUnit, 2)
+                            'diferencia' => round($pUnit - $bUnit, 5)
                         ];
                     }
                 }
@@ -435,9 +467,9 @@ class Lgs_costosModel extends Mysql
                 $bCost = (float)$b['costo_por_km'];
 
                 for ($u = 1; $u <= 4; $u++) {
-                    $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 2);
-                    $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 2);
-                    if (abs($pUnit - $bUnit) > 0.01) {
+                    $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 5);
+                    $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 5);
+                    if (abs($pUnit - $bUnit) > 0.00001) {
                         $diferencias[] = [
                             'tipo' => 'Plataforma',
                             'id_segmento' => $idSeg,
@@ -445,7 +477,7 @@ class Lgs_costosModel extends Mysql
                             'unidad' => $u,
                             'precio_proveedor' => $pUnit,
                             'precio_global' => $bUnit,
-                            'diferencia' => round($pUnit - $bUnit, 2)
+                            'diferencia' => round($pUnit - $bUnit, 5)
                         ];
                     }
                 }

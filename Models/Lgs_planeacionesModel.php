@@ -74,6 +74,8 @@ class Lgs_planeacionesModel extends Mysql
                     p.km_total,
                     p.costo_total,
                     p.id_estado,
+                    p.obs_operador,
+                    p.obs_aprobador,
                     p.created_at,
                     (SELECT COUNT(*) FROM lgs_planeaciones_envios WHERE id_planeacion = p.id_planeacion) AS total_rutas
                 FROM lgs_planeaciones p
@@ -176,7 +178,7 @@ class Lgs_planeacionesModel extends Mysql
                 FROM lgs_envios e
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
-                WHERE {$whereClause} AND e.deleted_at IS NULL";
+                WHERE {$whereClause} AND COALESCE(e.es_preenvio, 0) = 0 AND e.deleted_at IS NULL";
         
         return $this->select_all($sql);
     }
@@ -273,10 +275,7 @@ class Lgs_planeacionesModel extends Mysql
     }
 
     /**
-     * Reabre una planeación rechazada, regresándola y a sus envíos a estado borrador (1)
-     */
-    /**
-     * Reabre una planeación regresándola y a sus envíos a estado borrador (1) con motivo registrado
+     * Registra la solicitud de reapertura (estado 6) dejando los envíos bloqueados hasta su aprobación
      */
     public function reabrirPlaneacion(PDO $db, int $idPlaneacion, string $motivo = ''): array
     {
@@ -285,22 +284,15 @@ class Lgs_planeacionesModel extends Mysql
         $stmtPlan->execute([$idPlaneacion]);
         $planData = $stmtPlan->fetch(PDO::FETCH_ASSOC) ?: [];
 
-        // 1. Cambiar estado de la planeación a 1 (Borrador / Reabierto)
-        $obsReapertura = !empty($motivo) ? " [Reabierto: {$motivo}]" : " [Reabierto para corrección]";
+        // 1. Cambiar estado de la planeación a 6 (Solicitud de Reapertura) y guardar motivo en obs_operador
+        $obsSolicitud = !empty($motivo) ? " [Solicitud de Reapertura: {$motivo}]" : " [Solicitud de Reapertura]";
         $sql = "UPDATE lgs_planeaciones 
-                SET id_estado = 1, 
-                    obs_aprobador = CONCAT(COALESCE(obs_aprobador, ''), ?)
+                SET id_estado = 6, 
+                    obs_operador = CONCAT(COALESCE(obs_operador, ''), ?),
+                    updated_at = NOW()
                 WHERE id_planeacion = ?";
         $stmt = $db->prepare($sql);
-        $stmt->execute([$obsReapertura, $idPlaneacion]);
-
-        // 2. Desbloquear los envíos para que vuelvan a estado 1 (Creado / Editable)
-        $sqlEnvios = "UPDATE lgs_envios e
-                      INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
-                      SET e.id_estado = 1
-                      WHERE pe.id_planeacion = ?";
-        $stmtEnv = $db->prepare($sqlEnvios);
-        $stmtEnv->execute([$idPlaneacion]);
+        $stmt->execute([$obsSolicitud, $idPlaneacion]);
 
         return $planData;
     }

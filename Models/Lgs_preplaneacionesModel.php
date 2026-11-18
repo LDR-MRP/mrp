@@ -54,6 +54,7 @@ class Lgs_preplaneacionesModel extends Mysql
                   `id_unidad` int DEFAULT NULL,
                   `vin` varchar(30) NOT NULL,
                   `modelo` varchar(100) DEFAULT NULL,
+                  `origen_almacen` varchar(150) DEFAULT NULL,
                   `destino_sugerido` varchar(150) DEFAULT NULL,
                   `disponible_planta` tinyint(1) DEFAULT NULL COMMENT 'NULL: Pendiente, 1: Sí disponible, 0: No disponible',
                   `motivo_no_disponible` varchar(255) DEFAULT NULL,
@@ -64,6 +65,11 @@ class Lgs_preplaneacionesModel extends Mysql
                   CONSTRAINT `fk_det_preplaneacion` FOREIGN KEY (`id_preplaneacion`) REFERENCES `lgs_preplaneaciones` (`id_preplaneacion`) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
+
+            $colOrigen = $db->query("SHOW COLUMNS FROM `lgs_det_preplaneaciones_vins` LIKE 'origen_almacen'")->fetch(PDO::FETCH_ASSOC);
+            if (!$colOrigen) {
+                $db->exec("ALTER TABLE `lgs_det_preplaneaciones_vins` ADD COLUMN `origen_almacen` varchar(150) DEFAULT NULL AFTER `modelo`");
+            }
         } catch (Throwable $e) {
             // Silencioso en caso de no contar con permisos DDL
         }
@@ -98,7 +104,11 @@ class Lgs_preplaneacionesModel extends Mysql
                     p.id_preplaneacion,
                     p.folio,
                     p.id_planta,
-                    COALESCE(pl.nombre_planta, 'Planta') AS planta_nombre,
+                    COALESCE(
+                        pl.nombre_planta,
+                        (SELECT NULLIF(TRIM(d.origen_almacen), '') FROM lgs_det_preplaneaciones_vins d WHERE d.id_preplaneacion = p.id_preplaneacion AND d.origen_almacen IS NOT NULL AND TRIM(d.origen_almacen) <> '' LIMIT 1),
+                        'Almacén / Planta'
+                    ) AS planta_nombre,
                     p.fecha_tentativa_recoleccion,
                     p.contacto_planta,
                     p.fecha_confirmacion,
@@ -130,7 +140,11 @@ class Lgs_preplaneacionesModel extends Mysql
                     p.id_preplaneacion,
                     p.folio,
                     p.id_planta,
-                    COALESCE(pl.nombre_planta, 'Planta') AS planta_nombre,
+                    COALESCE(
+                        pl.nombre_planta,
+                        (SELECT NULLIF(TRIM(d.origen_almacen), '') FROM lgs_det_preplaneaciones_vins d WHERE d.id_preplaneacion = p.id_preplaneacion AND d.origen_almacen IS NOT NULL AND TRIM(d.origen_almacen) <> '' LIMIT 1),
+                        'Almacén / Planta'
+                    ) AS planta_nombre,
                     p.fecha_tentativa_recoleccion,
                     p.contacto_planta,
                     p.fecha_confirmacion,
@@ -160,12 +174,14 @@ class Lgs_preplaneacionesModel extends Mysql
                     d.id_unidad,
                     d.vin,
                     d.modelo,
+                    COALESCE(NULLIF(TRIM(d.origen_almacen), ''), NULLIF(TRIM(u.origen), ''), 'Planta / Almacén') AS origen_almacen,
                     d.destino_sugerido,
                     d.disponible_planta,
                     d.motivo_no_disponible,
                     d.confirmado_by,
                     d.confirmado_at
                 FROM lgs_det_preplaneaciones_vins d
+                LEFT JOIN lgs_unidades_envios u ON d.id_unidad = u.id_unidad
                 WHERE d.id_preplaneacion = ?
                 ORDER BY d.id ASC";
 
@@ -186,40 +202,75 @@ class Lgs_preplaneacionesModel extends Mysql
     }
 
     /**
-     * Obtiene las unidades / VINs listos o terminados disponibles para ser preplaneados
+     * Obtiene las unidades / VINs disponibles desde WMS PT, bandeja logística y unidades terminadas,
+     * incluyendo su almacén y planta de origen como datos informativos.
      */
-    public function getVinsDisponibles(int $idPlanta = 0): array
+    public function getVinsDisponibles(int $idPlanta = 0, string $busqueda = ''): array
     {
-        // Consultar unidades de la bandeja de salida o terminadas que aún no tengan envío activo
-        $sql = "SELECT 
-                    u.id_unidad,
-                    u.vin,
-                    COALESCE(u.num_serie, 'S/N') AS num_serie,
-                    COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
-                    COALESCE(u.destino, 'Por Asignar') AS destino_sugerido
-                FROM lgs_unidades_envios u
-                WHERE u.estatus = 'DISPONIBLE'
-                   OR NOT EXISTS (
-                        SELECT 1 FROM lgs_envios_vins ev
-                        INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                        WHERE ev.id_unidad = u.id_unidad AND e.id_estado NOT IN (7, 4) AND e.deleted_at IS NULL
-                   )
-                ORDER BY u.id_unidad DESC
-                LIMIT 100";
+        if (!class_exists('Lgs_bandejaModel', false)) {
+            require_once "Models/Lgs_bandejaModel.php";
+        }
 
-        $rows = $this->select_all($sql) ?: [];
+        $bandejaModel = new Lgs_bandejaModel();
+        $unidades = $bandejaModel->getUnidadesPTGlobales();
+        $busqLower = mb_strtolower(trim($busqueda), 'UTF-8');
+        $rows = [];
 
-        // Si lgs_unidades_envios está vacío, consultar mrp_unidades_terminadas
-        if (empty($rows)) {
-            $sqlTerminadas = "SELECT 
-                                ut.idunidad AS id_unidad,
-                                ut.clave AS vin,
-                                ut.num_unidad AS num_serie,
-                                'Unidad Terminada' AS modelo,
-                                'Por Asignar' AS destino_sugerido
-                              FROM mrp_unidades_terminadas ut
-                              LIMIT 100";
-            $rows = $this->select_all($sqlTerminadas) ?: [];
+        foreach ($unidades as $u) {
+            if (intval($u['envio_id'] ?? 0) !== 0) {
+                continue;
+            }
+
+            $uIdPlanta = intval($u['id_planta'] ?? 0);
+            if ($idPlanta > 0 && $uIdPlanta !== $idPlanta) {
+                continue;
+            }
+
+            $vin = trim((string)($u['vin'] ?? ''));
+            if ($vin === '') {
+                continue;
+            }
+
+            $numSerie      = trim((string)($u['num_serie'] ?? '')) ?: 'S/N';
+            $modelo        = trim((string)($u['modelo'] ?? '')) ?: 'Unidad Terminada';
+            $plantaNombre  = trim((string)($u['planta_nombre'] ?? '')) ?: 'Sin planta asignada';
+            $cveAlmacen    = trim((string)($u['cve_almacen'] ?? ''));
+            $almacenNombre = trim((string)($u['almacen_nombre'] ?? ''));
+            $destinoSug    = trim((string)($u['destino_sugerido'] ?? '')) ?: 'Por Asignar';
+
+            if ($cveAlmacen !== '' && !in_array($cveAlmacen, ['SIN-ALM', 'LGS', 'PT'], true)) {
+                $origenInformativo = $almacenNombre !== ''
+                    ? "{$cveAlmacen} · {$almacenNombre}"
+                    : $cveAlmacen;
+                if ($plantaNombre !== '' && $plantaNombre !== 'Sin planta asignada') {
+                    $origenInformativo .= " ({$plantaNombre})";
+                }
+            } else {
+                $origenInformativo = $plantaNombre;
+            }
+
+            if ($busqLower !== '') {
+                $haystack = mb_strtolower(
+                    "{$vin} {$numSerie} {$modelo} {$plantaNombre} {$cveAlmacen} {$almacenNombre} {$origenInformativo}",
+                    'UTF-8'
+                );
+                if (mb_strpos($haystack, $busqLower) === false) {
+                    continue;
+                }
+            }
+
+            $rows[] = [
+                'id_unidad'          => intval($u['id_unidad'] ?? 0),
+                'vin'                => $vin,
+                'num_serie'          => $numSerie,
+                'modelo'             => $modelo,
+                'id_planta'          => $uIdPlanta,
+                'planta_nombre'      => $plantaNombre,
+                'cve_almacen'        => $cveAlmacen,
+                'almacen_nombre'     => $almacenNombre,
+                'origen_informativo' => $origenInformativo,
+                'destino_sugerido'   => $destinoSug,
+            ];
         }
 
         return $rows;
@@ -235,6 +286,29 @@ class Lgs_preplaneacionesModel extends Mysql
 
         try {
             $folio = $this->generarFolioTransaccional($db);
+            $idPlanta = intval($data['id_planta'] ?? 0);
+
+            if ($idPlanta <= 0) {
+                foreach ($vins as $v) {
+                    $candPlanta = intval($v['id_planta'] ?? 0);
+                    if ($candPlanta > 0) {
+                        $idPlanta = $candPlanta;
+                        break;
+                    }
+                }
+            }
+
+            if ($idPlanta <= 0 && !empty($vins[0]['vin'])) {
+                $stmtPl = $db->prepare("
+                    SELECT COALESCE(a.plantaid, 0)
+                    FROM wms_numeros_series ns
+                    INNER JOIN wms_almacenes a ON a.idalmacen = ns.almacenid
+                    WHERE UPPER(TRIM(ns.numero_serie)) = UPPER(TRIM(?))
+                    LIMIT 1
+                ");
+                $stmtPl->execute([trim((string)$vins[0]['vin'])]);
+                $idPlanta = intval($stmtPl->fetchColumn() ?: 0);
+            }
 
             $sql = "INSERT INTO lgs_preplaneaciones (
                         folio, id_planta, fecha_tentativa_recoleccion, 
@@ -244,26 +318,60 @@ class Lgs_preplaneacionesModel extends Mysql
             $stmt = $db->prepare($sql);
             $stmt->execute([
                 $folio,
-                $data['id_planta'],
+                $idPlanta,
                 $data['fecha_tentativa_recoleccion'],
                 $data['created_by']
             ]);
 
             $idPreplaneacion = (int)$db->lastInsertId();
 
+            $stmtCheckUnidad = $db->prepare("SELECT id_unidad FROM lgs_unidades_envios WHERE UPPER(TRIM(vin)) = ? LIMIT 1");
+            $stmtInsUnidad = $db->prepare("
+                INSERT INTO lgs_unidades_envios (vin, num_serie, modelo, origen, destino, estatus)
+                VALUES (?, ?, ?, ?, ?, 'disponible')
+            ");
+
             // Insertar detalle de VINs
             $sqlVin = "INSERT INTO lgs_det_preplaneaciones_vins (
-                           id_preplaneacion, id_unidad, vin, modelo, destino_sugerido
-                       ) VALUES (?, ?, ?, ?, ?)";
+                           id_preplaneacion, id_unidad, vin, modelo, origen_almacen, destino_sugerido
+                       ) VALUES (?, ?, ?, ?, ?, ?)";
             $stmtVin = $db->prepare($sqlVin);
 
             foreach ($vins as $v) {
+                $vinClean = strtoupper(trim((string)($v['vin'] ?? '')));
+                $idUnidad = intval($v['id_unidad'] ?? 0);
+                $modelo = trim((string)($v['modelo'] ?? '')) ?: 'Unidad';
+                $origenAlmacen = trim((string)($v['origen_almacen'] ?? $v['origen_informativo'] ?? ''));
+                if ($origenAlmacen === '') {
+                    $origenAlmacen = trim((string)($v['planta_nombre'] ?? 'Planta / Almacén')) ?: 'Planta / Almacén';
+                }
+                $destinoSug = trim((string)($v['destino_sugerido'] ?? '')) ?: 'Por Asignar';
+
+                if ($idUnidad <= 0 && $vinClean !== '') {
+                    $stmtCheckUnidad->execute([$vinClean]);
+                    $idExist = $stmtCheckUnidad->fetchColumn();
+                    if ($idExist) {
+                        $idUnidad = intval($idExist);
+                    } else {
+                        $numSerie = trim((string)($v['num_serie'] ?? substr($vinClean, -6)));
+                        $stmtInsUnidad->execute([
+                            mb_substr($vinClean, 0, 50),
+                            mb_substr($numSerie, 0, 50),
+                            mb_substr($modelo, 0, 100),
+                            mb_substr($origenAlmacen, 0, 150),
+                            mb_substr($destinoSug, 0, 150),
+                        ]);
+                        $idUnidad = intval($db->lastInsertId());
+                    }
+                }
+
                 $stmtVin->execute([
                     $idPreplaneacion,
-                    $v['id_unidad'],
-                    $v['vin'],
-                    $v['modelo'] ?? 'Unidad',
-                    $v['destino_sugerido'] ?? 'Por Asignar'
+                    $idUnidad > 0 ? $idUnidad : null,
+                    mb_substr($vinClean, 0, 30),
+                    mb_substr($modelo, 0, 100),
+                    mb_substr($origenAlmacen, 0, 150),
+                    mb_substr($destinoSug, 0, 150),
                 ]);
             }
 

@@ -137,7 +137,7 @@ class Lgs_planeaciones extends Controllers
             }
 
             $this->service->reabrirPlaneacion($idPlaneacion, $motivoSelect, $motivoDetalle, $userId, $userName);
-            echo $this->successResponse(null, "Planeación y sus envíos reabiertos con éxito. Se ha notificado a los entes autorizadores.");
+            echo $this->successResponse(null, "Solicitud de reapertura enviada a Aprobaciones exitosamente. Se ha notificado al usuario autorizador.");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }

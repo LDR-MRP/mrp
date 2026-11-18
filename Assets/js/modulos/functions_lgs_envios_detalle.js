@@ -16,22 +16,113 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const inputBuscar = document.getElementById('buscar-vin-pool');
     if (inputBuscar) {
-        inputBuscar.addEventListener('input', function (e) {
-            const term = e.target.value.toLowerCase().trim();
-            const items = document.querySelectorAll('#vins-disponibles li');
-            items.forEach(item => {
-                const vin = (item.getAttribute('data-vin') || '').toLowerCase();
-                const numSerie = (item.getAttribute('data-num-serie') || '').toLowerCase();
-                const modelo = (item.getAttribute('data-modelo') || '').toLowerCase();
-                if (vin.includes(term) || numSerie.includes(term) || modelo.includes(term)) {
-                    item.style.setProperty('display', '', 'important');
-                } else {
-                    item.style.setProperty('display', 'none', 'important');
-                }
-            });
-        });
+        inputBuscar.addEventListener('input', aplicarFiltrosPoolVins);
     }
 });
+
+function poblarFiltrosPoolVins(vins) {
+    const selCli = document.getElementById('filtro-vin-cliente');
+    if (!selCli) return;
+    const prev = selCli.value;
+    const map = new Map();
+    (vins || []).forEach(v => {
+        const idc = parseInt(v.id_cliente || 0, 10);
+        const nom = (v.cliente_nombre || '').trim();
+        if (idc > 0 && nom && !map.has(String(idc))) {
+            map.set(String(idc), nom);
+        }
+    });
+    const ord = Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], 'es'));
+    let html = '<option value="">Cliente: Todos</option>';
+    ord.forEach(([id, nom]) => {
+        html += `<option value="${escapeHtml(id)}">${escapeHtml(nom)}</option>`;
+    });
+    selCli.innerHTML = html;
+    if (prev && map.has(prev)) selCli.value = prev;
+}
+
+function aplicarFiltrosPoolVins() {
+    const term   = (document.getElementById('buscar-vin-pool')?.value || '').toLowerCase().trim();
+    const fAut   = document.getElementById('filtro-vin-autorizacion')?.value || '';
+    const fCli   = document.getElementById('filtro-vin-cliente')?.value || '';
+    const fCob   = document.getElementById('filtro-vin-cobranza')?.value || '';
+    const items  = document.querySelectorAll('#vins-disponibles li');
+    let visibles = 0;
+
+    items.forEach(item => {
+        if (!item.getAttribute('data-vin')) return;
+        const hay = [
+            item.getAttribute('data-vin'),
+            item.getAttribute('data-num-serie'),
+            item.getAttribute('data-modelo'),
+            item.getAttribute('data-cliente'),
+            item.getAttribute('data-pedido'),
+            item.getAttribute('data-factura'),
+            item.getAttribute('data-destino'),
+            item.getAttribute('data-preenvios'),
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        const seEnvia   = parseInt(item.getAttribute('data-se-envia') || '0', 10) === 1;
+        const cumFac    = parseInt(item.getAttribute('data-cumple-factura') || '0', 10) === 1;
+        const cumPag    = parseInt(item.getAttribute('data-cumple-pago') || '0', 10) === 1;
+        const cumAut    = parseInt(item.getAttribute('data-cumple-aut') || '0', 10) === 1;
+        const idCliente = String(item.getAttribute('data-id-cliente') || '');
+        const pagoCod   = String(item.getAttribute('data-pago-cod') ?? '-1');
+
+        let match = true;
+        if (term && !hay.includes(term)) match = false;
+        if (match && fCli && idCliente !== String(fCli)) match = false;
+        if (match && fCob !== '' && pagoCod !== String(fCob)) match = false;
+        if (match && fAut) {
+            if (fAut === 'SI' && !seEnvia) match = false;
+            else if (fAut === 'NO' && seEnvia) match = false;
+            else if (fAut === 'FAC_PAG_SIN_AUT' && !(cumFac && cumPag && !cumAut)) match = false;
+            else if (fAut === 'AUT_SIN_FAC_PAG' && !(cumAut && (!cumFac || !cumPag))) match = false;
+        }
+
+        if (match) {
+            item.style.setProperty('display', '', 'important');
+            visibles++;
+        } else {
+            item.style.setProperty('display', 'none', 'important');
+        }
+    });
+
+    const lblPool = document.getElementById('badge-total-pool-vins');
+    if (lblPool) lblPool.textContent = `${visibles} disponibles`;
+}
+
+function renderBannerSolicitudExcepcion(sol) {
+    const el = document.getElementById('banner-solicitud-excepcion-detalle');
+    if (!el) return;
+    if (!sol || !sol.estatus) {
+        el.classList.add('d-none');
+        el.innerHTML = '';
+        return;
+    }
+    const est = String(sol.estatus).toUpperCase();
+    let cls = 'alert-soft-info border-info-subtle';
+    let icon = 'ri-information-line text-info';
+    let msg = '';
+    if (est === 'PENDIENTE') {
+        cls = 'alert-soft-warning border-warning-subtle';
+        icon = 'ri-time-line text-warning';
+        msg = `<strong>Solicitud de Autorización Pendiente (${escapeHtml(sol.folio_solicitud)}):</strong> Enviada por ${escapeHtml(sol.solicitante_nombre || 'Operador')} el ${escapeHtml(sol.solicitado_at || '')}. En espera de dictamen en <a href="${base_url}/Lgs_aprobaciones?tab=preenvios" class="fw-bold text-decoration-underline">Aprobaciones</a>.`;
+    } else if (est === 'APROBADA') {
+        cls = 'alert-soft-success border-success-subtle';
+        icon = 'ri-checkbox-circle-line text-success';
+        msg = `<strong>Autorización Excepcional Aprobada (${escapeHtml(sol.folio_solicitud)}):</strong> Aprobada por ${escapeHtml(sol.aprobador_nombre || 'Aprobador')}. ${sol.obs_aprobador ? 'Obs: ' + escapeHtml(sol.obs_aprobador) : ''}`;
+    } else if (est === 'RECHAZADA') {
+        cls = 'alert-soft-danger border-danger-subtle';
+        icon = 'ri-close-circle-line text-danger';
+        msg = `<strong>Solicitud Rechazada (${escapeHtml(sol.folio_solicitud)}):</strong> ${escapeHtml(sol.obs_aprobador || 'Sin comentarios del aprobador.')}`;
+    } else {
+        el.classList.add('d-none');
+        return;
+    }
+    el.className = `alert ${cls} border rounded-3 mb-3 d-flex align-items-center gap-2 fs-12`;
+    el.innerHTML = `<i class="${icon} fs-20 flex-shrink-0"></i><div>${msg}</div>`;
+}
 
 function cargarDatosDetalle() {
     const idEnvio = document.getElementById('id_envio') ? document.getElementById('id_envio').value : 0;
@@ -125,8 +216,13 @@ function cargarDatosDetalle() {
                         }
                     }
 
-                    // 2. Renderizar VINs Disponibles en el pool izquierdo
+                    // 1b. Mostrar banner de solicitud excepcional si existe
+                    renderBannerSolicitudExcepcion(objData.data.solicitud_excepcion || null);
+
+                    // 2. Renderizar VINs Disponibles en el pool izquierdo y poblar filtros
+                    poblarFiltrosPoolVins(objData.data.vins || []);
                     renderPoolVins(objData.data.vins || []);
+                    aplicarFiltrosPoolVins();
 
                     // 3. Renderizar asignaciones existentes si las hay
                     renderAcomodoExistente(objData.data.existentes || []);
@@ -139,10 +235,9 @@ function cargarDatosDetalle() {
                         actualizarAuditoriaFinancieraUI(objData.data.auditoria_financiera);
                     }
 
-                    // 6. Recalcular costo si ya existen asignaciones cargadas o auto-sincronizar si quedó inconsistente en BD
-                    if (tieneVinsAsignados) {
-                        guardarAcomodoAuto();
-                    } else if (parseFloat(g_envioData.costo_total || 0) > 0) {
+                    // 6. Recalcular costo solo en modo editable si quedó sin calcular en BD
+                    const esSoloLectura = (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY === true);
+                    if (!esSoloLectura && tieneVinsAsignados && parseFloat(g_envioData.costo_total || 0) <= 0) {
                         guardarAcomodoAuto();
                     }
                 } else {
@@ -158,9 +253,52 @@ function cargarDatosDetalle() {
     }
 }
 
+function buildBadgesEstatusUnidad(meta) {
+    const pagoClsMap = { 3: 'bg-success text-white', 2: 'bg-warning text-dark', 1: 'bg-info text-white', 0: 'bg-soft-danger text-danger', '-1': 'bg-light text-muted border' };
+    const pCod   = meta.estatus_pago_cod !== undefined && meta.estatus_pago_cod !== null ? String(meta.estatus_pago_cod) : '-1';
+    const pTxt   = meta.estatus_pago_texto || 'Sin Facturar';
+    const pCls   = pagoClsMap[pCod] || pagoClsMap['-1'];
+    const seEnvia = parseInt(meta.se_envia || 0, 10) === 1;
+    const cumFac  = parseInt(meta.cumple_factura || 0, 10) === 1;
+    const cumPag  = parseInt(meta.cumple_pago || 0, 10) === 1;
+    const cumAut  = parseInt(meta.cumple_autorizacion || 0, 10) === 1;
+    const autExc  = parseInt(meta.autorizado_excepcion || 0, 10) === 1;
+    const motivo  = meta.estado_envio_motivo || (seEnvia ? 'Autorizada' : 'Pendiente de autorización');
+
+    const badges = [];
+    if (seEnvia || autExc) {
+        badges.push(`<span class="badge bg-success text-white fs-10" title="${escapeHtml(motivo)}"><i class="ri-check-double-line me-1"></i>Envío: SÍ</span>`);
+    } else {
+        badges.push(`<span class="badge bg-danger text-white fs-10" title="${escapeHtml(motivo)}"><i class="ri-close-circle-line me-1"></i>Envío: NO</span>`);
+    }
+
+    if (cumAut) {
+        badges.push(`<span class="badge bg-soft-success text-success border border-success-subtle fs-10" title="Con autorización de movimiento (Bandeja)">Aut. Mov.: SÍ</span>`);
+    } else {
+        const titleAut = (cumFac && cumPag) ? 'Cumple Factura y Pago, falta Autorización de Movimiento en Bandeja' : 'Sin Autorización de Movimiento';
+        badges.push(`<span class="badge bg-soft-warning text-dark border border-warning-subtle fs-10" title="${titleAut}">Aut. Mov.: NO</span>`);
+    }
+
+    if (meta.cliente_nombre) badges.push(`<span class="badge bg-soft-primary text-primary fs-10">${escapeHtml(meta.cliente_nombre)}</span>`);
+    if (meta.folio_pedido) badges.push(`<span class="badge bg-soft-warning text-warning fs-10">Ped: ${escapeHtml(meta.folio_pedido)}</span>`);
+    if (meta.factura) {
+        badges.push(`<span class="badge bg-soft-secondary text-dark fs-10">Fac: ${escapeHtml(meta.factura)}</span>`);
+    }
+    badges.push(`<span class="badge ${pCls} fs-10">${escapeHtml(pTxt)}</span>`);
+    if (!seEnvia && !autExc && cumFac && cumPag && !cumAut) {
+        badges.push(`<span class="badge bg-warning-subtle text-dark border border-warning fs-10"><i class="ri-shield-keyhole-line me-1"></i>Cumple Fac+Pago · Falta Aut.</span>`);
+    }
+    if (meta.preenvio_folios) {
+        badges.push(`<span class="badge bg-soft-info text-info fs-10" title="En pre-envío ficticio (no bloquea)">PE: ${escapeHtml(meta.preenvio_folios)}</span>`);
+    }
+    return badges.join('');
+}
+
 function renderPoolVins(vins) {
     const poolUl = document.getElementById('vins-disponibles');
+    const lblPool = document.getElementById('badge-total-pool-vins');
     if (!poolUl) return;
+    if (lblPool) lblPool.textContent = Array.isArray(vins) ? (vins.length + ' disponibles') : '0 disponibles';
 
     if (!Array.isArray(vins) || vins.length === 0) {
         poolUl.innerHTML = `<li class="list-group-item text-center text-muted py-4 border-0">
@@ -175,57 +313,81 @@ function renderPoolVins(vins) {
         const mod = v.modelo || 'Unidad';
         const orig = v.origen || 'Origen';
         const dest = v.destino || 'Destino';
-        
+        const cliNom = v.cliente_nombre || '';
+        const pedFol = v.folio_pedido || '';
+        const facFol = v.factura || '';
+        const peFol  = v.preenvio_folios || '';
+        const pCod   = v.estatus_pago_cod !== undefined && v.estatus_pago_cod !== null ? String(v.estatus_pago_cod) : '-1';
+        const pTxt   = v.estatus_pago_texto || 'Sin Facturar';
+        const seEnvia = parseInt(v.se_envia || 0, 10) === 1;
+
         let coincide = (v.coincide_destino !== false);
         let estaAsignado = Boolean(v.asignado_folio);
         
-        // Solo deshabilitamos el arrastre si la unidad ya se encuentra asignada a otro envío activo
+        // Solo deshabilitamos el arrastre si la unidad ya se encuentra asignada a otro envío oficial activo
         let isDraggable = !estaAsignado;
         
         let liClass = isDraggable ? "cursor-move shadow-sm bg-white" : "disabled-vin bg-light opacity-50";
         let dragger = isDraggable ? '<i class="ri-draggable fs-18 text-muted"></i>' : '<i class="ri-close-circle-line fs-18 text-danger"></i>';
+        let borderColor = seEnvia ? 'border-success' : 'border-primary';
         
         let badgeWarn = '';
         let btnAsignar = '';
 
         if (estaAsignado) {
-            badgeWarn = `<span class="badge bg-danger ms-2" title="Esta unidad ya se encuentra asignada al envío ${v.asignado_folio}">Asignado (Envío ${v.asignado_folio})</span>`;
+            badgeWarn = `<span class="badge bg-danger ms-2" title="Esta unidad ya se encuentra asignada al envío ${escapeHtml(v.asignado_folio)}">Oficial ${escapeHtml(v.asignado_folio)}</span>`;
         } else {
             if (!coincide) {
-                badgeWarn = '<span class="badge bg-warning-subtle text-warning border border-warning ms-2" title="El destino registrado en la unidad difiere textualmente de las paradas del envío. Puede asignarse con normalidad."><i class="ri-alert-line me-1"></i>Destino Diferente</span>';
+                badgeWarn = '<span class="badge bg-warning-subtle text-warning border border-warning ms-1" title="El destino registrado en la unidad difiere textualmente de las paradas del envío. Puede asignarse con normalidad."><i class="ri-alert-line me-1"></i>Otro Dest.</span>';
             }
             if (!ENVIO_READONLY) {
-                btnAsignar = `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-11 ms-2" onclick="asignarVinRapido(this)" title="Asignar al vehículo activo"><i class="ri-arrow-right-line me-1"></i>Asignar</button>`;
+                btnAsignar = `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-11 ms-1" onclick="asignarVinRapido(this)" title="Asignar al vehículo activo"><i class="ri-arrow-right-line me-1"></i>Asignar</button>`;
             }
         }
 
+        const badgesHtml = buildBadgesEstatusUnidad(v);
+
         html += `
-        <li class="list-group-item mb-2 rounded border-start border-3 border-primary ${liClass}" 
-            data-id-unidad="${v.id_unidad}"
-            data-vin="${v.vin}"
-            data-num-serie="${v.num_serie || ''}"
-            data-modelo="${mod}"
-            data-origen="${orig}"
-            data-destino="${dest}">
+        <li class="list-group-item mb-2 rounded border-start border-3 ${borderColor} ${liClass}" 
+            data-id-unidad="${v.id_unidad || 0}"
+            data-id-numeros-serie="${v.id_numeros_serie || 0}"
+            data-id-cliente="${v.id_cliente || 0}"
+            data-vin="${escapeHtml(v.vin)}"
+            data-num-serie="${escapeHtml(v.num_serie || '')}"
+            data-modelo="${escapeHtml(mod)}"
+            data-origen="${escapeHtml(orig)}"
+            data-destino="${escapeHtml(dest)}"
+            data-cliente="${escapeHtml(cliNom)}"
+            data-pedido="${escapeHtml(pedFol)}"
+            data-factura="${escapeHtml(facFol)}"
+            data-pago-cod="${escapeHtml(pCod)}"
+            data-pago-texto="${escapeHtml(pTxt)}"
+            data-cumple-factura="${v.cumple_factura ? 1 : 0}"
+            data-cumple-pago="${v.cumple_pago ? 1 : 0}"
+            data-cumple-aut="${v.cumple_autorizacion ? 1 : 0}"
+            data-autorizado-excepcion="${v.autorizado_excepcion ? 1 : 0}"
+            data-se-envia="${seEnvia ? 1 : 0}"
+            data-estado-motivo="${escapeHtml(v.estado_envio_motivo || '')}"
+            data-preenvios="${escapeHtml(peFol)}">
             <div class="d-flex align-items-center">
                 <div class="flex-shrink-0 me-2">
                     ${dragger}
                 </div>
                 <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <h6 class="mb-0 fs-13 text-primary fw-bold">${v.vin}</h6>
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-soft-info text-info fs-11">${mod}</span>
+                    <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+                        <h6 class="mb-0 fs-13 text-primary fw-bold font-monospace">${escapeHtml(v.vin)}</h6>
+                        <div class="d-flex align-items-center flex-wrap gap-1">
+                            <span class="badge bg-soft-info text-info fs-11">${escapeHtml(mod)}</span>
                             ${badgeWarn}
                             ${btnAsignar}
                         </div>
                     </div>
-                    <p class="text-dark mb-0 fs-11 fw-semibold">
-                        <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
+                    <p class="text-dark mb-1 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${escapeHtml(orig)} 
                         <i class="ri-arrow-right-line mx-1 text-muted"></i> 
-                        <i class="ri-map-pin-2-fill text-success me-1"></i>${dest}
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${escapeHtml(dest)}
                     </p>
-                    <small class="text-muted fs-11">N/S: ${v.num_serie || 'N/A'}</small>
+                    <div class="d-flex flex-wrap gap-1">${badgesHtml}</div>
                 </div>
             </div>
         </li>`;
@@ -312,6 +474,7 @@ function initSortables() {
             onAdd: function (evt) {
                 actualizarConteoYSecuencia(evt.from);
                 limpiarBadgesPool(evt.item);
+                actualizarContadorPoolVins();
             }
         });
     }
@@ -335,6 +498,7 @@ function initSortables() {
                     }
                     actualizarConteoYSecuencia(evt.to);
                     agruparYOrdenarParadas(evt.to);
+                    actualizarContadorPoolVins();
                     guardarAcomodoAuto();
                 },
                 onRemove: function (evt) {
@@ -506,6 +670,11 @@ function actualizarConteoYSecuencia(listaUl) {
                 }
             }
             li.setAttribute('data-tipo-servicio', tipoServicioVin);
+            const seEnviaCard = parseInt(li.getAttribute('data-se-envia') || '0', 10) === 1 || parseInt(li.getAttribute('data-autorizado-excepcion') || '0', 10) === 1;
+            const motivoCard  = li.getAttribute('data-estado-motivo') || (seEnviaCard ? 'Autorizada' : 'Pendiente de autorización');
+            const badgeEnvioCard = seEnviaCard
+                ? `<span class="badge bg-success text-white fs-10 me-1" title="${escapeHtml(motivoCard)}">Envío: SÍ</span>`
+                : `<span class="badge bg-danger text-white fs-10 me-1" title="${escapeHtml(motivoCard)}">Envío: NO</span>`;
 
             li.innerHTML = `
             <div class="d-flex align-items-center">
@@ -513,9 +682,10 @@ function actualizarConteoYSecuencia(listaUl) {
                     <i class="ri-draggable fs-18 text-muted"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
                         <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
                         <div>
+                            ${badgeEnvioCard}
                             ${badgeSecuencia}
                             <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
                         </div>
@@ -868,22 +1038,52 @@ function asignarVinRapido(btn) {
     btn.remove();
     actualizarConteoYSecuencia(destinoUl);
     agruparYOrdenarParadas(destinoUl);
+    actualizarContadorPoolVins();
     guardarAcomodoAuto();
+}
+
+function actualizarContadorPoolVins() {
+    if (typeof aplicarFiltrosPoolVins === 'function') {
+        aplicarFiltrosPoolVins();
+        return;
+    }
+    const pool = document.getElementById('vins-disponibles');
+    const lblPool = document.getElementById('badge-total-pool-vins');
+    if (pool && lblPool) {
+        const disponibles = pool.querySelectorAll('li:not(.disabled-vin)').length;
+        lblPool.innerText = `${disponibles} disponibles`;
+    }
 }
 
 function limpiarBadgesPool(li) {
     if (!li) return;
-    li.classList.remove('border-success');
-    li.classList.add('border-primary');
+    const seEnvia = parseInt(li.getAttribute('data-se-envia') || '0', 10) === 1;
+    li.classList.remove('border-success', 'border-primary');
+    li.classList.add(seEnvia ? 'border-success' : 'border-primary');
 
-    const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
+    const vin      = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
     const numSerie = li.getAttribute('data-num-serie') || '';
-    const modelo = li.getAttribute('data-modelo') || 'Unidad';
-    const origen = li.getAttribute('data-origen') || 'Origen';
-    const destino = li.getAttribute('data-destino') || 'Destino';
+    const modelo   = li.getAttribute('data-modelo') || 'Unidad';
+    const origen   = li.getAttribute('data-origen') || 'Origen';
+    const destino  = li.getAttribute('data-destino') || 'Destino';
+
+    const badgesHtml = buildBadgesEstatusUnidad({
+        cliente_nombre:      li.getAttribute('data-cliente') || '',
+        folio_pedido:        li.getAttribute('data-pedido') || '',
+        factura:             li.getAttribute('data-factura') || '',
+        estatus_pago_cod:    li.getAttribute('data-pago-cod') ?? '-1',
+        estatus_pago_texto:  li.getAttribute('data-pago-texto') || 'Sin Facturar',
+        cumple_factura:      li.getAttribute('data-cumple-factura') || '0',
+        cumple_pago:         li.getAttribute('data-cumple-pago') || '0',
+        cumple_autorizacion: li.getAttribute('data-cumple-aut') || '0',
+        autorizado_excepcion:li.getAttribute('data-autorizado-excepcion') || '0',
+        se_envia:            li.getAttribute('data-se-envia') || '0',
+        estado_envio_motivo: li.getAttribute('data-estado-motivo') || '',
+        preenvio_folios:     li.getAttribute('data-preenvios') || '',
+    });
 
     let btnAsignar = (typeof ENVIO_READONLY === 'undefined' || !ENVIO_READONLY)
-        ? `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-11 ms-2" onclick="asignarVinRapido(this)" title="Asignar al vehículo activo"><i class="ri-arrow-right-line me-1"></i>Asignar</button>`
+        ? `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-11 ms-1" onclick="asignarVinRapido(this)" title="Asignar al vehículo activo"><i class="ri-arrow-right-line me-1"></i>Asignar</button>`
         : '';
 
     li.innerHTML = `
@@ -892,19 +1092,22 @@ function limpiarBadgesPool(li) {
             <i class="ri-draggable fs-18 text-muted"></i>
         </div>
         <div class="flex-grow-1">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <h6 class="mb-0 fs-13 text-primary fw-bold">${vin}</h6>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
+            <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+                <h6 class="mb-0 fs-13 text-primary fw-bold font-monospace">${escapeHtml(vin)}</h6>
+                <div class="d-flex align-items-center flex-wrap gap-1">
+                    <span class="badge bg-soft-info text-info fs-11">${escapeHtml(modelo)}</span>
                     ${btnAsignar}
                 </div>
             </div>
-            <p class="text-dark mb-0 fs-11 fw-semibold">
-                <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
-                <i class="ri-arrow-right-line mx-1 text-muted"></i> 
-                <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+            <p class="text-dark mb-1 fs-11 fw-semibold">
+                <i class="ri-map-pin-line text-danger me-1"></i>${escapeHtml(origen)}
+                <i class="ri-arrow-right-line mx-1 text-muted"></i>
+                <i class="ri-map-pin-2-fill text-success me-1"></i>${escapeHtml(destino)}
             </p>
-            <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+            <div class="d-flex flex-wrap gap-1 align-items-center">
+                ${badgesHtml}
+                <small class="text-muted fs-10 ms-auto">N/S: ${escapeHtml(numSerie || 'N/A')}</small>
+            </div>
         </div>
     </div>`;
 }
@@ -1166,12 +1369,26 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
 
         htmlVins += `
         <li class="list-group-item cursor-move shadow-sm mb-2 rounded-3 border-start border-3 border-success bg-white" 
-            data-id-unidad="${v.id_unidad}"
-            data-vin="${v.vin}"
-            data-num-serie="${v.num_serie || ''}"
-            data-modelo="${mod}"
-            data-origen="${orig}"
-            data-destino="${dest}"
+            data-id-unidad="${v.id_unidad || 0}"
+            data-id-numeros-serie="${v.id_numeros_serie || 0}"
+            data-id-cliente="${v.id_cliente || 0}"
+            data-vin="${escapeHtml(v.vin || '')}"
+            data-num-serie="${escapeHtml(v.num_serie || '')}"
+            data-modelo="${escapeHtml(mod)}"
+            data-cliente="${escapeHtml(v.cliente_nombre || '')}"
+            data-pedido="${escapeHtml(v.folio_pedido || '')}"
+            data-factura="${escapeHtml(v.factura || '')}"
+            data-pago-cod="${v.estatus_pago_cod !== undefined && v.estatus_pago_cod !== null ? v.estatus_pago_cod : -1}"
+            data-pago-texto="${escapeHtml(v.estatus_pago_texto || '')}"
+            data-cumple-factura="${v.cumple_factura ? 1 : 0}"
+            data-cumple-pago="${v.cumple_pago ? 1 : 0}"
+            data-cumple-aut="${v.cumple_autorizacion ? 1 : 0}"
+            data-autorizado-excepcion="${v.autorizado_excepcion ? 1 : 0}"
+            data-se-envia="${v.se_envia ? 1 : 0}"
+            data-estado-motivo="${escapeHtml(v.estado_envio_motivo || '')}"
+            data-origen="${escapeHtml(orig)}"
+            data-destino="${escapeHtml(dest)}"
+            data-preenvios="${escapeHtml(v.preenvio_folios || '')}"
             data-id-parada="${v.id_parada || v.id_nodo_bajada || ''}"
             data-id-nodo-subida="${v.id_nodo_subida || ''}"
             data-id-nodo-bajada="${v.id_nodo_bajada || v.id_parada || ''}">
@@ -1253,22 +1470,28 @@ function removerContenedorVehiculo(btn) {
     guardarAcomodoAuto();
 }
 
-function guardarAcomodoAuto() {
-    const idEnvio = document.getElementById('id_envio') ? document.getElementById('id_envio').value : 0;
-    if (!idEnvio) return;
-
+function recolectarAsignacionesAcomodo() {
     const asignaciones = [];
+    const vistos = new Set();
     const vehiculos = document.querySelectorAll('.vehiculo-list');
 
     vehiculos.forEach(v => {
         const idMadrina    = v.getAttribute('data-id-madrina') || null;
         const idPlataforma = v.getAttribute('data-id-plataforma') || null;
         const idChofer     = v.getAttribute('data-id-chofer') || null;
-        const items     = v.querySelectorAll('li');
+        const items        = v.querySelectorAll('li');
 
         let posicion = 1;
         items.forEach(li => {
-            let idUnidad = li.getAttribute('data-id-unidad');
+            const idUnidad = parseInt(li.getAttribute('data-id-unidad') || '0', 10) || 0;
+            const idNs     = parseInt(li.getAttribute('data-id-numeros-serie') || '0', 10) || 0;
+            const vin      = (li.getAttribute('data-vin') || '').trim().toUpperCase();
+            if (!idUnidad && !vin) return;
+
+            const dedupKey = vin ? ('V:' + vin) : ('U:' + idUnidad);
+            if (vistos.has(dedupKey)) return;
+            vistos.add(dedupKey);
+
             let idSubida = li.getAttribute('data-id-nodo-subida') || null;
             let idBajada = li.getAttribute('data-id-nodo-bajada') || null;
             let idParada = li.getAttribute('data-id-parada') || idBajada;
@@ -1288,28 +1511,40 @@ function guardarAcomodoAuto() {
                 if (!idBajada) idBajada = selLegacy.value;
             }
 
-            let tipoServicio = li.getAttribute('data-tipo-servicio') || null;
-
-            if (idUnidad) {
-                if (!asignaciones.some(a => a.id_unidad == idUnidad)) {
-                    asignaciones.push({
-                        id_unidad: idUnidad,
-                        id_parada: idParada,
-                        id_nodo_subida: idSubida,
-                        id_nodo_bajada: idBajada,
-                        id_madrina: idMadrina,
-                        id_plataforma: idPlataforma,
-                        id_chofer: idChofer,
-                        posicion_acomodo: posicion,
-                        tipo_servicio: tipoServicio
-                    });
-                    posicion++;
-                }
-            }
+            asignaciones.push({
+                id_unidad: idUnidad,
+                id_numeros_serie: idNs,
+                vin: vin,
+                num_serie: li.getAttribute('data-num-serie') || '',
+                modelo: li.getAttribute('data-modelo') || '',
+                origen: li.getAttribute('data-origen') || '',
+                destino: li.getAttribute('data-destino') || '',
+                id_parada: idParada,
+                id_nodo_subida: idSubida,
+                id_nodo_bajada: idBajada,
+                id_madrina: idMadrina,
+                id_plataforma: idPlataforma,
+                id_chofer: idChofer,
+                posicion_acomodo: posicion++,
+                tipo_servicio: li.getAttribute('data-tipo-servicio') || null
+            });
         });
     });
 
+    return asignaciones;
+}
+
+function guardarAcomodoAuto() {
+    if (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY === true) {
+        return;
+    }
+    const idEnvio = document.getElementById('id_envio') ? document.getElementById('id_envio').value : 0;
+    if (!idEnvio) return;
+
+    const asignaciones = recolectarAsignacionesAcomodo();
+
     const lblCosto = document.getElementById('lbl-resumen-costo');
+    const prevCostoTxt = lblCosto ? (lblCosto.innerText || '$0.00') : '$0.00';
 
     const idTipoTrasladoAct = parseInt(g_envioData ? g_envioData.id_tipo_traslado : 1);
     if (idTipoTrasladoAct === 1 && asignaciones.length === 1) {
@@ -1330,22 +1565,26 @@ function guardarAcomodoAuto() {
     }));
 
     request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            try {
-                let objData = JSON.parse(request.responseText);
-                if (objData.status === 'success' || objData.code === 200) {
-                    if (lblCosto) {
-                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
-                        lblCosto.innerText = costoTxt;
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                try {
+                    let objData = JSON.parse(request.responseText);
+                    if (objData.status === 'success' || objData.code === 200) {
+                        if (lblCosto) {
+                            let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
+                            lblCosto.innerText = costoTxt;
+                        }
+                        if (objData.data && objData.data.auditoria_financiera) {
+                            actualizarAuditoriaFinancieraUI(objData.data.auditoria_financiera);
+                        }
+                    } else {
+                        if (lblCosto) lblCosto.innerText = prevCostoTxt;
                     }
-                    if (objData.data && objData.data.auditoria_financiera) {
-                        actualizarAuditoriaFinancieraUI(objData.data.auditoria_financiera);
-                    }
-                } else {
-                    if (lblCosto) lblCosto.innerText = 'Error';
+                } catch (e) {
+                    if (lblCosto) lblCosto.innerText = prevCostoTxt;
                 }
-            } catch (e) {
-                if (lblCosto) lblCosto.innerText = 'Error';
+            } else {
+                if (lblCosto) lblCosto.innerText = prevCostoTxt;
             }
         }
     }
@@ -1353,12 +1592,16 @@ function guardarAcomodoAuto() {
 
 function guardarAcomodo(finalizar = false) {
     if (finalizar) {
+        const esPre = (typeof g_envioData !== 'undefined' && g_envioData && (parseInt(g_envioData.es_preenvio) === 1 || String(g_envioData.folio || '').startsWith('PE-')));
         Swal.fire({
-            title: "¿Confirmar Envío?",
-            text: "Al finalizar, este envío pasará a estar confirmado y disponible para las planeaciones. ¿Desea continuar?",
+            title: esPre ? "¿Guardar Acomodo del Pre-envío?" : "¿Confirmar y Finalizar Envío?",
+            text: esPre
+                ? "Se guardará el acomodo de unidades y vehículos de este Pre-envío, dejándolo listo para convertir a Envío Oficial (EN-)."
+                : "Al finalizar, este envío quedará confirmado y disponible para agruparse en Planeaciones. ¿Desea continuar?",
             icon: "question",
             showCancelButton: true,
-            confirmButtonText: "Sí, finalizar",
+            confirmButtonColor: esPre ? "#0284C7" : "#C46623",
+            confirmButtonText: esPre ? "Sí, guardar acomodo" : "Sí, finalizar",
             cancelButtonText: "Cancelar"
         }).then((result) => {
             if (result.isConfirmed) {
@@ -1377,58 +1620,7 @@ function procesarAcomodo(finalizar) {
         return;
     }
 
-    const asignaciones = [];
-    const vehiculos = document.querySelectorAll('.vehiculo-list');
-
-    vehiculos.forEach(v => {
-        const idMadrina    = v.getAttribute('data-id-madrina') || null;
-        const idPlataforma = v.getAttribute('data-id-plataforma') || null;
-        const idChofer     = v.getAttribute('data-id-chofer') || null;
-        const items        = v.querySelectorAll('li');
-
-        let posicion = 1;
-        items.forEach(li => {
-            let idUnidad = li.getAttribute('data-id-unidad');
-            let idSubida = li.getAttribute('data-id-nodo-subida') || null;
-            let idBajada = li.getAttribute('data-id-nodo-bajada') || null;
-            let idParada = li.getAttribute('data-id-parada') || idBajada;
-
-            const selSub = li.querySelector('.nodo-subida-select');
-            if (selSub && selSub.value) idSubida = selSub.value;
-
-            const selBaj = li.querySelector('.nodo-bajada-select');
-            if (selBaj && selBaj.value) {
-                idBajada = selBaj.value;
-                idParada = selBaj.value;
-            }
-
-            const selLegacy = li.querySelector('.parada-vin-select');
-            if (selLegacy && selLegacy.value) {
-                idParada = selLegacy.value;
-                if (!idBajada) idBajada = selLegacy.value;
-            }
-
-            let tipoServicio = li.getAttribute('data-tipo-servicio') || null;
-
-            if (idUnidad) {
-                if (asignaciones.some(a => a.id_unidad == idUnidad)) {
-                    return;
-                }
-                asignaciones.push({
-                    id_unidad: idUnidad,
-                    id_parada: idParada,
-                    id_nodo_subida: idSubida,
-                    id_nodo_bajada: idBajada,
-                    id_madrina: idMadrina,
-                    id_plataforma: idPlataforma,
-                    id_chofer: idChofer,
-                    posicion_acomodo: posicion,
-                    tipo_servicio: tipoServicio
-                });
-                posicion++;
-            }
-        });
-    });
+    const asignaciones = recolectarAsignacionesAcomodo();
 
     if (asignaciones.length === 0) {
         Swal.fire("Atención", "Arrastre al menos un VIN desde el pool disponible hacia una Madrina o Chofer.", "warning");
@@ -1446,6 +1638,7 @@ function procesarAcomodo(finalizar) {
     }
 
     // Validar si algún vehículo excede su capacidad física en algún tramo
+    const vehiculos = document.querySelectorAll('.vehiculo-list');
     let haySobrecapacidad = false;
     let mensajeSobrecapacidad = '';
     vehiculos.forEach(v => {
@@ -1520,15 +1713,48 @@ function enviarAcomodoAlServidor(idEnvio, asignaciones, finalizar = false) {
                 try {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status === 'success' || objData.code === 200) {
+                        if (objData.data && objData.data.requires_authorization) {
+                            const folioActual = (g_envioData && g_envioData.folio) ? g_envioData.folio : ('#' + idEnvio);
+                            mostrarModalSolicitudExcepcionDetalle(idEnvio, folioActual, objData.data, true);
+                            return;
+                        }
                         let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
-                        Swal.fire({
-                            title: "¡Acomodo Guardado!",
-                            text: `Las unidades han sido asignadas correctamente. Costo total estimado del envío: ${costoTxt}`,
-                            icon: "success",
-                            confirmButtonText: "Aceptar y Volver a la Bandeja"
-                        }).then((result) => {
-                            window.location.href = base_url + '/Lgs_envios';
-                        });
+                        const esPre = (typeof g_envioData !== 'undefined' && g_envioData && (parseInt(g_envioData.es_preenvio) === 1 || String(g_envioData.folio || '').startsWith('PE-')));
+                        if (esPre) {
+                            Swal.fire({
+                                title: "¡Acomodo de Pre-envío Guardado!",
+                                text: `Unidades asignadas correctamente (Costo estimado: ${costoTxt}). ¿Deseas pasarlo ahora a Envío Oficial (EN-) o volver a Pre-envíos?`,
+                                icon: "success",
+                                showCancelButton: true,
+                                confirmButtonColor: "#198754",
+                                cancelButtonColor: "#64748B",
+                                confirmButtonText: '<i class="ri-exchange-line me-1"></i> Pasar a Envío (EN-) Ahora',
+                                cancelButtonText: "Volver a Pre-envíos"
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    convertirPreEnvioAEnvioDesdeDetalle(idEnvio);
+                                } else {
+                                    window.location.href = base_url + '/Lgs_bandeja?tab=preenvios';
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                title: "¡Acomodo Finalizado!",
+                                text: `Las unidades han sido asignadas correctamente (Costo estimado: ${costoTxt}). El envío está listo para Planeaciones.`,
+                                icon: "success",
+                                showCancelButton: true,
+                                confirmButtonColor: "#C46623",
+                                cancelButtonColor: "#64748B",
+                                confirmButtonText: "Volver a Bandeja de Envíos",
+                                cancelButtonText: '<i class="ri-file-list-3-line me-1"></i> Ir a Planeaciones'
+                            }).then((result) => {
+                                if (result.dismiss === Swal.DismissReason.cancel) {
+                                    window.location.href = base_url + '/Lgs_planeaciones';
+                                } else {
+                                    window.location.href = base_url + '/Lgs_envios';
+                                }
+                            });
+                        }
                     } else {
                         Swal.fire("Error", objData.message || "Error al guardar el acomodo.", "error");
                     }
@@ -1808,4 +2034,208 @@ function actualizarAuditoriaFinancieraUI(audit) {
             tbodyVins.innerHTML = html;
         }
     }
+}
+
+function mostrarModalSolicitudExcepcionDetalle(idEnvio, folio, dataAuth, esDesdeEnvioOficial = false) {
+    const observados = Array.isArray(dataAuth.vins_observados) ? dataAuth.vins_observados : [];
+    const solPend    = dataAuth.solicitud_pendiente || null;
+    const ultRech    = dataAuth.ultima_rechazada || null;
+
+    const rowsHtml = observados.map(w => {
+        const facBadge = parseInt(w.cumple_factura || 0, 10) === 1
+            ? `<span class="badge bg-soft-success text-success">SÍ (${escapeHtml(w.factura)})</span>`
+            : '<span class="badge bg-soft-danger text-danger">Sin Factura</span>';
+        const pagBadge = parseInt(w.cumple_pago || 0, 10) === 1
+            ? `<span class="badge bg-soft-success text-success">${escapeHtml(w.estatus_pago_texto)}</span>`
+            : `<span class="badge bg-soft-warning text-dark">${escapeHtml(w.estatus_pago_texto || 'Pendiente')}</span>`;
+        const autBadge = parseInt(w.cumple_autorizacion || 0, 10) === 1
+            ? '<span class="badge bg-soft-success text-success">Autorizada</span>'
+            : '<span class="badge bg-soft-danger text-danger">Sin Aut. Mov.</span>';
+        return `<tr>
+            <td class="text-start font-monospace fw-bold fs-11">${escapeHtml(w.vin)}<div class="text-muted fw-normal">${escapeHtml(w.modelo || '')}</div></td>
+            <td>${facBadge}</td>
+            <td>${pagBadge}</td>
+            <td>${autBadge}</td>
+        </tr>`;
+    }).join('');
+
+    let estadoPrevHtml = '';
+    if (ultRech && !solPend) {
+        estadoPrevHtml = `<div class="alert alert-soft-danger border border-danger-subtle text-start fs-12 py-2 px-3 mb-2">
+            <strong><i class="ri-close-circle-line me-1"></i>Solicitud previa rechazada (${escapeHtml(ultRech.folio_solicitud || '')}):</strong>
+            ${escapeHtml(ultRech.obs_aprobador || 'Sin comentarios')}
+        </div>`;
+    }
+
+    if (solPend) {
+        Swal.fire({
+            title: 'Solicitud Pendiente de Aprobación',
+            width: '720px',
+            icon: 'info',
+            html: `
+                <div class="text-start fs-13 mb-2">
+                    El registro <strong>${escapeHtml(folio || ('#' + idEnvio))}</strong> ${esDesdeEnvioOficial ? 'quedó guardado en borrador porque ' : ''}tiene unidades pendientes de Factura, Pago o Autorización de Movimiento y ya cuenta con la solicitud
+                    <span class="badge bg-warning text-dark">${escapeHtml(solPend.folio_solicitud)}</span> pendiente de dictamen en <strong>Aprobaciones</strong>.
+                </div>
+                <div class="p-2 bg-light border rounded text-start fs-12 mb-3">
+                    <strong>Justificación enviada:</strong> ${escapeHtml(solPend.motivo_solicitud || '')}
+                </div>
+                <div class="table-responsive border rounded" style="max-height:220px; overflow-y:auto;">
+                    <table class="table table-sm align-middle mb-0 fs-11">
+                        <thead class="table-light"><tr><th class="text-start">VIN / Modelo</th><th>Factura</th><th>Pago</th><th>Aut. Mov.</th></tr></thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#C46623',
+            cancelButtonColor: '#64748B',
+            confirmButtonText: '<i class="ri-shield-check-line me-1"></i> Ir a Aprobaciones',
+            cancelButtonText: 'Cerrar'
+        }).then((r) => {
+            if (r.isConfirmed) {
+                window.location.href = base_url + '/Lgs_aprobaciones?tab=preenvios';
+            }
+        });
+        return;
+    }
+
+    const introMsg = esDesdeEnvioOficial
+        ? `El acomodo se guardó en borrador, pero no se puede finalizar <strong>${escapeHtml(folio)}</strong> porque las siguientes unidades aún no cumplen Factura, Pago/Crédito y Autorización de Movimiento:`
+        : `No es posible pasar <strong>${escapeHtml(folio)}</strong> directamente a Envío Oficial (<code>EN-</code>) porque las siguientes unidades aún no cumplen Factura, Pago/Crédito y Autorización de Movimiento:`;
+
+    Swal.fire({
+        title: 'Validación de Factura / Pago / Autorización',
+        width: '760px',
+        icon: 'warning',
+        html: `
+            ${estadoPrevHtml}
+            <p class="text-start fs-13 mb-2">${introMsg}</p>
+            <div class="table-responsive border rounded mb-3" style="max-height:220px; overflow-y:auto;">
+                <table class="table table-sm align-middle mb-0 fs-11">
+                    <thead class="table-light"><tr><th class="text-start">VIN / Modelo</th><th>Factura</th><th>Pago</th><th>Aut. Mov.</th></tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+            <div class="text-start">
+                <label class="form-label fs-12 fw-bold text-dark mb-1">
+                    <i class="ri-send-plane-line text-warning me-1"></i> Forzar bajo solicitud (Justificación para Aprobaciones) <span class="text-danger">*</span>
+                </label>
+                <textarea id="swal_motivo_excepcion_detalle" class="form-control fs-12" rows="3" placeholder="Ej. Cliente autorizado por Dirección Comercial; factura o pago en proceso..."></textarea>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-shield-user-line me-1"></i> Solicitar Autorización en Aprobaciones',
+        cancelButtonText: 'Ajustar Acomodo',
+        preConfirm: () => {
+            const motivo = (document.getElementById('swal_motivo_excepcion_detalle')?.value || '').trim();
+            if (motivo.length < 5) {
+                Swal.showValidationMessage('Ingrese el motivo o justificación (mínimo 5 caracteres).');
+                return false;
+            }
+            return motivo;
+        }
+    }).then((c) => {
+        if (!c.isConfirmed) return;
+        Swal.fire({ title: 'Enviando Solicitud...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const fd = new FormData();
+        fd.append('id_envio', idEnvio);
+        fd.append('motivo_solicitud', c.value);
+        fetch(base_url + '/Lgs_envios/solicitarAutorizacionConversion', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(resp => {
+                if (!resp || (resp.status !== 'success' && resp.status !== true && resp.code !== 200)) {
+                    throw new Error(resp?.message || 'No se pudo enviar la solicitud');
+                }
+                Swal.fire({
+                    title: 'Solicitud Enviada a Aprobaciones',
+                    text: resp.message || 'Un aprobador revisará la solicitud en el Panel de Aprobaciones.',
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#C46623',
+                    cancelButtonColor: '#64748B',
+                    confirmButtonText: '<i class="ri-shield-check-line me-1"></i> Ir a Aprobaciones',
+                    cancelButtonText: 'Seguir aquí'
+                }).then((go) => {
+                    if (go.isConfirmed) {
+                        window.location.href = base_url + '/Lgs_aprobaciones?tab=preenvios';
+                    } else {
+                        cargarDatosDetalle();
+                    }
+                });
+            })
+            .catch(err => Swal.fire('Error', err.message || 'Error de comunicación', 'error'));
+    });
+}
+
+function convertirPreEnvioAEnvioDesdeDetalle(idEnvio) {
+    const ejecutar = async () => {
+        try {
+            Swal.fire({ title: 'Validando Pre-envío...', text: 'Verificando acomodo, factura, cobranza y autorización...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            // Sincronizar acomodo actual si la pantalla no es solo lectura
+            if (typeof ENVIO_READONLY === 'undefined' || !ENVIO_READONLY) {
+                const asignaciones = recolectarAsignacionesAcomodo();
+                if (asignaciones.length > 0) {
+                    const syncRes = await fetch(base_url + '/Lgs_envios/storeAcomodo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id_envio: idEnvio, asignaciones: asignaciones, finalizar: false })
+                    }).then(r => r.json());
+                    if (!syncRes || (syncRes.status !== 'success' && syncRes.code !== 200)) {
+                        throw new Error(syncRes?.message || 'No se pudo guardar el acomodo previo a la validación.');
+                    }
+                }
+            }
+
+            const fd = new FormData();
+            fd.append('id_envio', idEnvio);
+            const obj = await fetch(base_url + '/Lgs_envios/convertirAEnvioOficial', { method: 'POST', body: fd }).then(r => r.json());
+
+            if (!obj || (obj.status !== 'success' && obj.status !== true && obj.code !== 200)) {
+                throw new Error(obj?.message || 'No se pudo convertir el pre-envío');
+            }
+            if (obj.data && obj.data.requires_authorization) {
+                const folioActual = (g_envioData && g_envioData.folio) ? g_envioData.folio : ('PE-' + idEnvio);
+                mostrarModalSolicitudExcepcionDetalle(idEnvio, folioActual, obj.data, false);
+                return;
+            }
+
+            Swal.fire({
+                title: '¡Convertido a Envío Oficial!',
+                text: obj.message || 'Ahora cuenta con folio oficial EN- y está listo para Planeaciones.',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonColor: '#C46623',
+                cancelButtonColor: '#0284C7',
+                confirmButtonText: '<i class="ri-truck-line me-1"></i> Ir a Bandeja de Envíos',
+                cancelButtonText: '<i class="ri-file-list-3-line me-1"></i> Ir a Planeaciones'
+            }).then((go) => {
+                if (go.isConfirmed) {
+                    window.location.href = base_url + '/Lgs_envios';
+                } else if (go.dismiss === Swal.DismissReason.cancel) {
+                    window.location.href = base_url + '/Lgs_planeaciones';
+                } else {
+                    window.location.reload();
+                }
+            });
+        } catch (err) {
+            Swal.fire('Validación', err.message || 'Error de comunicación', 'warning');
+        }
+    };
+
+    Swal.fire({
+        title: '¿Pasar Pre-envío a Envío Oficial (EN-)?',
+        text: 'Se validará ruta, acomodo, Factura, Pago y Autorización de Movimiento. Si cumple o ya fue autorizado en Aprobaciones, pasará al módulo de Envíos.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-exchange-line me-1"></i> Validar y Pasar a Envío',
+        cancelButtonText: 'Cancelar'
+    }).then((res) => {
+        if (res.isConfirmed) ejecutar();
+    });
 }

@@ -25,6 +25,20 @@ class Cap_plantas extends Controllers
         $this->views->getView($this, "cap_plantas", $data);
     }
 
+    private function syncLogisticaPlantasWms(): void
+    {
+        try {
+            if (!class_exists('Lgs_enviosModel') && file_exists('Models/Lgs_enviosModel.php')) {
+                require_once 'Models/Lgs_enviosModel.php';
+            }
+            if (class_exists('Lgs_enviosModel')) {
+                (new Lgs_enviosModel())->sincronizarPlantasYAlmacenes();
+            }
+        } catch (Throwable $e) {
+            error_log('Cap_plantas::syncLogisticaPlantasWms: ' . $e->getMessage());
+        }
+    }
+
     //CAPTURAR UNA NUEVA PLANTA 
     public function setPlanta()
     {
@@ -60,6 +74,7 @@ class Cap_plantas extends Controllers
                     }
                 }
                 if ($request_planta > 0) {
+                    $this->syncLogisticaPlantasWms();
                     if ($option == 1) {
                         $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
 
@@ -140,6 +155,7 @@ class Cap_plantas extends Controllers
                 $intIdplanta = intval($_POST['idPlanta']);
                 $requestDelete = $this->model->deletePlanta($intIdplanta);
                 if ($requestDelete) {
+                    $this->syncLogisticaPlantasWms();
                     $arrResponse = array('status' => true, 'msg' => 'El registro fue eliminado satisfactoriamente.');
                 } else {
                     $arrResponse = array('status' => false, 'msg' => 'Error al eliminar el usuario.');

@@ -147,6 +147,11 @@ function limpiarFiltroDistancias() {
 let sysTarifasGlobales = null;
 let sysModoPropagacion = 'respetar';
 
+function round5(val) {
+    const n = parseFloat(val);
+    return isNaN(n) ? 0 : parseFloat(n.toFixed(5));
+}
+
 function calcularDiferenciasConGlobal(madrinaMatriz, plataformaMatriz) {
     if (!sysTarifasGlobales) return { count: 0, detalles: [] };
     let count = 0;
@@ -165,11 +170,11 @@ function calcularDiferenciasConGlobal(madrinaMatriz, plataformaMatriz) {
         for (let u = 2; u <= 9; u++) {
             const mFact = m.factores_15 && m.factores_15[u] !== undefined ? parseFloat(m.factores_15[u]) : 1.0;
             const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (1.0 - ((u - 1) * 0.02));
-            const mPrice = Math.round(mCost * mFact * 100) / 100;
-            const bPrice = Math.round(bCost * bFact * 100) / 100;
-            if (Math.abs(mPrice - bPrice) > 0.01) {
+            const mPrice = round5(mCost * mFact);
+            const bPrice = round5(bCost * bFact);
+            if (Math.abs(mPrice - bPrice) > 0.00001) {
                 count++;
-                detalles.push(`Madrina Factor ${u}: $${mPrice.toFixed(2)} vs $${bPrice.toFixed(2)} global`);
+                detalles.push(`Madrina Factor ${u}: $${mPrice} vs $${bPrice} global`);
             }
         }
     });
@@ -186,12 +191,12 @@ function calcularDiferenciasConGlobal(madrinaMatriz, plataformaMatriz) {
         const bCost = parseFloat(b.costo_por_km) || 0;
         for (let u = 1; u <= 3; u++) {
             const mFact = m.factores_15 && m.factores_15[u] !== undefined ? parseFloat(m.factores_15[u]) : 1.0;
-            const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (4.4444 / u);
-            const mPrice = Math.round(mCost * mFact * 100) / 100;
-            const bPrice = Math.round(bCost * bFact * 100) / 100;
-            if (Math.abs(mPrice - bPrice) > 0.01) {
+            const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (4.44444 / u);
+            const mPrice = round5(mCost * mFact);
+            const bPrice = round5(bCost * bFact);
+            if (Math.abs(mPrice - bPrice) > 0.00001) {
                 count++;
-                detalles.push(`Plataforma ${m.segmento_nombre || ''} Factor ${u}: $${mPrice.toFixed(2)} vs $${bPrice.toFixed(2)} global`);
+                detalles.push(`Plataforma ${m.segmento_nombre || ''} Factor ${u}: $${mPrice} vs $${bPrice} global`);
             }
         }
     });
@@ -439,7 +444,7 @@ function renderTarifasMadrina(madrinaMatriz) {
 
         for (let u = 2; u <= 9; u++) {
             const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
-            const initUnitCost = (baseCost * fVal).toFixed(2);
+            const initUnitCost = round5(baseCost * fVal);
 
             let esDiferente = false;
             let precioGlobalRef = null;
@@ -450,9 +455,9 @@ function renderTarifasMadrina(madrinaMatriz) {
                     const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
                         ? parseFloat(segGlobal.factores_15[u]) 
                         : (1.0 - ((u - 1) * 0.02));
-                    precioGlobalRef = (gCost * gFact).toFixed(2);
+                    precioGlobalRef = round5(gCost * gFact);
                     const idProvActual = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
-                    if (idProvActual !== "0" && Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                    if (idProvActual !== "0" && Math.abs(initUnitCost - precioGlobalRef) > 0.00001) {
                         esDiferente = true;
                     }
                 }
@@ -490,7 +495,7 @@ function renderTarifasMadrina(madrinaMatriz) {
                             </div>
                             <div class="mt-1 border-top pt-1 text-start">
                                 <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
-                                <span class="fs-10 fw-bold text-dark preview-madrina-${idx}-${u}">$ ${(parseFloat(initUnitCost) * u).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / km</span>
+                                <span class="fs-10 fw-bold text-dark preview-madrina-${idx}-${u}">$ ${(initUnitCost * u).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 5 })} / km</span>
                             </div>
                         </div>
                     </div>
@@ -506,12 +511,12 @@ function renderTarifasMadrina(madrinaMatriz) {
                 const gCost = parseFloat(segGlobal.costo_por_km) || 0;
                 for (let u = 2; u <= 9; u++) {
                     const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
-                    const initUnitCost = (baseCost * fVal).toFixed(2);
+                    const initUnitCost = round5(baseCost * fVal);
                     const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
                         ? parseFloat(segGlobal.factores_15[u]) 
                         : (1.0 - ((u - 1) * 0.02));
-                    const precioGlobalRef = (gCost * gFact).toFixed(2);
-                    if (Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                    const precioGlobalRef = round5(gCost * gFact);
+                    if (Math.abs(initUnitCost - precioGlobalRef) > 0.00001) {
                         segDiffCount++;
                     }
                 }
@@ -639,13 +644,13 @@ function renderTarifasPlataforma(plataformaMatriz) {
         const tdSlc = document.createElement("td");
         tdSlc.style.display = "none";
         tdSlc.innerHTML = `
-            <input type="hidden" name="plataforma_segmentos[${idx}][precio_slc]" value="${parseFloat(item.precio_slc || 0).toFixed(2)}">
+            <input type="hidden" name="plataforma_segmentos[${idx}][precio_slc]" value="${round5(item.precio_slc || 0)}">
         `;
 
         const tdSll = document.createElement("td");
         tdSll.style.display = "none";
         tdSll.innerHTML = `
-            <input type="hidden" name="plataforma_segmentos[${idx}][precio_sll]" value="${parseFloat(item.precio_sll || 0).toFixed(2)}">
+            <input type="hidden" name="plataforma_segmentos[${idx}][precio_sll]" value="${round5(item.precio_sll || 0)}">
         `;
 
         const tdFactores = document.createElement("td");
@@ -682,8 +687,8 @@ function renderTarifasPlataforma(plataformaMatriz) {
         const baseCost = parseFloat(item.costo_por_km) || 0;
 
         for (let u = 1; u <= 4; u++) {
-            const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (4.4444 / u));
-            const initUnitCost = (baseCost * fVal).toFixed(2);
+            const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (4.44444 / u));
+            const initUnitCost = round5(baseCost * fVal);
 
             let esDiferente = false;
             let precioGlobalRef = null;
@@ -693,10 +698,10 @@ function renderTarifasPlataforma(plataformaMatriz) {
                     const gCost = parseFloat(segGlobal.costo_por_km) || 0;
                     const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
                         ? parseFloat(segGlobal.factores_15[u]) 
-                        : (4.4444 / u);
-                    precioGlobalRef = (gCost * gFact).toFixed(2);
+                        : (4.44444 / u);
+                    precioGlobalRef = round5(gCost * gFact);
                     const idProvActual = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
-                    if (idProvActual !== "0" && Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                    if (idProvActual !== "0" && Math.abs(initUnitCost - precioGlobalRef) > 0.00001) {
                         esDiferente = true;
                     }
                 }
@@ -737,7 +742,7 @@ function renderTarifasPlataforma(plataformaMatriz) {
                             </div>
                             <div class="mt-1 border-top pt-1 text-start">
                                 <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
-                                <span class="fs-10 fw-bold text-dark preview-plataforma-${idx}-${u}">$ ${(parseFloat(initUnitCost) * (isLowboy ? 1 : u)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / km</span>
+                                <span class="fs-10 fw-bold text-dark preview-plataforma-${idx}-${u}">$ ${(initUnitCost * (isLowboy ? 1 : u)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 5 })} / km</span>
                             </div>
                             <div class="mt-1 border-top pt-1 text-center">
                                 <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Local Corto SLC</label>
@@ -772,13 +777,13 @@ function renderTarifasPlataforma(plataformaMatriz) {
             if (segGlobal) {
                 const gCost = parseFloat(segGlobal.costo_por_km) || 0;
                 for (let u = 1; u <= 4; u++) {
-                    const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (4.4444 / u));
-                    const initUnitCost = (baseCost * fVal).toFixed(2);
+                    const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (4.44444 / u));
+                    const initUnitCost = round5(baseCost * fVal);
                     const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
                         ? parseFloat(segGlobal.factores_15[u]) 
-                        : (4.4444 / u);
-                    const precioGlobalRef = (gCost * gFact).toFixed(2);
-                    if (Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                        : (4.44444 / u);
+                    const precioGlobalRef = round5(gCost * gFact);
+                    if (Math.abs(initUnitCost - precioGlobalRef) > 0.00001) {
                         segDiffCountPlat++;
                     }
                 }
@@ -833,7 +838,7 @@ function aplicarPresetMadrina(idx, tasaDescuento) {
         if (f < 0.20) f = 0.20;
 
         const inputFactor = document.getElementById(`madrina_factor_${idx}_${u}`);
-        if (inputFactor) inputFactor.value = (costoKm * f).toFixed(2);
+        if (inputFactor) inputFactor.value = round5(costoKm * f);
     }
     recalcularTotalesTarifas();
 }
@@ -851,7 +856,7 @@ function recalcularTotalesTarifas() {
             if (inputFactor && previewSpan) {
                 const unitCost = parseFloat(inputFactor.value) || 0.0;
                 const totalTruckCost = unitCost * u;
-                previewSpan.textContent = "Camión: $ " + totalTruckCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / km";
+                previewSpan.textContent = "Camión: $ " + totalTruckCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 5 }) + " / km";
             }
         }
     });
@@ -955,14 +960,14 @@ function aplicarPresetPlataforma(idx, tasaDescuento) {
     for (let u = 1; u <= 3; u++) {
         let f = 1.0;
         if (tasaDescuento === -1) {
-            f = 4.4444 / u;
+            f = 4.44444 / u;
         } else {
             f = 1.0 - ((u - 1) * tasaDescuento);
         }
         if (f < 0.20) f = 0.20;
 
         const inputFactor = document.getElementById(`plataforma_factor_${idx}_${u}`);
-        if (inputFactor) inputFactor.value = (costoKm * f).toFixed(2);
+        if (inputFactor) inputFactor.value = round5(costoKm * f);
     }
     recalcularTotalesTarifasPlataforma();
 }
@@ -980,7 +985,7 @@ function recalcularTotalesTarifasPlataforma() {
             if (inputFactor && previewSpan) {
                 const unitCost = parseFloat(inputFactor.value) || 0.0;
                 const totalTruckCost = unitCost * (u === 4 ? 1 : u);
-                previewSpan.textContent = "Camión: $ " + totalTruckCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / km";
+                previewSpan.textContent = "Camión: $ " + totalTruckCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 5 }) + " / km";
             }
         }
     });

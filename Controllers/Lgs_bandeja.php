@@ -21,13 +21,27 @@ class Lgs_bandeja extends Controllers {
     // ─── Vista principal de la bandeja ────────────────────────────────────────
 
     public function Lgs_bandeja(): void {
-        $data['page_tag']          = "Bandeja - Logística";
-        $data['page_title']        = "Bandeja de Logística";
-        $data['page_name']         = "lgs_bandeja";
-        $data['page_functions_js'] = "functions_lgs_bandeja.js";
-        $data['motivos']           = $this->service->getMotivos();
-        $data['destinos']          = $this->service->getDestinos();
-        $data['distribuidores']    = $this->service->getListaDistribuidores();
+        $catalogosEnvios = [];
+        try {
+            if (file_exists("Services/Lgs_enviosService.php")) {
+                require_once "Services/Lgs_enviosService.php";
+                $enviosService = new Lgs_enviosService();
+                $catalogosEnvios = $enviosService->getCatalogosSelect();
+            }
+        } catch (Throwable $e) {
+            $catalogosEnvios = [];
+        }
+
+        $data['page_tag']            = "Bandeja - Logística";
+        $data['page_title']          = "Bandeja de Logística";
+        $data['page_name']           = "lgs_bandeja";
+        $data['page_functions_js']   = ['functions_lgs_bandeja.js', 'functions_lgs_envios.js'];
+        $data['motivos']             = $this->service->getMotivos();
+        $data['destinos']            = $this->service->getDestinos();
+        $data['distribuidores']      = $this->service->getListaDistribuidores();
+        $data['catalogos_simulador'] = $this->service->getCatalogosSimuladorBandeja();
+        $data['catalogos_sedes_cli'] = $this->service->getSedesAgrupadasPorCliente();
+        $data['catalogos']           = $catalogosEnvios;
 
         $this->views->getView($this, "../Lgs_bandeja/index", $data);
     }
@@ -281,6 +295,145 @@ class Lgs_bandeja extends Controllers {
         }
     }
 
+    // ─── Pestaña 2: Catálogo Global Unidades PT y Simulador de Envíos ─────────
+
+    public function getUnidadesPT(): void {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $filtros = [
+                'facturacion' => $_GET['facturacion'] ?? '',
+                'pago'        => $_GET['pago'] ?? '',
+                'id_segmento' => $_GET['id_segmento'] ?? '',
+                'planta'      => $_GET['planta'] ?? '',
+                'id_cliente'  => $_GET['id_cliente'] ?? '',
+                'con_pedido'  => $_GET['con_pedido'] ?? '',
+                'busqueda'    => $_GET['busqueda'] ?? '',
+            ];
+            $data = $this->service->getUnidadesPTGlobales($filtros);
+            $this->successResponse($data, "Unidades PT obtenidas");
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 500);
+        }
+    }
+
+    public function getSedesCliente(): void {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $idCliente = intval($_GET['id_cliente'] ?? $_POST['id_cliente'] ?? 0);
+            $res = $this->service->getSedesAgrupadasPorCliente();
+            if ($idCliente > 0) {
+                $sedes = $res['sedes_por_cliente'][strval($idCliente)] ?? [];
+                $this->successResponse([
+                    'id_cliente' => $idCliente,
+                    'sedes'      => $sedes,
+                ], "Sedes del cliente obtenidas");
+                return;
+            }
+            $this->successResponse($res, "Catálogo de sedes por cliente obtenido");
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 500);
+        }
+    }
+
+    public function asignarSedeUnidadPT(): void {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $raw = file_get_contents('php://input');
+            $input = $raw ? json_decode($raw, true) : null;
+            if (!is_array($input)) {
+                $input = $_POST;
+            }
+            $idNs = intval($input['id_numeros_serie'] ?? 0);
+            $vin  = strtoupper(trim((string)($input['vin'] ?? '')));
+            $idUbicacion = intval($input['id_ubicacion'] ?? 0);
+            $unitSnapshot = is_array($input['unit'] ?? null) ? $input['unit'] : [];
+
+            $res = $this->service->asignarSedeUnidadPT($idNs, $vin, $idUbicacion, $userId, $unitSnapshot);
+            $this->successResponse($res, "Sede '{$res['sede_nombre']}' asignada correctamente al VIN {$res['vin']}.");
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 422);
+        }
+    }
+
+    public function simularEnvioPT(): void {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $raw = file_get_contents('php://input');
+            $input = $raw ? json_decode($raw, true) : null;
+            if (!is_array($input)) {
+                $input = $_POST;
+            }
+            if (!isset($input['vins']) && !empty($input['vins_json'])) {
+                $input['vins'] = json_decode((string)$input['vins_json'], true) ?: [];
+            }
+            $res = $this->service->simularPosibleEnvioPT($input);
+            $this->successResponse($res, "Simulación calculada");
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 500);
+        }
+    }
+
+    public function sincronizarPTBandeja(): void {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $raw = file_get_contents('php://input');
+            $input = $raw ? json_decode($raw, true) : null;
+            if (!is_array($input)) {
+                $input = $_POST;
+            }
+            $vins = $input['vins'] ?? [];
+            if (!is_array($vins) && !empty($input['vins_json'])) {
+                $vins = json_decode((string)$input['vins_json'], true) ?: [];
+            }
+            if (empty($vins)) {
+                $this->errorResponse("Debe seleccionar al menos una unidad PT para sincronizar.", 422);
+                return;
+            }
+            $res = $this->service->sincronizarUnidadesPTEnBandeja($vins, $userId);
+            $this->successResponse($res, "Se sincronizaron {$res['total']} unidad(es) PT hacia la Bandeja Operativa ({$res['creados']} nueva(s), {$res['actualizados']} actualizada(s)).");
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 500);
+        }
+    }
+
+    public function crearEnvioDesdePT(): void {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $raw = file_get_contents('php://input');
+            $input = $raw ? json_decode($raw, true) : null;
+            if (!is_array($input)) {
+                $input = $_POST;
+            }
+            $vins = $input['vins'] ?? [];
+            if (!is_array($vins) && !empty($input['vins_json'])) {
+                $vins = json_decode((string)$input['vins_json'], true) ?: [];
+            }
+            if (empty($vins)) {
+                $this->errorResponse("Debe seleccionar al menos una unidad PT para generar el envío.", 422);
+                return;
+            }
+            $res = $this->service->crearPreEnvioDesdePT($input, $vins, $userId);
+            $this->successResponse($res, "Envío en borrador {$res['folio_envio']} creado con {$res['total_vins']} unidad(es). Listo para Acomodo.");
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 500);
+        }
+    }
+
     // ─── Privado: construir botones de acción por fila ────────────────────────
 
     private function _buildRowOptions(array $row): string {
@@ -290,28 +443,29 @@ class Lgs_bandeja extends Controllers {
         $destConf    = intval($row['destino_confirmado'] ?? 0);
         $destPed     = htmlspecialchars($row['destino_pedido'] ?? '', ENT_QUOTES, 'UTF-8');
 
-        $btnDetalle = '<button class="btn btn-sm btn-soft-info me-1" onclick="fntVerUnidad(' . $id . ')" title="Ver detalle"><i class="ri-eye-line"></i></button>';
+        $clsIcon = 'btn btn-sm btn-icon-lgs';
+        $btns = [];
 
-        // Botón Confirmar Destino de Pedidos (Punto 5)
-        $btnConfirmDest = '';
         if ($destConf === 0 && !empty($row['destino_pedido']) && $row['destino_pedido'] !== 'Por Definir') {
-            $btnConfirmDest = '<button class="btn btn-sm btn-soft-success me-1" onclick="fntConfirmarDestinoPedido(' . $id . ', \'' . addslashes($destPed) . '\')" title="Confirmar Destino de Pedido"><i class="ri-check-double-line"></i></button>';
+            $btns[] = '<button type="button" class="' . $clsIcon . ' btn-soft-success" onclick="fntConfirmarDestinoPedido(' . $id . ', \'' . addslashes($destPed) . '\')" title="Confirmar Destino de Pedido"><i class="ri-check-double-line"></i></button>';
         }
 
-        $btnDestino = '<button class="btn btn-sm btn-soft-primary me-1" onclick="fntAsignarDestino(' . $id . ')" title="Ajustar / Asignar Destino"><i class="ri-map-pin-2-line"></i></button>';
+        $iconAct  = ($activadoCom === 1) ? 'ri-flashlight-fill text-warning' : 'ri-flashlight-line text-muted';
+        $titleAct = ($activadoCom === 1) ? 'Autorizado para Movimiento (Clic para desactivar)' : 'Solo Preplaneación (Clic para autorizar movimiento)';
+        $nextAct  = ($activadoCom === 1) ? 0 : 1;
+        $btns[]   = '<button type="button" class="' . $clsIcon . ' btn-light border" onclick="fntToggleActivacion(' . $id . ', ' . $nextAct . ')" title="' . $titleAct . '"><i class="' . $iconAct . '"></i></button>';
 
-        // Botón Conmutar Activación Comercial (Punto 9)
-        $iconAct = ($activadoCom === 1) ? 'ri-flashlight-fill text-warning' : 'ri-flashlight-line text-muted';
-        $titleAct = ($activadoCom === 1) ? 'Activado por Comercial (Listo para Despacho) - Clic para cambiar' : 'Solo Preplaneación - Clic para activar';
-        $nextAct = ($activadoCom === 1) ? 0 : 1;
-        $btnAct = '<button class="btn btn-sm btn-soft-secondary me-1" onclick="fntToggleActivacion(' . $id . ', ' . $nextAct . ')" title="' . $titleAct . '"><i class="' . $iconAct . '"></i></button>';
+        $btns[] = '<button type="button" class="' . $clsIcon . ' btn-soft-primary" onclick="fntAsignarDestino(' . $id . ')" title="Asignar / Ajustar Destino"><i class="ri-map-pin-2-line"></i></button>';
 
-        $btnFechas  = '<button class="btn btn-sm btn-soft-warning me-1" onclick="fntRegistrarFechas(' . $id . ')" title="Registrar Fechas"><i class="ri-calendar-check-line"></i></button>';
+        if ($estado >= 2) {
+            $btns[] = '<button type="button" class="' . $clsIcon . ' btn-soft-warning" onclick="fntRegistrarFechas(' . $id . ')" title="Registrar Fechas de Salida / Llegada"><i class="ri-calendar-check-line"></i></button>';
+        }
+        if ($estado === 2) {
+            $btns[] = '<button type="button" class="' . $clsIcon . ' btn-soft-success" onclick="fntSiguienteArea(' . $id . ')" title="Concluir Traslado / Siguiente Área"><i class="ri-arrow-right-circle-line"></i></button>';
+        }
 
-        // Solo habilitado si tiene fechas de salida y llegada (estado >= 2)
-        $disabledSig = ($estado < 2) ? ' disabled' : '';
-        $btnSig = '<button class="btn btn-sm btn-soft-success' . $disabledSig . '" onclick="fntSiguienteArea(' . $id . ')" title="Siguiente Área"><i class="ri-arrow-right-circle-line"></i></button>';
+        $btns[] = '<button type="button" class="' . $clsIcon . ' btn-light border text-secondary" onclick="fntVerUnidad(' . $id . ')" title="Ver Detalle de Unidad"><i class="ri-eye-line"></i></button>';
 
-        return '<div class="text-center d-flex justify-content-center gap-1">' . $btnDetalle . $btnConfirmDest . $btnAct . $btnDestino . $btnFechas . $btnSig . '</div>';
+        return '<div class="d-inline-flex align-items-center justify-content-end gap-1 flex-nowrap">' . implode('', $btns) . '</div>';
     }
 }

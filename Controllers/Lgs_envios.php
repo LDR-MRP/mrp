@@ -57,7 +57,8 @@ class Lgs_envios extends Controllers
         }
         header('Content-Type: application/json; charset=utf-8');
         try {
-            $data = $this->service->getAllEnvios();
+            $esPreEnvio = intval($_GET['es_preenvio'] ?? 0) === 1 ? 1 : 0;
+            $data = $this->service->getAllEnvios($esPreEnvio);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
             exit;
         } catch (Throwable $e) {
@@ -86,20 +87,31 @@ class Lgs_envios extends Controllers
      * URL: {{base_url}}/Lgs_envios/store
      */
     /**
-     * Endpoint AJAX para obtener las sedes de un distribuidor.
-     * URL: {{base_url}}/Lgs_envios/getSedesByDistribuidor?id=XX
+     * Endpoint AJAX para obtener las sedes de un distribuidor o cliente maestro.
+     * URL: {{base_url}}/Lgs_envios/getSedesByDistribuidor?id=XX&id_cliente=YY
      */
     public function getSedesByDistribuidor(): void
     {
         $idDistribuidor = intval($_GET['id'] ?? 0);
-        if ($idDistribuidor <= 0) {
-            echo json_encode(['status' => false, 'data' => [], 'msg' => 'ID de distribuidor inválido']);
+        $idCliente      = intval($_GET['id_cliente'] ?? 0);
+        if ($idDistribuidor <= 0 && $idCliente <= 0) {
+            echo json_encode(['status' => false, 'data' => [], 'msg' => 'ID de distribuidor/cliente inválido']);
             return;
         }
 
         $ubicModel = new Lgs_ubicacionesModel();
-        $sedes = $ubicModel->getSedesByDistribuidor($idDistribuidor);
-        echo json_encode(['status' => true, 'data' => $sedes]);
+        if ($idCliente > 0) {
+            if (class_exists('Lgs_clientesSyncService')) {
+                try {
+                    (new Lgs_clientesSyncService($ubicModel->getConexion()))->sincronizarCliente($idCliente);
+                } catch (Throwable $e) {
+                }
+            }
+            $sedes = $ubicModel->getSedesByCliente($idCliente);
+        } else {
+            $sedes = $ubicModel->getSedesByDistribuidor($idDistribuidor);
+        }
+        echo json_encode(['status' => true, 'data' => $sedes], JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -324,12 +336,15 @@ class Lgs_envios extends Controllers
             ];
 
             $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $esPreEnvio = intval($_POST['es_preenvio'] ?? 0) === 1 ? 1 : 0;
+            $folioGuardado = '';
 
             if ($idEnvio === 0) {
-                // Nuevo envío
-                $folio = $model->generarFolioTransaccional($db);
-                $data['folio']      = $folio;
-                $data['created_by'] = $userId;
+                // Nuevo envío o pre-envío
+                $folioGuardado = $model->generarFolioTransaccional($db, $esPreEnvio === 1);
+                $data['folio']       = $folioGuardado;
+                $data['es_preenvio'] = $esPreEnvio;
+                $data['created_by']  = $userId;
                 $idEnvio = $model->insertEnvio($db, $data);
             } else {
                 // Verificar que el envío pueda ser editado (solo si está en Borrador [1] o Confirmado [8])
@@ -338,6 +353,8 @@ class Lgs_envios extends Controllers
                     echo $this->errorResponse("El envío a actualizar no existe.", 404);
                     return;
                 }
+                $esPreEnvio = intval($existingEnvio['es_preenvio'] ?? $esPreEnvio);
+                $folioGuardado = (string)($existingEnvio['folio'] ?? '');
                 
                 $idEstadoStr = intval($existingEnvio['id_estado']);
                 $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
@@ -544,11 +561,85 @@ class Lgs_envios extends Controllers
 
             $db->commit();
 
-            echo $this->successResponse(['id_envio' => $idEnvio], "Envío guardado exitosamente con ruta multi-nodo.");
+            $msgOk = ($esPreEnvio === 1)
+                ? "Pre-envío {$folioGuardado} guardado exitosamente con ruta multi-nodo."
+                : "Envío guardado exitosamente con ruta multi-nodo.";
+
+            echo $this->successResponse([
+                'id_envio'    => $idEnvio,
+                'folio'       => $folioGuardado,
+                'es_preenvio' => $esPreEnvio,
+            ], $msgOk);
 
         } catch (Throwable $e) {
             if (isset($db) && $db->inTransaction()) $db->rollBack();
             echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Convierte un Pre-envío (PE-xxxxxx) en un Envío Oficial (EN-xxxxxx)
+     * URL: {{base_url}}/Lgs_envios/convertirAEnvioOficial
+     */
+    public function convertirAEnvioOficial(): void
+    {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $raw = file_get_contents('php://input');
+            $input = $raw ? json_decode($raw, true) : null;
+            if (!is_array($input)) {
+                $input = $_POST;
+            }
+            $idEnvio = intval($input['id_envio'] ?? 0);
+            if ($idEnvio <= 0) {
+                echo $this->errorResponse("ID de pre-envío no válido.", 400);
+                return;
+            }
+
+            // Nunca permitir bypass desde el cliente: solo pasa si cumple o ya tiene solicitud aprobada
+            $res = $this->enviosModel->convertirPreEnvioAEnvioOficial($idEnvio, $userId, false);
+            if (!empty($res['requires_authorization'])) {
+                echo $this->successResponse($res, $res['warning_message'] ?? 'Se requiere autorización excepcional en Aprobaciones antes de convertir.');
+                return;
+            }
+            echo $this->successResponse($res, "Pre-envío {$res['folio_anterior']} convertido exitosamente a Envío Oficial {$res['folio']}.");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 400);
+        }
+    }
+
+    /**
+     * POST: Crea una solicitud formal en Aprobaciones para forzar el paso de PE- (o EN- borrador)
+     * con unidades sin factura, pago o autorización de movimiento.
+     * URL: {{base_url}}/Lgs_envios/solicitarAutorizacionConversion
+     */
+    public function solicitarAutorizacionConversion(): void
+    {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        try {
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $raw = file_get_contents('php://input');
+            $input = $raw ? json_decode($raw, true) : null;
+            if (!is_array($input)) {
+                $input = $_POST;
+            }
+            $idEnvio = intval($input['id_envio'] ?? 0);
+            $motivo  = trim((string)($input['motivo_solicitud'] ?? $input['motivo'] ?? ''));
+
+            if ($idEnvio <= 0) {
+                echo $this->errorResponse("ID de envío/pre-envío no válido.", 400);
+                return;
+            }
+
+            $res = $this->enviosModel->solicitarAutorizacionPreEnvio($idEnvio, $motivo, $userId);
+            echo $this->successResponse($res, "Solicitud {$res['folio_solicitud']} enviada a Aprobaciones correctamente.");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 400);
         }
     }
 
@@ -653,13 +744,16 @@ class Lgs_envios extends Controllers
                 if (!empty($destinosValidos)) {
                     $vinsFiltrados = [];
                     foreach ($vins as $vin) {
-                        $destinoVin = strtolower(trim($vin['destino'] ?? ''));
+                        $destinoVin = strtolower(trim((string)($vin['destino'] ?? '')));
+                        $sedeVin    = strtolower(trim((string)($vin['sede_nombre'] ?? '')));
+                        $cliVin     = strtolower(trim((string)($vin['cliente_nombre'] ?? '')));
                         $coincide = false;
                         foreach ($destinosValidos as $dv) {
-                            // Búsqueda bidireccional para coincidencias parciales (ej. 'Toluca' vs 'Distribuidor Toluca')
-                            if (strpos($destinoVin, $dv) !== false || strpos($dv, $destinoVin) !== false) {
-                                $coincide = true;
-                                break;
+                            foreach ([$destinoVin, $sedeVin, $cliVin] as $cand) {
+                                if ($cand !== '' && (strpos($cand, $dv) !== false || strpos($dv, $cand) !== false)) {
+                                    $coincide = true;
+                                    break 2;
+                                }
                             }
                         }
                         $vin['coincide_destino'] = $coincide;
@@ -678,6 +772,8 @@ class Lgs_envios extends Controllers
                 } catch (Throwable $e) {}
             }
 
+            $solicitudExc = $model->getSolicitudExcepcionEnvio($idEnvio);
+
             $data = [
                 'envio'               => $envio,
                 'madrinas'            => $madrinas,
@@ -688,6 +784,7 @@ class Lgs_envios extends Controllers
                 'paradas'             => $paradas,
                 'nodos'               => $nodos,
                 'auditoria_financiera'=> $auditoriaFinanciera,
+                'solicitud_excepcion' => $solicitudExc,
             ];
 
             echo $this->successResponse($data, "Datos de acomodo obtenidos correctamente");
@@ -737,15 +834,54 @@ class Lgs_envios extends Controllers
             }
 
             $model = new Lgs_enviosModel();
+            $model->ensureSolicitudesPreEnvioTable();
+
+            // Resolver unidades pendientes e instanciar Lgs_bandejaModel ANTES de beginTransaction() (su __construct ejecuta DDL)
+            $vinsPendSync = [];
+            foreach ($asignaciones as $asig) {
+                if (intval($asig['id_unidad'] ?? 0) <= 0 && !empty($asig['vin'])) {
+                    $vinsPendSync[] = [
+                        'vin'              => strtoupper(trim((string)$asig['vin'])),
+                        'id_numeros_serie' => intval($asig['id_numeros_serie'] ?? 0),
+                        'num_serie'        => (string)($asig['num_serie'] ?? ''),
+                        'modelo'           => (string)($asig['modelo'] ?? 'Unidad PT'),
+                        'planta_nombre'    => (string)($asig['origen'] ?? 'Planta'),
+                        'destino_sugerido' => (string)($asig['destino'] ?? 'Por Asignar'),
+                    ];
+                }
+            }
+            $bandejaSync = null;
+            if (!empty($vinsPendSync) && file_exists("Models/Lgs_bandejaModel.php")) {
+                require_once "Models/Lgs_bandejaModel.php";
+                $bandejaSync = new Lgs_bandejaModel();
+            }
+
             $db = $model->getConexion();
             $db->beginTransaction();
 
             // 1. Limpiar acomodo previo de este envío
             $model->deleteAcomodoEnvio($db, $idEnvio);
 
+            // 1b. Resolver/sincronizar unidades PT que venían del pool WMS sin id_unidad previo en lgs_unidades_envios
+            $syncMapIds = [];
+            if ($bandejaSync !== null && !empty($vinsPendSync)) {
+                $syncRes = $bandejaSync->sincronizarUnidadesPTInternal($db, $vinsPendSync, intval($_SESSION['idUser'] ?? 1));
+                $syncMapIds = $syncRes['map_ids'] ?? [];
+                foreach ($asignaciones as &$asigRef) {
+                    if (intval($asigRef['id_unidad'] ?? 0) <= 0 && !empty($asigRef['vin'])) {
+                        $vk = strtoupper(trim((string)$asigRef['vin']));
+                        if (!empty($syncMapIds[$vk])) {
+                            $asigRef['id_unidad'] = intval($syncMapIds[$vk]);
+                        }
+                    }
+                }
+                unset($asigRef);
+            }
+
             // 2. Insertar las nuevas asignaciones con id_nodo_subida e id_nodo_bajada
             $assignedUnitIds = [];
             $tipoTraslado = intval($existingEnvio['id_tipo_traslado'] ?? 0);
+            $esPreEnvioActual = (intval($existingEnvio['es_preenvio'] ?? 0) === 1 || strpos((string)($existingEnvio['folio'] ?? ''), 'PE-') === 0);
 
             $validUnits = array_filter($asignaciones, fn($a) => intval($a['id_unidad'] ?? 0) > 0);
             if ($tipoTraslado === 1 && count($validUnits) === 1) {
@@ -781,6 +917,7 @@ class Lgs_envios extends Controllers
                     $model->insertVin($db, [
                         'id_envio'         => $idEnvio,
                         'id_unidad'        => $uId,
+                        'id_numeros_serie' => !empty($asig['id_numeros_serie']) ? intval($asig['id_numeros_serie']) : null,
                         'id_parada'        => !empty($asig['id_parada']) ? intval($asig['id_parada']) : null,
                         'id_nodo_subida'   => !empty($asig['id_nodo_subida']) ? intval($asig['id_nodo_subida']) : null,
                         'id_nodo_bajada'   => !empty($asig['id_nodo_bajada']) ? intval($asig['id_nodo_bajada']) : null,
@@ -793,14 +930,14 @@ class Lgs_envios extends Controllers
                 }
             }
 
-            // 3. Sincronizar estados en la bandeja de salida (lgs_unidades)
-            if (!empty($assignedUnitIds)) {
+            // 3. Sincronizar estados en bandeja solo si es Envío Oficial (EN-); los Pre-envíos (PE-) no bloquean unidades
+            if (!$esPreEnvioActual && !empty($assignedUnitIds)) {
                 $placeholders = implode(',', array_fill(0, count($assignedUnitIds), '?'));
                 $stmtState = $db->prepare("UPDATE lgs_unidades SET id_estado_proceso = 2, updated_at = NOW() WHERE id_unidad IN ({$placeholders})");
                 $stmtState->execute($assignedUnitIds);
             }
 
-            // Unidades que no estén en ningún envío activo regresan a Pendiente (1)
+            // Unidades que no estén en ningún envío oficial activo regresan a Pendiente (1)
             $stmtReset = $db->prepare("UPDATE lgs_unidades 
                                        SET id_estado_proceso = 1, updated_at = NOW() 
                                        WHERE id_estado_proceso = 2 
@@ -808,40 +945,19 @@ class Lgs_envios extends Controllers
                                              SELECT ev.id_unidad 
                                              FROM lgs_envios_vins ev 
                                              INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio 
-                                             WHERE e.deleted_at IS NULL AND e.id_estado NOT IN (0, 7)
+                                             WHERE e.deleted_at IS NULL
+                                               AND COALESCE(e.es_preenvio, 0) = 0
+                                               AND e.id_estado NOT IN (0, 7)
                                          )");
             $stmtReset->execute();
 
-            // Si el usuario confirma finalizar el envío, pasarlo a estado 8 (Confirmado / Listo para planear)
+            // Si es Pre-envío y el usuario finaliza su simulación, pasarlo a estado 8 (listo) dentro de la transacción.
+            // Si es Envío Oficial (EN-), validaremos Factura/Pago/Autorización tras guardar el acomodo antes de confirmar estado 8.
             $finalizar = !empty($dataJson['finalizar']) && $dataJson['finalizar'] == true;
             $enviosAfectados = [];
-            if ($finalizar) {
+            if ($finalizar && $esPreEnvioActual) {
                 $stmtFinalizar = $db->prepare("UPDATE lgs_envios SET id_estado = 8 WHERE id_envio = ?");
                 $stmtFinalizar->execute([$idEnvio]);
-                
-                // Si el envío se confirma, eliminamos estos VINs de cualquier OTRO envío que esté en Borrador (1)
-                if (!empty($assignedUnitIds)) {
-                    $inIds = implode(',', array_fill(0, count($assignedUnitIds), '?'));
-
-                    // Detectar otros envíos en borrador que contenían estos VINs para recalcularlos y no dejar costos fantasmas
-                    $sqlAfectados = "SELECT DISTINCT e.id_envio FROM lgs_envios_vins ev
-                                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                                     WHERE e.id_estado = 1 
-                                       AND e.id_envio != ? 
-                                       AND ev.id_unidad IN ($inIds)";
-                    $stmtAf = $db->prepare($sqlAfectados);
-                    $stmtAf->execute(array_merge([$idEnvio], $assignedUnitIds));
-                    $enviosAfectados = $stmtAf->fetchAll(PDO::FETCH_COLUMN);
-
-                    $sqlDelVins = "DELETE ev FROM lgs_envios_vins ev
-                                   INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                                   WHERE e.id_estado = 1 
-                                     AND e.id_envio != ? 
-                                     AND ev.id_unidad IN ($inIds)";
-                    $paramsDelVins = array_merge([$idEnvio], $assignedUnitIds);
-                    $stmtDelVins = $db->prepare($sqlDelVins);
-                    $stmtDelVins->execute($paramsDelVins);
-                }
             }
 
             $db->commit();
@@ -854,6 +970,53 @@ class Lgs_envios extends Controllers
             try {
                 $service->asegurarCostosVins($idEnvio);
             } catch (Throwable $th) {}
+
+            // Si es Envío Oficial (EN-) y se solicita finalizar, validar Factura + Pago + Aut. Movimiento (o excepción aprobada)
+            if ($finalizar && !$esPreEnvioActual) {
+                $val = $model->validarRequisitosConversionEnvio($idEnvio);
+                if (!$val['puede_convertir_directo'] && !$val['tiene_aprobacion_vigente']) {
+                    $resumenList = array_map(fn($w) => "{$w['vin']} ({$w['estatus']})", array_slice($val['vins_observados'], 0, 8));
+                    echo $this->successResponse([
+                        'requires_authorization' => true,
+                        'id_envio'               => $idEnvio,
+                        'folio_anterior'         => (string)($existingEnvio['folio'] ?? ''),
+                        'costo_total'            => $costoTotal,
+                        'vins_observados'        => $val['vins_observados'],
+                        'vins_detalle'           => $val['vins_detalle'],
+                        'solicitud_pendiente'    => $val['solicitud_pendiente'],
+                        'ultima_rechazada'       => $val['ultima_rechazada'],
+                        'warning_message'        => count($val['vins_observados']) . " unidad(es) requieren Factura, Pago o Autorización de Movimiento: " . implode(', ', $resumenList),
+                    ], "El acomodo se guardó en borrador, pero requiere autorización en Aprobaciones para finalizarse.");
+                    return;
+                }
+
+                $db->beginTransaction();
+                $db->prepare("UPDATE lgs_envios SET id_estado = 8 WHERE id_envio = ?")->execute([$idEnvio]);
+
+                if (!empty($assignedUnitIds)) {
+                    $inIds = implode(',', array_fill(0, count($assignedUnitIds), '?'));
+                    $sqlAfectados = "SELECT DISTINCT e.id_envio FROM lgs_envios_vins ev
+                                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                                     WHERE e.id_estado = 1
+                                       AND COALESCE(e.es_preenvio, 0) = 0
+                                       AND e.id_envio != ? 
+                                       AND ev.id_unidad IN ($inIds)";
+                    $stmtAf = $db->prepare($sqlAfectados);
+                    $stmtAf->execute(array_merge([$idEnvio], $assignedUnitIds));
+                    $enviosAfectados = $stmtAf->fetchAll(PDO::FETCH_COLUMN);
+
+                    $sqlDelVins = "DELETE ev FROM lgs_envios_vins ev
+                                   INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                                   WHERE e.id_estado = 1
+                                     AND COALESCE(e.es_preenvio, 0) = 0
+                                     AND e.id_envio != ? 
+                                     AND ev.id_unidad IN ($inIds)";
+                    $paramsDelVins = array_merge([$idEnvio], $assignedUnitIds);
+                    $stmtDelVins = $db->prepare($sqlDelVins);
+                    $stmtDelVins->execute($paramsDelVins);
+                }
+                $db->commit();
+            }
 
             // Recalcular los otros envíos afectados que perdieron unidades
             if (!empty($enviosAfectados)) {

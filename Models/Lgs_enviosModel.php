@@ -18,6 +18,7 @@ class Lgs_enviosModel extends Mysql
         'lgs_envios' => [
             'id_envio',
             'folio',
+            'es_preenvio',
             'id_tipo_traslado',
             'tipo_servicio',
             'modalidad_calculo',
@@ -59,6 +60,7 @@ class Lgs_enviosModel extends Mysql
             'id',
             'id_envio',
             'id_unidad',
+            'id_numeros_serie',
             'id_destino',
             'id_parada',
             'id_nodo_subida',
@@ -100,35 +102,38 @@ class Lgs_enviosModel extends Mysql
     ];
 
     /**
-     * Genera un nuevo folio transaccional EN-000001
+     * Genera un nuevo folio transaccional EN-000001 (o PE-000001 para Pre-envíos)
      */
-    public function generarFolioTransaccional(PDO $db): string
+    public function generarFolioTransaccional(PDO $db, bool $esPreEnvio = false): string
     {
-        $sql = "SELECT folio FROM lgs_envios ORDER BY id_envio DESC LIMIT 1 FOR UPDATE";
+        $prefix = $esPreEnvio ? 'PE-' : 'EN-';
+        $sql = "SELECT folio FROM lgs_envios WHERE folio LIKE ? ORDER BY id_envio DESC LIMIT 1 FOR UPDATE";
         $stmt = $db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([$prefix . '%']);
         $ultimo = $stmt->fetchColumn();
         
         if (!$ultimo) {
-            return 'EN-000001';
+            return $prefix . '000001';
         }
         
         preg_match('/\d+$/', $ultimo, $matches);
         $num = !empty($matches[0]) ? (intval($matches[0]) + 1) : 1;
-        return 'EN-' . str_pad((string)$num, 6, '0', STR_PAD_LEFT);
+        return $prefix . str_pad((string)$num, 6, '0', STR_PAD_LEFT);
     }
 
     /**
-     * Obtiene todos los envíos activos para el Datatable
+     * Obtiene todos los envíos (o pre-envíos si $esPreEnvio = 1) activos para el Datatable
      */
-    public function getEnviosDataTable(): array
+    public function getEnviosDataTable(int $esPreEnvio = 0): array
     {
         $this->ensureDistanciasTable();
+        $esPreEnvio = ($esPreEnvio === 1) ? 1 : 0;
 
         try {
             $sql = "SELECT 
                         e.id_envio, 
                         e.folio, 
+                        COALESCE(e.es_preenvio, 0) AS es_preenvio,
                         tt.nombre AS tipo_traslado,
                         mo.descripcion AS motivo,
                         pr.razon_social AS trasladista,
@@ -191,15 +196,17 @@ class Lgs_enviosModel extends Mysql
                     LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
                     LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
                     WHERE e.deleted_at IS NULL
+                      AND COALESCE(e.es_preenvio, 0) = ?
                     ORDER BY e.id_envio DESC";
             
-            $request = $this->select_all($sql);
-            return $request ?: [];
+            $request = $this->select_all($sql, [$esPreEnvio]);
+            return $this->attachSolicitudesPreEnvio($request ?: [], $esPreEnvio);
         } catch (Throwable $e) {
             error_log("Fallo consulta principal getEnviosDataTable: " . $e->getMessage() . " -> Ejecutando fallback de compatibilidad");
             $sqlFallback = "SELECT 
                         e.id_envio, 
                         e.folio, 
+                        CASE WHEN e.folio LIKE 'PE-%' THEN 1 ELSE 0 END AS es_preenvio,
                         tt.nombre AS tipo_traslado,
                         mo.descripcion AS motivo,
                         pr.razon_social AS trasladista,
@@ -262,10 +269,55 @@ class Lgs_enviosModel extends Mysql
                     LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
                     LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
                     WHERE e.deleted_at IS NULL
+                      AND (CASE WHEN e.folio LIKE 'PE-%' THEN 1 ELSE 0 END) = ?
                     ORDER BY e.id_envio DESC";
-            $resFallback = $this->select_all($sqlFallback);
-            return $resFallback ?: [];
+            $resFallback = $this->select_all($sqlFallback, [$esPreEnvio]);
+            return $this->attachSolicitudesPreEnvio($resFallback ?: [], $esPreEnvio);
         }
+    }
+
+    /**
+     * Adjunta la última solicitud de autorización excepcional (si existe) a los registros de Pre-envíos / Envíos.
+     */
+    private function attachSolicitudesPreEnvio(array $rows, int $esPreEnvio = 0): array
+    {
+        if (empty($rows)) {
+            return $rows;
+        }
+        try {
+            $this->ensureSolicitudesPreEnvioTable();
+            $ids = array_values(array_filter(array_map(fn($r) => intval($r['id_envio'] ?? 0), $rows)));
+            if (empty($ids)) {
+                return $rows;
+            }
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            $sols = $this->select_all("
+                SELECT s.*
+                FROM lgs_solicitudes_preenvio_envio s
+                INNER JOIN (
+                    SELECT id_envio, MAX(id_solicitud) AS max_id
+                    FROM lgs_solicitudes_preenvio_envio
+                    WHERE id_envio IN ({$ph})
+                    GROUP BY id_envio
+                ) latest ON latest.max_id = s.id_solicitud
+            ", $ids) ?: [];
+            $mapSol = [];
+            foreach ($sols as $s) {
+                $mapSol[intval($s['id_envio'])] = $s;
+            }
+            foreach ($rows as &$r) {
+                $idE = intval($r['id_envio'] ?? 0);
+                $s = $mapSol[$idE] ?? null;
+                $r['solicitud_id']            = $s ? intval($s['id_solicitud']) : 0;
+                $r['solicitud_folio']         = $s ? (string)$s['folio_solicitud'] : '';
+                $r['solicitud_estatus']       = $s ? (string)$s['estatus'] : '';
+                $r['solicitud_obs_aprobador'] = $s ? (string)($s['obs_aprobador'] ?? '') : '';
+            }
+            unset($r);
+        } catch (Throwable $e) {
+            // Silencioso si no existe tabla aún
+        }
+        return $rows;
     }
 
     /**
@@ -402,18 +454,63 @@ class Lgs_enviosModel extends Mysql
             }
         }
 
-        // 4. Ubicaciones
+        // 4. Ubicaciones y sincronización maestra de Clientes / Sedes
         try {
+            if (class_exists('Lgs_clientesSyncService')) {
+                (new Lgs_clientesSyncService($this->getConexion()))->sincronizarDistribuidoresYSedes();
+            }
             $this->sincronizarPlantasYAlmacenes();
-            $ubicaciones = $this->select_all("SELECT id_ubicacion AS id, nombre, direccion, lat, lng, id_tipo_destino, id_distribuidor, id_planta_mrp, id_almacen_wms FROM lgs_cat_ubicaciones WHERE activo = 1 ORDER BY nombre ASC");
+            $ubicaciones = $this->select_all("
+                SELECT u.id_ubicacion AS id, u.nombre, u.direccion, u.lat, u.lng,
+                       u.id_tipo_destino, u.id_distribuidor, u.id_cliente, u.id_sucursal_cli, u.id_direccion_cli,
+                       COALESCE(a.plantaid, u.id_planta_mrp) AS id_planta_mrp,
+                       u.id_almacen_wms,
+                       a.cve_almacen,
+                       COALESCE(a.pt, 0) AS almacen_pt,
+                       mp.cve_planta,
+                       mp.nombre_planta
+                FROM lgs_cat_ubicaciones u
+                LEFT JOIN wms_almacenes a ON a.idalmacen = u.id_almacen_wms
+                LEFT JOIN mrp_planta mp ON mp.idplanta = COALESCE(a.plantaid, u.id_planta_mrp)
+                WHERE u.activo = 1
+                ORDER BY u.nombre ASC
+            ") ?: [];
         } catch (Throwable $e) {
             $ubicaciones = [];
         }
 
-        // Orígenes: Plantas (5), Almacenes (4) o ubicaciones asignadas
+        // Plantas y sus Subalmacenes PT (wms_almacenes.pt = 1) para selección en cascada
+        $plantasWmsMap = [];
+        foreach ($ubicaciones as $u) {
+            if (intval($u['id_almacen_wms'] ?? 0) <= 0 || intval($u['almacen_pt'] ?? 0) !== 1) {
+                continue;
+            }
+            $idPlanta = intval($u['id_planta_mrp'] ?? 0);
+            if (!isset($plantasWmsMap[$idPlanta])) {
+                $plantasWmsMap[$idPlanta] = [
+                    'id_planta'     => $idPlanta,
+                    'cve_planta'    => (string)($u['cve_planta'] ?? ($idPlanta > 0 ? 'PL' . $idPlanta : 'PT')),
+                    'nombre_planta' => (string)($u['nombre_planta'] ?? ($idPlanta > 0 ? ('Planta #' . $idPlanta) : 'Almacenes PT Generales')),
+                    'subalmacenes'  => [],
+                ];
+            }
+            $plantasWmsMap[$idPlanta]['subalmacenes'][] = [
+                'id_ubicacion'   => intval($u['id']),
+                'id_almacen_wms' => intval($u['id_almacen_wms']),
+                'cve_almacen'    => (string)($u['cve_almacen'] ?? ''),
+                'nombre'         => (string)$u['nombre'],
+                'direccion'      => (string)($u['direccion'] ?? ''),
+                'pt'             => 1,
+            ];
+        }
+        $plantasWms = array_values($plantasWmsMap);
+        usort($plantasWms, static function (array $a, array $b): int {
+            return strcmp(($a['cve_planta'] ?? '') . ($a['nombre_planta'] ?? ''), ($b['cve_planta'] ?? '') . ($b['nombre_planta'] ?? ''));
+        });
+
+        // Orígenes PT: almacenes activos con pt = 1 en wms_almacenes
         $origenes = array_filter($ubicaciones, function($u) {
-            $tipo = (int)($u['id_tipo_destino'] ?? 0);
-            return in_array($tipo, [3, 4, 5], true) || !empty($u['id_planta_mrp']) || !empty($u['id_almacen_wms']);
+            return intval($u['id_almacen_wms'] ?? 0) > 0 && intval($u['almacen_pt'] ?? 0) === 1;
         });
         
         // Destinos: TODAS las ubicaciones (incluyendo Plantas para traslados interplanta, Almacenes y Distribuidores)
@@ -423,11 +520,31 @@ class Lgs_enviosModel extends Mysql
         $origenes = array_values(!empty($origenes) ? $origenes : $ubicaciones);
         $destinos = array_values($destinos);
 
-        // 5. Distribuidores
+        // 5. Distribuidores (reutiliza consulta deduplicada de Lgs_ubicacionesModel)
         try {
-            $distribuidores = $this->select_all("SELECT d.id_distribuidor, d.nombre, d.clave, COUNT(u.id_ubicacion) AS total_sedes FROM lgs_cat_distribuidores d LEFT JOIN lgs_cat_ubicaciones u ON u.id_distribuidor = d.id_distribuidor AND u.activo = 1 WHERE d.activo = 1 GROUP BY d.id_distribuidor ORDER BY d.nombre ASC");
+            $ubicModel = new Lgs_ubicacionesModel();
+            $distribuidores = $ubicModel->getDistribuidores();
         } catch (Throwable $e) {
             $distribuidores = [];
+        }
+
+        // 6. Catálogo de Clientes maestros (`cli_clientes`) enlazados a Logística
+        try {
+            $clientes = $this->select_all("
+                SELECT c.idcliente AS id_cliente,
+                       c.codigo_cliente,
+                       c.razon_social,
+                       c.nombre_comercial,
+                       COALESCE(NULLIF(TRIM(c.razon_social), ''), NULLIF(TRIM(c.nombre_comercial), ''), c.codigo_cliente) AS nombre,
+                       d.id_distribuidor
+                FROM cli_clientes c
+                LEFT JOIN lgs_cat_distribuidores d ON d.id_cliente = c.idcliente AND d.activo = 1
+                WHERE c.estado = 2
+                  AND (c.idtipo_cliente = 1 OR d.id_distribuidor IS NOT NULL)
+                ORDER BY nombre ASC
+            ") ?: [];
+        } catch (Throwable $e) {
+            $clientes = [];
         }
 
         return [
@@ -435,9 +552,11 @@ class Lgs_enviosModel extends Mysql
             'motivos'        => $motivos,
             'proveedores'    => $proveedores,
             'origenes'       => $origenes,
+            'plantas_wms'    => $plantasWms,
             'destinos'       => $destinos,
             'ubicaciones'    => $ubicaciones,
-            'distribuidores' => $distribuidores ?: []
+            'distribuidores' => $distribuidores ?: [],
+            'clientes'       => $clientes,
         ];
     }
 
@@ -459,31 +578,70 @@ class Lgs_enviosModel extends Mysql
                 $db->exec("ALTER TABLE lgs_cat_ubicaciones ADD COLUMN id_almacen_wms INT NULL AFTER id_planta_mrp");
             }
 
-            // 2. Sincronizar mrp_planta (Tipo 5: Planta)
+            // 2. Sincronizar mrp_planta (Tipo 5: Planta) sin mezclar almacenes pt=0
+            $db->exec("
+                UPDATE lgs_cat_ubicaciones u
+                INNER JOIN wms_almacenes a ON a.idalmacen = u.id_almacen_wms
+                SET u.id_almacen_wms = NULL
+                WHERE u.id_tipo_destino = 5 AND COALESCE(a.pt, 0) = 0
+            ");
             $plantas = $this->select_all("SELECT idplanta, nombre_planta, direccion FROM mrp_planta WHERE estado != 0") ?: [];
             foreach ($plantas as $p) {
                 $nom = trim($p['nombre_planta'] ?? '');
                 if (empty($nom)) continue;
-                $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) OR id_planta_mrp = ? LIMIT 1", [$nom, $p['idplanta']]);
+                $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE id_planta_mrp = ? AND id_tipo_destino = 5 LIMIT 1", [$p['idplanta']]);
+                if (!$exist) {
+                    $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) AND id_almacen_wms IS NULL LIMIT 1", [$nom]);
+                }
                 if ($exist) {
-                    $db->prepare("UPDATE lgs_cat_ubicaciones SET id_planta_mrp = ?, id_tipo_destino = 5, activo = 1 WHERE id_ubicacion = ?")->execute([$p['idplanta'], $exist['id_ubicacion']]);
+                    $db->prepare("UPDATE lgs_cat_ubicaciones SET nombre = ?, direccion = COALESCE(NULLIF(?, ''), direccion), id_planta_mrp = ?, id_tipo_destino = 5, activo = 1 WHERE id_ubicacion = ?")
+                       ->execute([$nom, $p['direccion'] ?? null, $p['idplanta'], $exist['id_ubicacion']]);
                 } else {
-                    $db->prepare("INSERT INTO lgs_cat_ubicaciones (nombre, direccion, id_tipo_destino, id_planta_mrp, activo) VALUES (?, ?, 5, ?, 1)")->execute([$nom, $p['direccion'] ?? null, $p['idplanta']]);
+                    $db->prepare("INSERT INTO lgs_cat_ubicaciones (nombre, direccion, id_tipo_destino, id_planta_mrp, activo) VALUES (?, ?, 5, ?, 1)")
+                       ->execute([$nom, $p['direccion'] ?? null, $p['idplanta']]);
                 }
             }
+            // Ocultar plantas desactivadas en mrp_planta
+            $db->exec("
+                UPDATE lgs_cat_ubicaciones u
+                INNER JOIN mrp_planta p ON p.idplanta = u.id_planta_mrp
+                SET u.activo = 0
+                WHERE u.id_tipo_destino = 5
+                  AND u.id_planta_mrp IS NOT NULL
+                  AND p.estado = 0
+            ");
 
-            // 3. Sincronizar wms_almacenes (Tipo 4: Almacén)
-            $almacenes = $this->select_all("SELECT idalmacen, descripcion, direccion FROM wms_almacenes WHERE estado != 0") ?: [];
+            // 3. Sincronizar únicamente wms_almacenes activos de Producto Terminado (pt = 1) ligados a su plantaid (Tipo 4: Almacén)
+            $almacenes = $this->select_all("
+                SELECT idalmacen, plantaid, descripcion, direccion
+                FROM wms_almacenes
+                WHERE estado = 2 AND pt = 1
+            ") ?: [];
             foreach ($almacenes as $a) {
                 $nom = trim($a['descripcion'] ?? '');
                 if (empty($nom)) continue;
-                $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) OR id_almacen_wms = ? LIMIT 1", [$nom, $a['idalmacen']]);
+                $plantaIdAlm = !empty($a['plantaid']) ? intval($a['plantaid']) : null;
+                $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE id_almacen_wms = ? LIMIT 1", [$a['idalmacen']]);
+                if (!$exist) {
+                    $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) AND id_distribuidor IS NULL LIMIT 1", [$nom]);
+                }
                 if ($exist) {
-                    $db->prepare("UPDATE lgs_cat_ubicaciones SET id_almacen_wms = ?, id_tipo_destino = 4, activo = 1 WHERE id_ubicacion = ?")->execute([$a['idalmacen'], $exist['id_ubicacion']]);
+                    $db->prepare("UPDATE lgs_cat_ubicaciones SET nombre = ?, direccion = COALESCE(NULLIF(?, ''), direccion), id_almacen_wms = ?, id_planta_mrp = ?, id_tipo_destino = 4, activo = 1 WHERE id_ubicacion = ?")
+                       ->execute([$nom, $a['direccion'] ?? null, $a['idalmacen'], $plantaIdAlm, $exist['id_ubicacion']]);
                 } else {
-                    $db->prepare("INSERT INTO lgs_cat_ubicaciones (nombre, direccion, id_tipo_destino, id_almacen_wms, activo) VALUES (?, ?, 4, ?, 1)")->execute([$nom, $a['direccion'] ?? null, $a['idalmacen']]);
+                    $db->prepare("INSERT INTO lgs_cat_ubicaciones (nombre, direccion, id_tipo_destino, id_planta_mrp, id_almacen_wms, activo) VALUES (?, ?, 4, ?, ?, 1)")
+                       ->execute([$nom, $a['direccion'] ?? null, $plantaIdAlm, $a['idalmacen']]);
                 }
             }
+            // Ocultar del selector ubicaciones que apuntaban a almacenes no-PT (pt=0), inactivos o eliminados de wms_almacenes
+            $db->exec("
+                UPDATE lgs_cat_ubicaciones u
+                LEFT JOIN wms_almacenes a ON a.idalmacen = u.id_almacen_wms
+                SET u.activo = 0
+                WHERE u.id_almacen_wms IS NOT NULL
+                  AND u.id_tipo_destino = 4
+                  AND (a.idalmacen IS NULL OR a.estado <> 2 OR COALESCE(a.pt, 0) = 0)
+            ");
         } catch (Throwable $e) {
             // Manejo silencioso para no interrumpir
         }
@@ -603,6 +761,7 @@ class Lgs_enviosModel extends Mysql
             $sql = "SELECT 
                         e.id_envio,
                         e.folio,
+                        COALESCE(e.es_preenvio, 0) AS es_preenvio,
                         e.id_tipo_traslado,
                         e.tipo_servicio,
                         e.modalidad_calculo,
@@ -651,6 +810,7 @@ class Lgs_enviosModel extends Mysql
             $sqlFallback = "SELECT 
                         e.id_envio,
                         e.folio,
+                        CASE WHEN e.folio LIKE 'PE-%' THEN 1 ELSE 0 END AS es_preenvio,
                         e.id_tipo_traslado,
                         e.tipo_servicio,
                         e.modalidad_calculo,
@@ -760,80 +920,124 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
-     * Obtiene VINs disponibles en el origen que no estén asignados a otros envíos activos
+     * Obtiene VINs disponibles para Acomodo:
+     * - Si es Pre-envío (PE-): muestra TODAS las unidades PT vigentes sin bloquear entre pre-envíos.
+     * - Si es Envío Oficial (EN-): muestra las unidades en Bandeja Operativa (autorizadas y no autorizadas)
+     *   más las unidades PT facturadas o con autorización de movimiento/excepción aprobada.
+     *   Cada unidad incluye semáforo `se_envia` (1/0) y motivo detallado.
      */
     public function getVinsDisponiblesOrigen(int $idOrigen = 0, int $idEnvioActual = 0): array
     {
-        $origenNombre = '';
-
-        if ($idEnvioActual > 0) {
-            $envio = $this->getEnvioCabecera($idEnvioActual);
-            if (!empty($envio)) {
-                $idOrigen = intval($envio['id_origen'] ?? $idOrigen);
-                $origenNombre = trim($envio['origen'] ?? '');
-            }
-        }
-
-        if (empty($origenNombre) && $idOrigen > 0) {
-            $origRow = $this->select("SELECT nombre FROM lgs_cat_origenes WHERE id_origen = ?", [$idOrigen]);
-            if (!empty($origRow)) {
-                $origenNombre = trim($origRow['nombre'] ?? '');
-            }
-        }
-
         try {
-            // Excluir unidades asignadas a otros envíos que ya estén confirmados o en planeación/ejecución
-            // Subconsulta para encontrar en qué envío están asignadas (excluyendo el actual)
-            $sqlAsignado = "SELECT ev.id_unidad, e.id_envio, e.folio 
-                           FROM lgs_envios_vins ev
-                           INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                           WHERE e.deleted_at IS NULL AND e.id_estado IN (2, 3, 5, 6, 7, 8)";
+            $cab = $idEnvioActual > 0 ? $this->getEnvioCabecera($idEnvioActual) : [];
+            $esPreEnvio = (intval($cab['es_preenvio'] ?? 0) === 1 || strpos((string)($cab['folio'] ?? ''), 'PE-') === 0);
 
-            // Excluir las que ya están en el acomodo de ESTE envío
-            $sqlExcludeThis = ($idEnvioActual > 0) 
-                ? "SELECT ev2.id_unidad FROM lgs_envios_vins ev2 WHERE ev2.id_envio = " . intval($idEnvioActual)
-                : "SELECT 0";
-
-            // 1. Consultar unidades desde la bandeja operativa (lgs_unidades) combinando con lgs_unidades_envios y mrp_unidades_terminadas
-            $sql = "SELECT 
-                        COALESCE(u.id_unidad, lu.id_unidad, ut.idunidad) AS id_unidad,
-                        COALESCE(u.vin, ut.clave, CONCAT('VIN-', lu.id_unidad)) AS vin,
-                        COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
-                        COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
-                        COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                        COALESCE(NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino,
-                        asig.folio AS asignado_folio
-                    FROM lgs_unidades lu
-                    LEFT JOIN lgs_unidades_envios u ON u.id_unidad = lu.id_unidad
-                    LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = lu.id_unidad
-                    LEFT JOIN ($sqlAsignado) asig ON asig.id_unidad = COALESCE(u.id_unidad, lu.id_unidad, ut.idunidad)
-                    WHERE (lu.id_estado_proceso = 1 OR lu.id_estado_proceso IS NULL)
-                      AND lu.id_unidad NOT IN ({$sqlExcludeThis})
-                    ORDER BY lu.id_lgs_unidad ASC";
-
-            $res = $this->select_all($sql) ?: [];
-
-            // 2. Buscar TAMBIÉN en lgs_unidades_envios (ya que es tabla auxiliar y tiene VINs sin alta en WMS/lgs_unidades)
-            $sql2 = "SELECT 
-                        u.id_unidad,
-                        u.vin,
-                        u.num_serie,
-                        u.modelo,
-                        COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                        COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino,
-                        asig.folio AS asignado_folio
-                    FROM lgs_unidades_envios u
-                    LEFT JOIN ($sqlAsignado) asig ON asig.id_unidad = u.id_unidad
-                    WHERE u.id_unidad NOT IN ({$sqlExcludeThis})
-                      AND u.id_unidad NOT IN (SELECT id_unidad FROM lgs_unidades)
-                    ORDER BY u.id_unidad ASC";
-            $resAux = $this->select_all($sql2) ?: [];
-            
-            if (!empty($resAux)) {
-                $res = array_merge($res, $resAux);
+            // 1. Obtener los VINs ya acomodados en algún vehículo dentro de ESTE mismo envío/pre-envío para excluirlos del pool
+            $yaEnEsteEnvioUnidad = [];
+            $yaEnEsteEnvioVin    = [];
+            if ($idEnvioActual > 0) {
+                $rowsActual = $this->select_all("
+                    SELECT ev.id_unidad, UPPER(TRIM(COALESCE(u.vin, ns.numero_serie, ''))) AS vin
+                    FROM lgs_envios_vins ev
+                    INNER JOIN lgs_envios e ON e.id_envio = ev.id_envio
+                    LEFT JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+                    LEFT JOIN wms_numeros_series ns ON ns.id_numeros_serie = ev.id_numeros_serie
+                    WHERE ev.id_envio = ?
+                      AND (ev.id_madrina IS NOT NULL OR ev.id_plataforma IS NOT NULL OR ev.id_chofer IS NOT NULL OR e.id_tipo_traslado = 3)
+                ", [$idEnvioActual]) ?: [];
+                foreach ($rowsActual as $ra) {
+                    if (!empty($ra['id_unidad'])) {
+                        $yaEnEsteEnvioUnidad[intval($ra['id_unidad'])] = true;
+                    }
+                    $vk = strtoupper(trim((string)($ra['vin'] ?? '')));
+                    if ($vk !== '') {
+                        $yaEnEsteEnvioVin[$vk] = true;
+                    }
+                }
             }
 
-            return $res;
+            $vinsExcepcionAprobada = $idEnvioActual > 0 ? $this->getVinsAprobadosExcepcion($idEnvioActual) : [];
+
+            // 2. Pool unificado desde Bandeja / WMS PT
+            if (file_exists("Models/Lgs_bandejaModel.php")) {
+                require_once "Models/Lgs_bandejaModel.php";
+                $bandejaModel = new Lgs_bandejaModel();
+                $ptRows = $bandejaModel->getUnidadesPTGlobales([]);
+
+                $res = [];
+                foreach ($ptRows as $pt) {
+                    $vinClean = strtoupper(trim((string)($pt['vin'] ?? '')));
+                    $idU      = intval($pt['id_unidad'] ?? 0);
+                    if ($vinClean === '') continue;
+                    if (($idU > 0 && isset($yaEnEsteEnvioUnidad[$idU])) || isset($yaEnEsteEnvioVin[$vinClean])) {
+                        continue;
+                    }
+
+                    $enBandeja      = !empty($pt['en_bandeja']) || intval($pt['id_lgs_unidad'] ?? 0) > 0;
+                    $estadoProc     = intval($pt['id_estado_proceso'] ?? 0);
+                    $cumpleFactura  = !empty($pt['cumple_factura']);
+                    $cumpleAut      = !empty($pt['cumple_autorizacion']) || intval($pt['activado_comercial'] ?? 0) === 1;
+                    $autExcepcion   = isset($vinsExcepcionAprobada[$vinClean]);
+                    $envIdOf        = intval($pt['envio_id'] ?? 0);
+
+                    // En Envíos Oficiales (EN-) excluimos PT vírgenes sin bandeja, sin factura ni autorización
+                    if (!$esPreEnvio) {
+                        $enBandejaDisponible = ($enBandeja && $estadoProc <= 1);
+                        $yaEnEsteOficial     = ($envIdOf > 0 && $envIdOf === $idEnvioActual);
+                        if (!$enBandejaDisponible && !$yaEnEsteOficial && !$cumpleFactura && !$cumpleAut && !$autExcepcion) {
+                            continue;
+                        }
+                    }
+
+                    $asignadoFolio = ($envIdOf > 0 && $envIdOf !== $idEnvioActual)
+                        ? (string)($pt['envio_folio'] ?? ('EN-' . $envIdOf))
+                        : null;
+
+                    $origenTxt = trim((string)($pt['planta_nombre'] ?? ''));
+                    if (!empty($pt['almacen_nombre'])) {
+                        $origenTxt = ($origenTxt !== '' ? $origenTxt . ' · ' : '') . $pt['almacen_nombre'];
+                    }
+                    $destTxt = trim((string)($pt['sede_nombre'] ?: $pt['cliente_nombre'] ?: $pt['destino_sugerido'] ?: 'Sin Asignar'));
+
+                    $seEnvia = !empty($pt['se_envia']) || $autExcepcion;
+                    $motivoEnvio = $autExcepcion && empty($pt['se_envia'])
+                        ? 'Autorizada por Solicitud Excepcional'
+                        : (string)($pt['estado_envio_motivo'] ?? 'Sin Factura ni Aut. Movimiento');
+
+                    $res[] = [
+                        'id_unidad'                => $idU,
+                        'id_numeros_serie'         => intval($pt['id_numeros_serie'] ?? 0),
+                        'id_lgs_unidad'            => intval($pt['id_lgs_unidad'] ?? 0),
+                        'en_bandeja'               => $enBandeja ? 1 : 0,
+                        'id_estado_proceso'        => $estadoProc,
+                        'vin'                      => $vinClean,
+                        'num_serie'                => (string)($pt['num_serie'] ?? ''),
+                        'modelo'                   => (string)($pt['modelo'] ?? 'Unidad PT'),
+                        'origen'                   => $origenTxt !== '' ? $origenTxt : 'Planta / PT',
+                        'destino'                  => $destTxt,
+                        'id_cliente'               => intval($pt['id_cliente'] ?? 0),
+                        'cliente_nombre'           => (string)($pt['cliente_nombre'] ?? ''),
+                        'sede_nombre'              => (string)($pt['sede_nombre'] ?? ''),
+                        'folio_pedido'             => (string)($pt['folio_pedido'] ?? ''),
+                        'factura'                  => (string)($pt['factura'] ?? ''),
+                        'facturado'                => intval($pt['facturado'] ?? 0),
+                        'estatus_pago_cod'         => intval($pt['estatus_pago_cod'] ?? -1),
+                        'estatus_pago_texto'       => (string)($pt['estatus_pago_texto'] ?? 'Sin Facturar'),
+                        'estatus_finanzas_bandeja' => (string)($pt['estatus_finanzas_bandeja'] ?? ''),
+                        'activado_comercial'       => intval($pt['activado_comercial'] ?? 0),
+                        'cumple_factura'           => !empty($pt['cumple_factura']) ? 1 : 0,
+                        'cumple_pago'              => !empty($pt['cumple_pago']) ? 1 : 0,
+                        'cumple_autorizacion'      => $cumpleAut ? 1 : 0,
+                        'autorizado_excepcion'     => $autExcepcion ? 1 : 0,
+                        'se_envia'                 => $seEnvia ? 1 : 0,
+                        'estado_envio_motivo'      => $motivoEnvio,
+                        'preenvio_folios'          => (string)($pt['preenvio_folios'] ?? ''),
+                        'asignado_folio'           => $asignadoFolio,
+                    ];
+                }
+                return $res;
+            }
+            return [];
         } catch (Throwable $e) {
             return [];
         }
@@ -849,6 +1053,7 @@ class Lgs_enviosModel extends Mysql
                         v.id,
                         v.id_envio,
                         v.id_unidad,
+                        COALESCE(v.id_numeros_serie, u.id_numeros_serie, 0) AS id_numeros_serie,
                         COALESCE(u.vin, ut.clave, CONCAT('VIN-', v.id_unidad)) AS vin,
                         COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
                         COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
@@ -880,9 +1085,47 @@ class Lgs_enviosModel extends Mysql
                     LEFT JOIN prv_det_plataformas p ON v.id_plataforma = p.id_plataforma
                     LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
                     WHERE v.id_envio = ?
+                      AND (v.id_madrina IS NOT NULL OR v.id_plataforma IS NOT NULL OR v.id_chofer IS NOT NULL OR e.id_tipo_traslado = 3)
                     ORDER BY v.id_madrina ASC, v.id_plataforma ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
-            $res = $this->select_all($sql, [$idEnvio]);
-            return $res ?: [];
+            $res = $this->select_all($sql, [$idEnvio]) ?: [];
+            if (!empty($res) && file_exists("Models/Lgs_bandejaModel.php")) {
+                require_once "Models/Lgs_bandejaModel.php";
+                $bandejaModel = new Lgs_bandejaModel();
+                $ptRows = $bandejaModel->getUnidadesPTGlobales([]);
+                $ptByVin = [];
+                foreach ($ptRows as $pt) {
+                    $vk = strtoupper(trim((string)($pt['vin'] ?? '')));
+                    if ($vk !== '') $ptByVin[$vk] = $pt;
+                }
+                $vinsExc = $this->getVinsAprobadosExcepcion($idEnvio);
+                foreach ($res as &$row) {
+                    $vk = strtoupper(trim((string)($row['vin'] ?? '')));
+                    $pt = $ptByVin[$vk] ?? null;
+                    $autExc = isset($vinsExc[$vk]);
+                    if ($pt) {
+                        $row['id_numeros_serie']    = intval($row['id_numeros_serie'] ?: ($pt['id_numeros_serie'] ?? 0));
+                        $row['cliente_nombre']      = (string)($pt['cliente_nombre'] ?? '');
+                        $row['folio_pedido']        = (string)($pt['folio_pedido'] ?? '');
+                        $row['factura']             = (string)($pt['factura'] ?? '');
+                        $row['estatus_pago_cod']    = intval($pt['estatus_pago_cod'] ?? -1);
+                        $row['estatus_pago_texto']  = (string)($pt['estatus_pago_texto'] ?? 'Sin Facturar');
+                        $row['activado_comercial']  = intval($pt['activado_comercial'] ?? 0);
+                        $row['cumple_factura']      = intval($pt['cumple_factura'] ?? 0);
+                        $row['cumple_pago']         = intval($pt['cumple_pago'] ?? 0);
+                        $row['cumple_autorizacion'] = intval($pt['cumple_autorizacion'] ?? 0);
+                        $row['autorizado_excepcion']= $autExc ? 1 : 0;
+                        $row['se_envia']            = (!empty($pt['se_envia']) || $autExc) ? 1 : 0;
+                        $row['estado_envio_motivo'] = $autExc && empty($pt['se_envia']) ? 'Autorizada por Solicitud Excepcional' : (string)($pt['estado_envio_motivo'] ?? '');
+                        $row['preenvio_folios']     = (string)($pt['preenvio_folios'] ?? '');
+                    } else {
+                        $row['autorizado_excepcion'] = $autExc ? 1 : 0;
+                        $row['se_envia'] = $autExc ? 1 : 0;
+                        $row['estado_envio_motivo'] = $autExc ? 'Autorizada por Solicitud Excepcional' : 'Sin información PT/Factura';
+                    }
+                }
+                unset($row);
+            }
+            return $res;
         } catch (Throwable $e) {
             return [];
         }
@@ -1177,12 +1420,16 @@ class Lgs_enviosModel extends Mysql
             try {
                 $db->exec("ALTER TABLE `prv_cat_proveedores` ADD COLUMN `modalidad_envio_default` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`");
             } catch (Throwable $e) {}
-            // Consolidación de distribuidores y corrección de sedes
             try {
-                $db->exec("UPDATE lgs_cat_ubicaciones SET id_distribuidor = 148 WHERE id_ubicacion IN (141, 156, 157)");
-                $db->exec("UPDATE lgs_cat_ubicaciones SET id_distribuidor = 53 WHERE id_ubicacion IN (137, 22)");
-                $db->exec("UPDATE lgs_cat_distribuidores SET activo = 0 WHERE id_distribuidor = 18");
-                $db->exec("ALTER TABLE lgs_cat_distribuidores ADD UNIQUE KEY uq_distribuidor_nombre (nombre)");
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `es_preenvio` TINYINT(1) NOT NULL DEFAULT 0 AFTER `folio`");
+            } catch (Throwable $e) {}
+            // Índice UNIQUE preventivo en nombre de distribuidores (la gestión maestra de sedes vive en cli_* y Lgs_clientesSyncService)
+            try {
+                $idxUq = $db->query("SHOW INDEX FROM `lgs_cat_distribuidores` WHERE Key_name = 'uq_distribuidor_nombre'")->fetch();
+                if (!$idxUq) {
+                    $db->exec("UPDATE `lgs_cat_distribuidores` SET `nombre` = TRIM(`nombre`) WHERE `nombre` <> TRIM(`nombre`)");
+                    $db->exec("ALTER TABLE `lgs_cat_distribuidores` ADD UNIQUE KEY `uq_distribuidor_nombre` (`nombre`)");
+                }
             } catch (Throwable $e) {}
         } catch (Throwable $e) {
             // Silencioso si ya existe o no hay permisos DDL
@@ -1369,6 +1616,10 @@ class Lgs_enviosModel extends Mysql
                         n.tipo_nodo,
                         n.id_ubicacion,
                         COALESCE(u.id_distribuidor, n.id_distribuidor) AS id_distribuidor,
+                        COALESCE(u.id_cliente, d.id_cliente) AS id_cliente,
+                        COALESCE(a.plantaid, u.id_planta_mrp) AS id_planta_mrp,
+                        u.id_almacen_wms,
+                        COALESCE(a.pt, 0) AS almacen_pt,
                         d.nombre AS distribuidor_nombre,
                         n.id_origen_referencia,
                         COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') AS nombre,
@@ -1380,6 +1631,7 @@ class Lgs_enviosModel extends Mysql
                         n.fecha_estimada
                     FROM lgs_envios_nodos n
                     LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
+                    LEFT JOIN wms_almacenes a ON a.idalmacen = u.id_almacen_wms
                     LEFT JOIN lgs_cat_distribuidores d ON d.id_distribuidor = COALESCE(u.id_distribuidor, n.id_distribuidor)
                     WHERE n.id_envio = ?
                     ORDER BY n.orden ASC";
@@ -1447,6 +1699,601 @@ class Lgs_enviosModel extends Mysql
             'user_id'  => $userId,
             'id_envio' => $idEnvio
         ]);
+    }
+
+    /**
+     * Garantiza la existencia de la tabla de solicitudes de autorización excepcional PE- -> EN-.
+     */
+    public function ensureSolicitudesPreEnvioTable(?PDO $db = null): void
+    {
+        $conn = $db ?: $this->getConexion();
+        try {
+            $conn->exec("CREATE TABLE IF NOT EXISTS `lgs_solicitudes_preenvio_envio` (
+                `id_solicitud` int NOT NULL AUTO_INCREMENT,
+                `folio_solicitud` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `id_envio` int NOT NULL,
+                `folio_preenvio` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `folio_envio_generado` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `estatus` enum('PENDIENTE','APROBADA','RECHAZADA','CANCELADA') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
+                `motivo_solicitud` text COLLATE utf8mb4_unicode_ci NOT NULL,
+                `detalle_observaciones_json` longtext COLLATE utf8mb4_unicode_ci,
+                `vins_snapshot_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `total_vins` int NOT NULL DEFAULT '0',
+                `vins_con_observacion` int NOT NULL DEFAULT '0',
+                `solicitado_by` int NOT NULL,
+                `solicitado_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `resuelto_by` int DEFAULT NULL,
+                `resuelto_at` datetime DEFAULT NULL,
+                `obs_aprobador` text COLLATE utf8mb4_unicode_ci,
+                PRIMARY KEY (`id_solicitud`),
+                KEY `idx_lgs_sol_pe_envio` (`id_envio`, `estatus`),
+                KEY `idx_lgs_sol_pe_estatus` (`estatus`, `solicitado_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+        } catch (Throwable $e) {
+            // Silencioso si no tiene DDL o ya existe
+        }
+    }
+
+    /**
+     * Devuelve el mapa [VIN_UPPER => true] de VINs cubiertos por una solicitud APROBADA vigente para un envío.
+     */
+    public function getVinsAprobadosExcepcion(int $idEnvio): array
+    {
+        if ($idEnvio <= 0) {
+            return [];
+        }
+        try {
+            $this->ensureSolicitudesPreEnvioTable();
+            $sol = $this->select("
+                SELECT detalle_observaciones_json
+                FROM lgs_solicitudes_preenvio_envio
+                WHERE id_envio = ? AND estatus = 'APROBADA'
+                ORDER BY id_solicitud DESC
+                LIMIT 1
+            ", [$idEnvio]);
+            if (empty($sol['detalle_observaciones_json'])) {
+                return [];
+            }
+            $det = json_decode((string)$sol['detalle_observaciones_json'], true);
+            if (!is_array($det)) {
+                return [];
+            }
+            $map = [];
+            foreach ($det as $item) {
+                $vk = strtoupper(trim((string)($item['vin'] ?? '')));
+                if ($vk !== '') {
+                    $map[$vk] = true;
+                }
+            }
+            return $map;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene el resumen de la última solicitud de autorización excepcional asociada a un envío/pre-envío.
+     */
+    public function getSolicitudExcepcionEnvio(int $idEnvio): ?array
+    {
+        if ($idEnvio <= 0) {
+            return null;
+        }
+        try {
+            $this->ensureSolicitudesPreEnvioTable();
+            $row = $this->select("
+                SELECT s.*,
+                       TRIM(CONCAT(COALESCE(us.nombres, ''), ' ', COALESCE(us.apellidos, ''))) AS solicitante_nombre,
+                       TRIM(CONCAT(COALESCE(ur.nombres, ''), ' ', COALESCE(ur.apellidos, ''))) AS aprobador_nombre
+                FROM lgs_solicitudes_preenvio_envio s
+                LEFT JOIN usuarios us ON us.idusuario = s.solicitado_by
+                LEFT JOIN usuarios ur ON ur.idusuario = s.resuelto_by
+                WHERE s.id_envio = ?
+                ORDER BY s.id_solicitud DESC
+                LIMIT 1
+            ", [$idEnvio]);
+            return $row ?: null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Valida estructura de ruta/acomodo, conflictos con Envíos Oficiales y cumplimiento
+     * de Factura + Pago + Autorización de Movimiento para cada VIN de un envío/pre-envío.
+     */
+    public function validarRequisitosConversionEnvio(int $idEnvio): array
+    {
+        $db = $this->getConexion();
+        $this->ensureDistanciasTable($db);
+        $this->ensureSolicitudesPreEnvioTable($db);
+
+        $cab = $this->getEnvioCabecera($idEnvio);
+        if (empty($cab)) {
+            throw new Exception("El registro de envío/pre-envío solicitado no existe.");
+        }
+
+        // 1. Validar que todas las paradas de entrega tengan sede o destino definido
+        $nodosEntrega = $this->select_all("
+            SELECT id_nodo, tipo_nodo, id_ubicacion, destino_nombre_libre
+            FROM lgs_envios_nodos
+            WHERE id_envio = ? AND orden > 0 AND COALESCE(tipo_nodo, 'entrega') = 'entrega'
+        ", [$idEnvio]) ?: [];
+        foreach ($nodosEntrega as $n) {
+            if (empty($n['id_ubicacion']) && trim((string)($n['destino_nombre_libre'] ?? '')) === '') {
+                throw new Exception("Todas las paradas de entrega deben tener una Sede o Destino asignado antes de pasar a Envío Oficial.");
+            }
+        }
+
+        // 2. Obtener VINs asignados en el acomodo
+        $vinsEnvio = $this->select_all("
+            SELECT ev.id AS id_ev,
+                   ev.id_unidad,
+                   COALESCE(ev.id_numeros_serie, u.id_numeros_serie, ns.id_numeros_serie, 0) AS id_numeros_serie,
+                   UPPER(TRIM(COALESCE(u.vin, ns.numero_serie, ''))) AS vin,
+                   COALESCE(u.modelo, 'Unidad PT') AS modelo,
+                   COALESCE(NULLIF(TRIM(ev.destino_nombre_libre), ''), NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), '') AS destino_txt,
+                   ev.id_madrina,
+                   ev.id_plataforma,
+                   ev.id_chofer,
+                   COALESCE(lu.id_lgs_unidad, 0) AS id_lgs_unidad,
+                   COALESCE(lu.activado_comercial, 0) AS activado_comercial,
+                   COALESCE(lu.estatus_finanzas, '') AS estatus_finanzas_bandeja,
+                   COALESCE(lu.folio_pedido, '') AS lu_folio_pedido,
+                   COALESCE(lu.id_cliente, 0) AS lu_id_cliente
+            FROM lgs_envios_vins ev
+            INNER JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+            LEFT JOIN lgs_unidades lu ON lu.id_unidad = ev.id_unidad
+            LEFT JOIN wms_numeros_series ns ON ns.id_numeros_serie = COALESCE(ev.id_numeros_serie, u.id_numeros_serie)
+                OR CONVERT(UPPER(TRIM(ns.numero_serie)) USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(UPPER(TRIM(u.vin)) USING utf8mb4) COLLATE utf8mb4_unicode_ci
+            WHERE ev.id_envio = ?
+        ", [$idEnvio]) ?: [];
+
+        if (empty($vinsEnvio)) {
+            throw new Exception("No hay unidades (VINs) asignadas en Acomodo. Agregue un vehículo y asigne al menos un VIN antes de continuar.");
+        }
+
+        $sinVehiculo = 0;
+        foreach ($vinsEnvio as $vChk) {
+            if (empty($vChk['id_madrina']) && empty($vChk['id_plataforma']) && empty($vChk['id_chofer'])) {
+                $sinVehiculo++;
+            }
+        }
+        if ($sinVehiculo > 0) {
+            throw new Exception("Hay {$sinVehiculo} unidad(es) sin Madrina, Plataforma o Chofer asignado. Complete el Acomodo de VINs antes de pasar a Envío.");
+        }
+
+        $idTipoTraslado = intval($cab['id_tipo_traslado'] ?? 1);
+        if ($idTipoTraslado === 1 && count($vinsEnvio) === 1) {
+            throw new Exception("No es posible pasar a Envío en Madrina con 1 sola unidad. Agregue al menos 2 unidades en Acomodo o cambie a Plataforma/Chofer.");
+        }
+
+        $draftConflicts = [];
+        $vinsDetalle    = [];
+        $vinsObservados = [];
+        $vinsOrdenados  = [];
+
+        $mapaPago = [
+            -1 => 'Sin Facturar',
+             0 => 'Pendiente de pago',
+             1 => 'Crédito autorizado',
+             2 => 'Parcialmente pagada',
+             3 => 'Pagada',
+        ];
+
+        $bandejaHelper = null;
+        if (file_exists("Models/Lgs_bandejaModel.php")) {
+            require_once "Models/Lgs_bandejaModel.php";
+            $bandejaHelper = new Lgs_bandejaModel();
+        }
+
+        foreach ($vinsEnvio as $v) {
+            $idU   = intval($v['id_unidad']);
+            $idNs  = intval($v['id_numeros_serie']);
+            $vin   = strtoupper(trim((string)$v['vin']));
+            if ($vin === '') continue;
+            $vinsOrdenados[] = $vin;
+
+            // Buscar otro Envío Oficial EN- activo con este VIN (excluye cancelado 0 y entregado 7)
+            $confs = $this->select_all("
+                SELECT DISTINCT e.id_envio, e.folio, e.id_estado
+                FROM lgs_envios_vins ev
+                INNER JOIN lgs_envios e ON e.id_envio = ev.id_envio
+                INNER JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+                WHERE e.deleted_at IS NULL
+                  AND COALESCE(e.es_preenvio, CASE WHEN e.folio LIKE 'PE-%' THEN 1 ELSE 0 END) = 0
+                  AND e.id_estado NOT IN (0, 7)
+                  AND e.id_envio <> ?
+                  AND (
+                      ev.id_unidad = ?
+                      " . ($idNs > 0 ? "OR ev.id_numeros_serie = ?" : "") . "
+                      OR CONVERT(UPPER(TRIM(u.vin)) USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                  )
+            ", $idNs > 0 ? [$idEnvio, $idU, $idNs, $vin] : [$idEnvio, $idU, $vin]) ?: [];
+
+            foreach ($confs as $cf) {
+                $estCf = intval($cf['id_estado'] ?? 0);
+                if ($estCf !== 1) {
+                    throw new Exception("El VIN {$vin} ya está comprometido en el Envío Oficial {$cf['folio']} (estado activo). Libérelo antes de continuar.");
+                }
+                $draftConflicts[] = ['id_envio' => intval($cf['id_envio']), 'id_unidad' => $idU, 'folio' => $cf['folio'], 'vin' => $vin];
+            }
+
+            // Revisar facturación vigente y cobranza (`wms_vin_facturacion` + `vta_cobranza_unidades`)
+            $fact = null;
+            if ($idNs > 0) {
+                $fact = $this->select("
+                    SELECT f.idfacturacion, f.factura, f.distribuidor, f.id_cliente, cb.estatus_pago
+                    FROM wms_vin_facturacion f
+                    LEFT JOIN vta_cobranza_unidades cb ON cb.idfacturacion = f.idfacturacion AND cb.id_numeros_serie = f.id_numeros_serie
+                    WHERE f.id_numeros_serie = ? AND f.estatus IN (1, 2)
+                    LIMIT 1
+                ", [$idNs]);
+            }
+            if (!$fact) {
+                $fact = $this->select("
+                    SELECT f.idfacturacion, f.factura, f.distribuidor, f.id_cliente, cb.estatus_pago
+                    FROM wms_vin_facturacion f
+                    LEFT JOIN vta_cobranza_unidades cb ON cb.idfacturacion = f.idfacturacion AND cb.id_numeros_serie = f.id_numeros_serie
+                    WHERE CONVERT(UPPER(TRIM(f.numero_serie)) USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                      AND f.estatus IN (1, 2)
+                    LIMIT 1
+                ", [$vin]);
+            }
+
+            $facturaFolio  = $fact ? trim((string)($fact['factura'] ?? '')) : '';
+            $cumpleFactura = ($fact && intval($fact['idfacturacion'] ?? 0) > 0 && $facturaFolio !== '');
+            $pCod          = $cumpleFactura
+                ? (($fact['estatus_pago'] !== null && $fact['estatus_pago'] !== '') ? intval($fact['estatus_pago']) : 0)
+                : -1;
+            $pagoTexto     = $mapaPago[$pCod] ?? 'Pendiente de pago';
+            $cumplePago    = ($cumpleFactura && in_array($pCod, [1, 3], true));
+            $cumpleAut     = (intval($v['activado_comercial'] ?? 0) === 1);
+
+            $estadoEval = $bandejaHelper
+                ? $bandejaHelper->resolverEstadoEnvioUnidad($cumpleFactura, $cumplePago, $cumpleAut, $facturaFolio, $pagoTexto)
+                : [
+                    'cumple_factura'      => $cumpleFactura ? 1 : 0,
+                    'cumple_pago'         => $cumplePago ? 1 : 0,
+                    'cumple_autorizacion' => $cumpleAut ? 1 : 0,
+                    'se_envia'            => ($cumpleFactura && $cumplePago && $cumpleAut) ? 1 : 0,
+                    'estado_envio_motivo' => ($cumpleFactura && $cumplePago && $cumpleAut) ? 'Autorizada' : 'Falta validación',
+                ];
+
+            $faltantes = [];
+            if (!$cumpleFactura) {
+                $faltantes[] = 'Sin Factura';
+            } elseif (!$cumplePago) {
+                $faltantes[] = "Cobranza: {$pagoTexto}";
+            }
+            if (!$cumpleAut) {
+                $faltantes[] = 'Sin Autorización de Movimiento';
+            }
+
+            $clienteNom = trim((string)($fact['distribuidor'] ?? ''));
+            if ($clienteNom === '' && intval($v['lu_id_cliente'] ?? 0) > 0) {
+                try {
+                    $cRow = $this->select("SELECT COALESCE(NULLIF(razon_social,''), nombre_comercial) AS nom FROM cli_clientes WHERE idcliente = ? LIMIT 1", [intval($v['lu_id_cliente'])]);
+                    $clienteNom = trim((string)($cRow['nom'] ?? ''));
+                } catch (Throwable $e) {}
+            }
+
+            $itemDet = [
+                'id_unidad'                => $idU,
+                'id_numeros_serie'         => $idNs,
+                'vin'                      => $vin,
+                'modelo'                   => (string)($v['modelo'] ?? 'Unidad PT'),
+                'cliente_nombre'           => $clienteNom,
+                'destino_sede'             => (string)($v['destino_txt'] ?? ''),
+                'folio_pedido'             => (string)($v['lu_folio_pedido'] ?? ''),
+                'factura'                  => $facturaFolio,
+                'estatus_pago_cod'         => $pCod,
+                'estatus_pago_texto'       => $pagoTexto,
+                'estatus_finanzas_bandeja' => (string)($v['estatus_finanzas_bandeja'] ?? ''),
+                'activado_comercial'       => $cumpleAut ? 1 : 0,
+                'cumple_factura'           => $estadoEval['cumple_factura'],
+                'cumple_pago'              => $estadoEval['cumple_pago'],
+                'cumple_autorizacion'      => $estadoEval['cumple_autorizacion'],
+                'se_envia'                 => $estadoEval['se_envia'],
+                'estado_envio_motivo'      => $estadoEval['estado_envio_motivo'],
+                'faltantes'                => $faltantes,
+                'estatus'                  => implode(' · ', $faltantes) ?: 'Autorizada',
+            ];
+
+            $vinsDetalle[] = $itemDet;
+            if (empty($estadoEval['se_envia'])) {
+                $vinsObservados[] = $itemDet;
+            }
+        }
+
+        sort($vinsOrdenados);
+        $vinsHash = hash('sha256', implode('|', $vinsOrdenados));
+
+        $solPendiente = $this->select("
+            SELECT s.*, TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS solicitante_nombre
+            FROM lgs_solicitudes_preenvio_envio s
+            LEFT JOIN usuarios u ON u.idusuario = s.solicitado_by
+            WHERE s.id_envio = ? AND s.estatus = 'PENDIENTE'
+            ORDER BY s.id_solicitud DESC
+            LIMIT 1
+        ", [$idEnvio]) ?: null;
+
+        $solAprobada = $this->select("
+            SELECT s.*, TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS aprobador_nombre
+            FROM lgs_solicitudes_preenvio_envio s
+            LEFT JOIN usuarios u ON u.idusuario = s.resuelto_by
+            WHERE s.id_envio = ? AND s.estatus = 'APROBADA'
+            ORDER BY s.id_solicitud DESC
+            LIMIT 1
+        ", [$idEnvio]) ?: null;
+
+        $solRechazada = $this->select("
+            SELECT s.*, TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS aprobador_nombre
+            FROM lgs_solicitudes_preenvio_envio s
+            LEFT JOIN usuarios u ON u.idusuario = s.resuelto_by
+            WHERE s.id_envio = ? AND s.estatus = 'RECHAZADA'
+            ORDER BY s.id_solicitud DESC
+            LIMIT 1
+        ", [$idEnvio]) ?: null;
+
+        $tieneAprobacionVigente = false;
+        if ($solAprobada) {
+            $hashAprob = trim((string)($solAprobada['vins_snapshot_hash'] ?? ''));
+            if ($hashAprob === '' || $hashAprob === $vinsHash) {
+                $tieneAprobacionVigente = true;
+            }
+        }
+
+        return [
+            'cabecera'                 => $cab,
+            'draft_conflicts'          => $draftConflicts,
+            'vins_detalle'             => $vinsDetalle,
+            'vins_observados'          => $vinsObservados,
+            'vins_snapshot_hash'       => $vinsHash,
+            'puede_convertir_directo'  => empty($vinsObservados),
+            'tiene_aprobacion_vigente' => $tieneAprobacionVigente,
+            'solicitud_pendiente'      => $solPendiente,
+            'solicitud_aprobada'       => $solAprobada,
+            'ultima_rechazada'         => $solRechazada,
+        ];
+    }
+
+    /**
+     * Genera una solicitud formal en Aprobaciones para forzar el paso a Envío Oficial
+     * cuando existen unidades sin factura, pago o autorización de movimiento.
+     */
+    public function solicitarAutorizacionPreEnvio(int $idEnvio, string $motivo, int $userId): array
+    {
+        $motivo = trim($motivo);
+        if (mb_strlen($motivo) < 5) {
+            throw new Exception("Debe capturar un motivo o justificación de al menos 5 caracteres para enviar la solicitud.");
+        }
+
+        $val = $this->validarRequisitosConversionEnvio($idEnvio);
+        $cab = $val['cabecera'];
+
+        if ($val['puede_convertir_directo']) {
+            throw new Exception("Todas las unidades del envío ya cuentan con Factura, Pago y Autorización de Movimiento. Puede convertirlo directamente sin solicitud.");
+        }
+        if ($val['tiene_aprobacion_vigente']) {
+            throw new Exception("Este registro ya cuenta con una solicitud de excepción aprobada para estas unidades.");
+        }
+
+        $db = $this->getConexion();
+        $db->beginTransaction();
+        try {
+            // Si había una solicitud pendiente con exactamente los mismos VINs, evitar duplicado
+            if (!empty($val['solicitud_pendiente'])) {
+                $pend = $val['solicitud_pendiente'];
+                if ((string)($pend['vins_snapshot_hash'] ?? '') === $val['vins_snapshot_hash']) {
+                    throw new Exception("Ya existe la solicitud {$pend['folio_solicitud']} pendiente de revisión en el Panel de Aprobaciones.");
+                }
+                // Si el acomodo de VINs cambió, cancelar la pendiente anterior para reemplazarla
+                $db->prepare("UPDATE lgs_solicitudes_preenvio_envio SET estatus = 'CANCELADA' WHERE id_solicitud = ?")
+                   ->execute([intval($pend['id_solicitud'])]);
+            }
+
+            $stmtLast = $db->query("SELECT folio_solicitud FROM lgs_solicitudes_preenvio_envio ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE");
+            $lastFolio = $stmtLast ? $stmtLast->fetchColumn() : false;
+            $nextNum = 1;
+            if ($lastFolio && preg_match('/(\d+)$/', (string)$lastFolio, $m)) {
+                $nextNum = intval($m[1]) + 1;
+            }
+            $folioSol = 'SOL-PE-' . str_pad((string)$nextNum, 6, '0', STR_PAD_LEFT);
+
+            $stmtIns = $db->prepare("
+                INSERT INTO lgs_solicitudes_preenvio_envio
+                    (folio_solicitud, id_envio, folio_preenvio, estatus, motivo_solicitud, detalle_observaciones_json, vins_snapshot_hash, total_vins, vins_con_observacion, solicitado_by, solicitado_at)
+                VALUES (?, ?, ?, 'PENDIENTE', ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $stmtIns->execute([
+                $folioSol,
+                $idEnvio,
+                (string)($cab['folio'] ?? ('PE-' . $idEnvio)),
+                $motivo,
+                json_encode($val['vins_detalle'], JSON_UNESCAPED_UNICODE),
+                $val['vins_snapshot_hash'],
+                count($val['vins_detalle']),
+                count($val['vins_observados']),
+                $userId,
+            ]);
+            $idSol = intval($db->lastInsertId());
+
+            $db->commit();
+
+            // Notificar por correo a aprobadores / logística si el helper está disponible
+            try {
+                if (file_exists('Services/Lgs_notificacionesHelper.php')) {
+                    require_once 'Services/Lgs_notificacionesHelper.php';
+                    $dest = array_unique(array_merge(
+                        Lgs_notificacionesHelper::getCorreosAprobadores($db),
+                        Lgs_notificacionesHelper::getCorreosLogistica($db)
+                    ));
+                    if (!empty($dest)) {
+                        $folioPre = htmlspecialchars((string)($cab['folio'] ?? ''), ENT_QUOTES, 'UTF-8');
+                        $motivoEsc = htmlspecialchars($motivo, ENT_QUOTES, 'UTF-8');
+                        $obsCount = count($val['vins_observados']);
+                        $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+                        $html = "
+                        <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                            <div style='background-color: #D97706; color: #ffffff; padding: 20px; text-align: center;'>
+                                <h2 style='margin: 0; font-size: 18px;'>Solicitud de Autorización Excepcional ({$folioSol})</h2>
+                                <p style='margin: 5px 0 0 0; font-size: 13px;'>Pre-envío: <strong>{$folioPre}</strong></p>
+                            </div>
+                            <div style='padding: 22px; background-color: #ffffff;'>
+                                <p style='font-size: 14px; color: #334155;'>Se solicitó autorización para pasar el Pre-envío <strong>{$folioPre}</strong> a Envío Oficial con <strong>{$obsCount}</strong> unidad(es) pendientes de factura, pago o autorización de movimiento.</p>
+                                <p style='font-size: 13px; color: #0F172A;'><strong>Justificación:</strong> {$motivoEsc}</p>
+                                <div style='text-align: center; margin-top: 20px;'>
+                                    <a href='{$baseUrl}/Lgs_aprobaciones?tab=preenvios' style='background-color: #D97706; color: #fff; text-decoration: none; padding: 10px 24px; border-radius: 20px; font-weight: bold; font-size: 13px;'>Revisar en Aprobaciones</a>
+                                </div>
+                            </div>
+                        </div>";
+                        Lgs_notificacionesHelper::enviar($dest, "⚠️ Solicitud Excepcional {$folioSol} - {$folioPre}", $html);
+                    }
+                }
+            } catch (Throwable $eMail) {
+                error_log("Error notificación solicitud pre-envío: " . $eMail->getMessage());
+            }
+
+            return [
+                'id_solicitud'         => $idSol,
+                'folio_solicitud'      => $folioSol,
+                'id_envio'             => $idEnvio,
+                'folio_preenvio'       => (string)($cab['folio'] ?? ''),
+                'vins_con_observacion' => count($val['vins_observados']),
+            ];
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Convierte un Pre-envío (PE-xxxxxx) en un Envío Oficial (EN-xxxxxx)
+     * validando ruta, acomodo, exclusividad de VINs, Factura + Pago + Aut. Movimiento.
+     * Si faltan requisitos y no existe solicitud aprobada (ni $forzarAprobado desde Aprobaciones),
+     * devuelve `requires_authorization = true` para iniciar el flujo "forzar bajo solicitud".
+     */
+    public function convertirPreEnvioAEnvioOficial(int $idEnvio, int $userId, bool $forzarAprobado = false): array
+    {
+        $val = $this->validarRequisitosConversionEnvio($idEnvio);
+        $cab = $val['cabecera'];
+
+        if (intval($cab['es_preenvio'] ?? 0) !== 1 && strpos((string)($cab['folio'] ?? ''), 'PE-') !== 0) {
+            throw new Exception("Este registro ya es un Envío Oficial ({$cab['folio']}).");
+        }
+
+        if (!$val['puede_convertir_directo'] && !$val['tiene_aprobacion_vigente'] && !$forzarAprobado) {
+            $resumenList = array_map(fn($w) => "{$w['vin']} ({$w['estatus']})", array_slice($val['vins_observados'], 0, 8));
+            return [
+                'requires_authorization' => true,
+                'id_envio'               => $idEnvio,
+                'folio_anterior'         => $cab['folio'] ?? '',
+                'vins_observados'        => $val['vins_observados'],
+                'vins_detalle'           => $val['vins_detalle'],
+                'solicitud_pendiente'    => $val['solicitud_pendiente'],
+                'ultima_rechazada'       => $val['ultima_rechazada'],
+                'warning_message'        => count($val['vins_observados']) . " unidad(es) requieren Factura, Pago o Autorización de Movimiento: " . implode(', ', $resumenList),
+            ];
+        }
+
+        $db = $this->getConexion();
+        $draftConflicts = $val['draft_conflicts'];
+        $enviosAfectados = [];
+        foreach ($draftConflicts as $dc) {
+            $enviosAfectados[intval($dc['id_envio'])] = true;
+        }
+
+        // Instanciar ANTES de beginTransaction() porque __construct ejecuta DDL (CREATE/ALTER) que auto-commitearía MySQL
+        $bandejaSync = null;
+        if (!empty($val['vins_detalle']) && file_exists("Models/Lgs_bandejaModel.php")) {
+            require_once "Models/Lgs_bandejaModel.php";
+            $bandejaSync = new Lgs_bandejaModel();
+        }
+
+        $db->beginTransaction();
+        try {
+            // 1. Retirar de borradores oficiales en conflicto (estado = 1)
+            if (!empty($draftConflicts)) {
+                $stmtDelDraft = $db->prepare("DELETE FROM lgs_envios_vins WHERE id_envio = ? AND id_unidad = ?");
+                foreach ($draftConflicts as $dc) {
+                    $stmtDelDraft->execute([$dc['id_envio'], $dc['id_unidad']]);
+                }
+            }
+
+            // 2. Garantizar que todas las unidades existan en lgs_unidades y marcarlas id_estado_proceso = 2 (En Envío Oficial)
+            $unitIds = array_values(array_unique(array_filter(array_map(fn($d) => intval($d['id_unidad'] ?? 0), $val['vins_detalle']))));
+            if ($bandejaSync !== null && !empty($val['vins_detalle'])) {
+                $syncPayload = [];
+                foreach ($val['vins_detalle'] as $vd) {
+                    $syncPayload[] = [
+                        'vin'                     => $vd['vin'],
+                        'id_numeros_serie'        => intval($vd['id_numeros_serie'] ?? 0),
+                        'modelo'                  => (string)($vd['modelo'] ?? 'Unidad PT'),
+                        'estatus_pago_cod'        => isset($vd['estatus_pago_cod']) ? intval($vd['estatus_pago_cod']) : null,
+                        'estatus_finanzas_bandeja'=> (string)($vd['estatus_finanzas_bandeja'] ?? 'PENDIENTE'),
+                        'destino_sugerido'        => (string)($vd['destino_sede'] ?? ''),
+                    ];
+                }
+                $syncRes = $bandejaSync->sincronizarUnidadesPTInternal($db, $syncPayload, $userId);
+                if (!empty($syncRes['map_ids'])) {
+                    $unitIds = array_values(array_unique(array_merge($unitIds, array_map('intval', array_values($syncRes['map_ids'])))));
+                }
+            }
+            if (!empty($unitIds)) {
+                $ph = implode(',', array_fill(0, count($unitIds), '?'));
+                $db->prepare("UPDATE lgs_unidades SET id_estado_proceso = 2, updated_at = NOW() WHERE id_unidad IN ({$ph})")
+                   ->execute($unitIds);
+            }
+
+            // 3. Generar folio oficial EN-xxxxxx y convertir registro (pasa a estado 8 Finalizado para quedar listo en Planeaciones)
+            $nuevoFolio = $this->generarFolioTransaccional($db, false);
+            $stmt = $db->prepare(
+                "UPDATE lgs_envios
+                 SET folio = ?,
+                     es_preenvio = 0,
+                     id_estado = CASE WHEN id_estado = 1 THEN 8 ELSE id_estado END,
+                     updated_by = ?,
+                     updated_at = NOW()
+                 WHERE id_envio = ?"
+            );
+            $stmt->execute([$nuevoFolio, $userId, $idEnvio]);
+
+            if (!empty($val['solicitud_aprobada']['id_solicitud'])) {
+                $db->prepare("UPDATE lgs_solicitudes_preenvio_envio SET folio_envio_generado = ? WHERE id_solicitud = ?")
+                   ->execute([$nuevoFolio, intval($val['solicitud_aprobada']['id_solicitud'])]);
+            }
+
+            $db->commit();
+
+            // 4. Recalcular costos del envío convertido y de borradores que perdieron VINs
+            if (file_exists("Services/Lgs_enviosService.php")) {
+                require_once "Services/Lgs_enviosService.php";
+                $service = new Lgs_enviosService();
+                try {
+                    $service->recalcularCostoTotal($idEnvio);
+                    $service->asegurarCostosVins($idEnvio);
+                } catch (Throwable $eRec) {}
+                foreach (array_keys($enviosAfectados) as $idAf) {
+                    try {
+                        $service->recalcularCostoTotal((int)$idAf);
+                    } catch (Throwable $eAf) {}
+                }
+            }
+
+            return [
+                'id_envio'       => $idEnvio,
+                'folio_anterior' => $cab['folio'] ?? '',
+                'folio'          => $nuevoFolio,
+            ];
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
     }
 }
 

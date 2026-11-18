@@ -116,7 +116,9 @@ class Inv_movventasmasivaModel extends Mysql
         return $this->select_all(
             "SELECT c.idcliente,
                     c.codigo_cliente,
-                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social) AS nombre
+                    c.razon_social,
+                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social) AS nombre_comercial,
+                    COALESCE(NULLIF(c.razon_social, ''), c.nombre_comercial) AS nombre
              FROM cli_clientes c
              INNER JOIN cli_tipos_cliente t ON t.id = c.idtipo_cliente
              WHERE c.estado = 2
@@ -198,12 +200,29 @@ class Inv_movventasmasivaModel extends Mysql
                 return "La factura {$factura} ya está registrada para el VIN {$repetida['numero_serie']}";
             }
 
+            $pedVin = $this->select(
+                "SELECT pv.idpedido, pv.idpedido_detalle, p.idcliente
+                 FROM ped_pedidos_vins pv
+                 INNER JOIN ped_pedidos p ON p.idpedido = pv.idpedido
+                 WHERE pv.id_numeros_serie = ? AND pv.estatus = 'ACTIVA'
+                 LIMIT 1",
+                [(int) $vin['id_numeros_serie']]
+            );
+            $idClienteResuelto = class_exists('Lgs_clientesSyncService')
+                ? (new Lgs_clientesSyncService($pdo))->resolverIdClientePorNombre($distribuidor)
+                : null;
+            if ($idClienteResuelto === null && !empty($pedVin['idcliente'])) {
+                $idClienteResuelto = (int) $pedVin['idcliente'];
+            }
+            $idPedidoVin = !empty($pedVin['idpedido']) ? (int) $pedVin['idpedido'] : null;
+            $idPedidoDetVin = !empty($pedVin['idpedido_detalle']) ? (int) $pedVin['idpedido_detalle'] : null;
+
             $this->insert(
                 "INSERT INTO wms_vin_facturacion
-                 (id_numeros_serie, numero_serie, distribuidor, factura, fecha_factura, estatus, origen, usuario_factura)
-                 VALUES (?, ?, ?, ?, NOW(), 1, 'MASIVO', ?)",
-                [(int) $vin['id_numeros_serie'], $vin['numero_serie'], mb_substr($distribuidor, 0, 200),
-                 mb_substr($factura, 0, 50), $usuarioid]
+                 (id_numeros_serie, numero_serie, id_cliente, id_pedido, id_pedido_detalle, distribuidor, factura, fecha_factura, estatus, origen, usuario_factura)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 1, 'MASIVO', ?)",
+                [(int) $vin['id_numeros_serie'], $vin['numero_serie'], $idClienteResuelto, $idPedidoVin, $idPedidoDetVin,
+                 mb_substr($distribuidor, 0, 200), mb_substr($factura, 0, 50), $usuarioid]
             );
 
             (new Inv_vin_historialModel())->registrar([
@@ -245,8 +264,13 @@ class Inv_movventasmasivaModel extends Mysql
             $hist = [];
             if ($distribuidor !== null) {
                 $d = mb_substr($distribuidor, 0, 200);
+                $idClienteCorr = class_exists('Lgs_clientesSyncService')
+                    ? (new Lgs_clientesSyncService($pdo))->resolverIdClientePorNombre($distribuidor)
+                    : null;
                 $sets[] = 'distribuidor = ?';
                 $vals[] = $d;
+                $sets[] = 'id_cliente = ?';
+                $vals[] = $idClienteCorr;
                 $setsMov[] = 'distribuidor = ?';
                 $valsMov[] = $d;
                 $hist[] = ['distribuidor', $bd['distribuidor'], $distribuidor];

@@ -1,14 +1,32 @@
+function esModoPreEnvioJS() {
+    return Boolean(window.LGS_ENVIOS_CONFIG && window.LGS_ENVIOS_CONFIG.modoPreEnvio);
+}
+
 function fntSwitchView(view) {
+    const secTabsWrap = document.querySelector("#tabsBandejaWrapper");
     const secGrid = document.querySelector("#view-index-envios");
     const secForm = document.querySelector("#view-form-envios");
 
     if (view === 'form') {
-        if (secGrid) secGrid.style.display = "none";
+        if (secTabsWrap) {
+            secTabsWrap.style.display = "none";
+        } else if (secGrid) {
+            secGrid.style.display = "none";
+        }
         if (secForm) secForm.style.display = "block";
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
         if (secForm) secForm.style.display = "none";
-        if (secGrid) secGrid.style.display = "block";
+        if (secTabsWrap) {
+            secTabsWrap.style.display = "block";
+        } else if (secGrid) {
+            secGrid.style.display = "block";
+        }
+        if (typeof tableEnvios !== 'undefined' && tableEnvios) {
+            setTimeout(() => {
+                try { tableEnvios.columns.adjust(); } catch (e) {}
+            }, 80);
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
@@ -21,6 +39,8 @@ function cancelFormEnvio() {
 let tableEnvios;
 
 document.addEventListener('DOMContentLoaded', function () {
+    const isPreEnvio = esModoPreEnvioJS();
+
     // Inicializar DataTable
     tableEnvios = $('#tableEnvios').DataTable({
         "aProcessing": true,
@@ -29,196 +49,195 @@ document.addEventListener('DOMContentLoaded', function () {
             "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
         },
         "ajax": {
-            "url": base_url + "/Lgs_envios/getEnvios",
+            "url": base_url + "/Lgs_envios/getEnvios" + (isPreEnvio ? "?es_preenvio=1" : ""),
             "dataSrc": ""
         },
         "columns": [
-            { 
+            {
                 "data": "folio",
+                "className": "ps-3",
                 "render": function(data, type, row) {
-                    let html = '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
-                    if (row.vins_list) {
-                        const vins = row.vins_list.split(', ');
-                        html += '<div class="mt-1">' + vins.map(v => '<span class="badge bg-soft-secondary text-secondary me-1 fs-10">' + v + '</span>').join('') + '</div>';
+                    const folio = data || 'S/F';
+                    const fechaRaw = (row && row.fecha_tentativa_envio && row.fecha_tentativa_envio !== 'null')
+                        ? String(row.fecha_tentativa_envio).replace('T', ' ').substring(0, 16)
+                        : '';
+                    if (type !== 'display') {
+                        return `${folio} ${row.id_envio || ''} ${fechaRaw} ${row.vins_list || ''}`;
                     }
-                    return html;
-                }
-            },
-            { 
-                "data": "id_estado",
-                "render": function (data, type, row) {
-                    let badge = '';
-                    switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Por Aprobar</span>'; break;
-                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>'; break;
-                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazado</span>'; break;
-                        case 5: badge = '<span class="badge fs-12" style="background-color: rgba(139, 92, 246, 0.15); color: #8B5CF6;"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-primary text-primary border border-primary fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
-                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
-                        case 8: badge = '<span class="badge bg-soft-dark text-dark fs-12"><i class="ri-check-line me-1"></i>Finalizado</span>'; break;
-                        default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
-                    }
-                    if (row && parseInt(row.is_pausado) === 1) {
-                        badge = `<div class="d-flex flex-column gap-1 align-items-start">
-                                    <span class="badge bg-danger text-white fs-11" title="Motivo: ${row.motivo_pausa || 'Pausa por Incidencia'}"><i class="ri-pause-circle-line me-1"></i>PAUSADO</span>
-                                    ${badge}
-                                 </div>`;
-                    }
-                    return badge;
-                }
-            },
-            { "data": "origen" },
-            { 
-                "data": "destino",
-                "render": function(data, type, row) {
-                    let html = '<span class="fw-medium text-dark">' + (data || 'Sin Destino') + '</span>';
-                    if (row.paradas_list) {
-                        html += '<div class="mt-1 fs-11 text-muted"><i class="ri-route-line text-info me-1"></i>Ruta: ' + row.paradas_list + '</div>';
+                    const esPreRow = isPreEnvio || (row && parseInt(row.es_preenvio) === 1) || String(folio).startsWith('PE-');
+                    const badgeCls = esPreRow ? 'bg-soft-info text-info border border-info-subtle' : 'bg-soft-primary text-primary border border-primary-subtle';
+                    let html = `<div class="d-flex align-items-center gap-1">
+                                    <span class="badge ${badgeCls} fs-12 fw-bold px-2 py-1">${folio}</span>
+                                </div>`;
+                    if (fechaRaw) {
+                        html += `<div class="text-muted fs-11 mt-1"><i class="ri-calendar-event-line me-1"></i>${fechaRaw}</div>`;
+                    } else {
+                        html += `<div class="text-muted fs-11 mt-1">Sin fecha prog.</div>`;
                     }
                     return html;
                 }
             },
             {
-                "data": "fecha_tentativa_envio",
-                "render": function (data) {
-                    if (!data || data === 'null') return '<span class="text-muted fs-11">No definida</span>';
-                    return '<span class="fs-12 text-dark fw-medium"><i class="ri-calendar-event-line text-primary me-1"></i>' + data.replace('T', ' ') + '</span>';
+                "data": "id_estado",
+                "render": function (data, type, row) {
+                    let badge = '';
+                    switch(parseInt(data)) {
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-11"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-11"><i class="ri-time-line me-1"></i>Por Aprobar</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-11"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>'; break;
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-11"><i class="ri-close-circle-line me-1"></i>Rechazado</span>'; break;
+                        case 5: badge = '<span class="badge fs-11" style="background-color: rgba(139, 92, 246, 0.15); color: #8B5CF6;"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-primary text-primary border border-primary fs-11"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        case 7: badge = '<span class="badge bg-soft-success text-success fs-11"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
+                        case 8: badge = '<span class="badge bg-soft-dark text-dark fs-11"><i class="ri-check-line me-1"></i>Finalizado</span>'; break;
+                        default: badge = '<span class="badge bg-light text-dark fs-11">Estado ' + data + '</span>'; break;
+                    }
+                    if (row && parseInt(row.is_pausado) === 1) {
+                        badge = `<div class="d-flex flex-column gap-1 align-items-start">
+                                    <span class="badge bg-danger text-white fs-10" title="Motivo: ${row.motivo_pausa || 'Pausa por Incidencia'}"><i class="ri-pause-circle-line me-1"></i>PAUSADO</span>
+                                    ${badge}
+                                 </div>`;
+                    }
+                    if (row && row.solicitud_estatus === 'PENDIENTE') {
+                        badge += `<div class="mt-1"><span class="badge bg-soft-warning text-warning border border-warning-subtle fs-10" title="En espera de autorización en Aprobaciones"><i class="ri-shield-user-line me-1"></i>Aut. Pendiente</span></div>`;
+                    } else if (row && row.solicitud_estatus === 'RECHAZADA') {
+                        badge += `<div class="mt-1"><span class="badge bg-soft-danger text-danger border border-danger-subtle fs-10" title="${(row.solicitud_obs_aprobador || 'Rechazada en Aprobaciones').replace(/"/g, '&quot;')}"><i class="ri-close-circle-line me-1"></i>Aut. Rechazada</span></div>`;
+                    }
+                    return badge;
                 }
             },
-            { 
+            {
+                "data": "origen",
+                "render": function(data, type, row) {
+                    const orig = data || 'Sin Origen';
+                    const dest = (row && row.destino) ? row.destino : 'Sin Destino';
+                    const ruta = (row && row.paradas_list) ? row.paradas_list : '';
+                    if (type !== 'display') {
+                        return `${orig} ${dest} ${ruta}`;
+                    }
+                    return `<div class="lgs-route-cell" title="${(ruta || (orig + ' -> ' + dest)).replace(/"/g, '&quot;')}">
+                                <span class="lgs-route-line fs-12 text-dark fw-semibold"><i class="ri-record-circle-line text-success me-1"></i>${orig}</span>
+                                <span class="lgs-route-line fs-12 text-muted mt-1"><i class="ri-map-pin-2-line text-warning me-1"></i>${dest}</span>
+                            </div>`;
+                }
+            },
+            {
                 "data": "total_vins",
                 "render": function(data, type, row) {
-                    if (!row.vins_list || !row.vins_list.trim()) {
-                        return '<span class="badge bg-soft-secondary text-muted fs-12">Sin VINs</span>';
+                    const raw = (row && row.vins_list) ? String(row.vins_list).trim() : '';
+                    if (type !== 'display') return raw || 'Sin VINs';
+                    if (!raw) {
+                        return '<span class="badge bg-light text-muted border fs-11">0 unidades</span>';
                     }
-                    const vins = row.vins_list.split(', ').filter(v => v.trim());
-                    let html = vins.map(v => '<span class="badge bg-primary me-1 fs-10" style="font-size:10px;">' + v + '</span>').join('');
-                    html += '<div class="text-muted fs-11 mt-1">' + vins.length + ' unidad(es)</div>';
-                    return html;
+                    const vins = raw.split(', ').filter(v => v.trim());
+                    const firstVin = vins[0] || '';
+                    const extra = vins.length > 1 ? ` <span class="badge bg-soft-primary text-primary fs-10">+${vins.length - 1}</span>` : '';
+                    return `<div title="${raw.replace(/"/g, '&quot;')}">
+                                <span class="badge bg-soft-dark text-dark font-monospace fs-11 border">${firstVin}</span>${extra}
+                                <div class="text-muted fs-11 mt-1">${vins.length} unidad(es)</div>
+                            </div>`;
                 }
             },
-            { 
+            {
                 "data": "trasladista",
-                "render": function(data) {
-                    return '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
+                "render": function(data, type, row) {
+                    const prov = data || 'Sin trasladista';
+                    const tipo = (row && row.tipo_traslado) ? row.tipo_traslado : '-';
+                    const mod  = (row && row.modalidad_calculo) ? row.modalidad_calculo : '';
+                    const mot  = (row && row.motivo) ? row.motivo : '';
+                    if (type !== 'display') return `${prov} ${tipo} ${mod} ${mot}`;
+                    const modTxt = mod === 'DIRECTO' ? ' · Directo' : (mod ? ' · Escalonado' : '');
+                    return `<div style="max-width: 190px;">
+                                <div class="fw-semibold text-dark fs-12 text-truncate" title="${prov.replace(/"/g, '&quot;')}">${prov}</div>
+                                <div class="text-muted fs-11 text-truncate" title="${(tipo + modTxt + (mot ? ' · ' + mot : '')).replace(/"/g, '&quot;')}">
+                                    <i class="ri-truck-line text-primary me-1"></i>${tipo}${modTxt}
+                                </div>
+                            </div>`;
                 }
             },
-            { 
+            {
+                "data": "km_total",
+                "render": function(data, type, row) {
+                    const kmVal = parseFloat(data || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                    const nParadas = (row && row.total_paradas) ? row.total_paradas : 1;
+                    if (type !== 'display') return kmVal;
+                    return `<span class="badge bg-soft-info text-info fs-11 fw-bold"><i class="ri-route-line me-1"></i>${kmVal} km</span>
+                            <div class="text-muted fs-11 mt-1">${nParadas} parada(s)</div>`;
+                }
+            },
+            {
                 "data": "costo_total",
                 "render": function (data, type, row) {
-                    if (data == null) return '$0.00';
-                    let formatted = '<span class="fw-bold text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
+                    const val = parseFloat(data || 0);
+                    if (type !== 'display') return val;
+                    let formatted = '<span class="fw-bold text-success fs-13">$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
                     if (row && parseInt(row.es_monto_abierto) === 1) {
                         formatted += '<span class="badge bg-soft-warning text-warning fs-10 d-block mt-1" title="' + (row.motivo_monto_abierto || 'Acuerdo Comercial') + '"><i class="ri-hand-coin-line me-1"></i>Monto Abierto</span>';
                     }
                     return formatted;
                 }
             },
-            { 
-                "data": "km_total",
-                "render": function(data, type, row) {
-                    const kmVal = parseFloat(data || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-                    const nParadas = row.total_paradas || 1;
-                    return '<span class="badge bg-soft-info text-info fs-12 fw-bold"><i class="ri-route-line me-1"></i>' + kmVal + ' km</span>' +
-                           '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
-                }
-            },
-            { 
-                "data": "tipo_traslado",
-                "render": function(data, type, row) {
-                    let html = '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
-                    if (row.modalidad_calculo) {
-                        let modBadge = (row.modalidad_calculo === 'DIRECTO')
-                            ? '<span class="badge bg-soft-info text-info fs-10 d-block mt-1" title="Directo con escalas"><i class="ri-direction-line me-1"></i>Directo</span>'
-                            : '<span class="badge bg-soft-secondary text-muted fs-10 d-block mt-1" title="Escalonado tradicional"><i class="ri-route-line me-1"></i>Escalonado</span>';
-                        html += modBadge;
-                    }
-                    return html;
-                }
-            },
-            { "data": "motivo" },
-            { "data": "id_envio" },
             {
                 "data": "id_envio",
+                "className": "text-end pe-3",
+                "orderable": false,
                 "render": function (data, type, row) {
-                    let btnReabrir = '';
-                    let estado = parseInt(row.id_estado);
-                    
-                    if (estado === 4 || estado === 2) {
-                        btnReabrir = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirEnvio(${data})" title="Reabrir / Desbloquear Envío">
-                                        <i class="ri-restart-line me-1"></i> Reabrir
-                                      </button>`;
-                    }
-                    
-                    let btnRuta = '';
-                    let btnAcomodo = '';
-                    let btnEliminar = '';
+                    const estado = parseInt(row.id_estado);
+                    const esPreRow = isPreEnvio || (row && parseInt(row.es_preenvio) === 1) || String(row.folio || '').startsWith('PE-');
+                    const btns = [];
 
-                    if (estado === 1) {
-                        btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Editar Itinerario / Ruta">
-                                    <i class="ri-edit-line me-1"></i> Ruta
-                                </button>`;
-                        btnAcomodo = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
-                                    <i class="ri-truck-line me-1"></i> Acomodo
-                                </button>`;
-                        btnEliminar = `<button class="btn btn-sm btn-soft-danger rounded-pill px-3 fw-semibold" onClick="fntDelEnvio(${data})" title="Eliminar">
-                                    <i class="ri-delete-bin-line me-1"></i> Eliminar
-                                </button>`;
-                    } else if (estado === 8) {
-                        btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Ver Itinerario / Ruta">
-                                    <i class="ri-eye-line me-1"></i> Ver Ruta
-                                </button>`;
-                        btnAcomodo = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver Detalles del Acomodo">
-                                    <i class="ri-eye-line me-1"></i> Detalles
-                                </button>`;
+                    // 1. Acción Principal: Acomodo (en borrador/finalizado) o Ver Envío (en tránsito/aprobado)
+                    if (estado === 1 || estado === 8) {
+                        btns.push(`<button type="button" class="btn btn-sm ${esPreRow ? 'btn-soft-info' : 'btn-soft-primary'} btn-table-action" onClick="fntViewEnvio(${data})" title="Asignar Madrina/Chofer y acomodar VINs">
+                                    <i class="ri-truck-line"></i> Acomodo
+                                   </button>`);
                     } else {
-                        btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Ver Itinerario / Ruta">
-                                    <i class="ri-eye-line me-1"></i> Ver Ruta
-                                </button>`;
-                        btnAcomodo = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver Detalles del Acomodo">
-                                    <i class="ri-eye-line me-1"></i> Detalles
-                                </button>`;
+                        btns.push(`<button type="button" class="btn btn-sm btn-soft-primary btn-table-action" onClick="fntViewEnvio(${data})" title="Ver detalle y seguimiento del envío">
+                                    <i class="ri-eye-line"></i> Ver Envío
+                                   </button>`);
                     }
 
-                    let btnIncidencia = '';
-                    let btnGasto = '';
-                    let btnPausa = '';
-
-                    if ([1, 2, 3, 5, 6, 7, 8].includes(estado)) {
-                        btnIncidencia = `<a href="${base_url}/Lgs_incidencias?envio=${data}" class="btn btn-sm btn-soft-danger rounded-circle p-1 me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Reportar Incidencia">
-                                            <i class="ri-alarm-warning-line"></i>
-                                         </a>`;
-                        btnGasto = `<a href="${base_url}/Lgs_gastosadicionales?envio=${data}" class="btn btn-sm btn-soft-success rounded-circle p-1 me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Registrar Gasto Adicional">
-                                        <i class="ri-money-dollar-circle-line"></i>
-                                    </a>`;
+                    // 2. En Pre-envíos: botón directo Pasar a Envío (EN-)
+                    if (esPreRow) {
+                        btns.push(`<button type="button" class="btn btn-sm btn-success btn-table-action" onClick="fntConvertirPreEnvio(${data}, '${row.folio || ''}')" title="Validar Factura/Pago/Aut. y pasar a Envío Oficial (EN-)">
+                                    <i class="ri-exchange-line"></i> Pasar a EN-
+                                   </button>`);
                     }
 
-                    if ([1, 2, 3, 5, 6].includes(estado)) {
-                        if (parseInt(row.is_pausado) === 1) {
-                            btnPausa = `<button class="btn btn-sm btn-soft-success rounded-pill px-2 py-1 fw-semibold me-1" onClick="fntReanudarEnvio(${data}, '${row.folio}')" title="Reanudar Envío (Pausado: ${row.motivo_pausa || ''})">
-                                            <i class="ri-play-circle-line me-1"></i> Reanudar
-                                        </button>`;
-                        } else {
-                            btnPausa = `<button class="btn btn-sm btn-soft-warning rounded-circle p-1 me-1 text-warning-emphasis" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" onClick="fntPausarEnvio(${data}, '${row.folio}')" title="Pausar Envío por Incidencia">
-                                            <i class="ri-pause-circle-line"></i>
-                                        </button>`;
-                        }
+                    // 3. Reanudar si está pausado
+                    if (!esPreRow && [1, 2, 3, 5, 6].includes(estado) && parseInt(row.is_pausado) === 1) {
+                        btns.push(`<button type="button" class="btn btn-sm btn-soft-success btn-table-action" onClick="fntReanudarEnvio(${data}, '${row.folio}')" title="Reanudar Envío">
+                                    <i class="ri-play-circle-line"></i> Reanudar
+                                   </button>`);
                     }
 
-                    return `<div class="text-end">
-                                ${btnReabrir}
-                                ${btnRuta}
-                                ${btnAcomodo}
-                                ${btnPausa}
-                                ${btnIncidencia}
-                                ${btnGasto}
-                                ${btnEliminar}
-                            </div>`;
+                    // 4. Reabrir si está en Por Aprobar (2) o Rechazado (4)
+                    if (estado === 2 || estado === 4) {
+                        btns.push(`<button type="button" class="btn btn-soft-warning btn-icon-lgs" onClick="fntReabrirEnvio(${data})" title="Reabrir Envío a Borrador">
+                                    <i class="ri-restart-line"></i>
+                                   </button>`);
+                    }
+
+                    // 5. Editar / Ver Ruta (icono compacto uniforme)
+                    if (estado === 1) {
+                        btns.push(`<button type="button" class="btn btn-light border text-secondary btn-icon-lgs" onClick="fntEditRuta(${data})" title="Editar Ruta y Paradas">
+                                    <i class="ri-edit-line"></i>
+                                   </button>`);
+                        btns.push(`<button type="button" class="btn btn-soft-danger btn-icon-lgs" onClick="fntDelEnvio(${data})" title="Eliminar">
+                                    <i class="ri-delete-bin-line"></i>
+                                   </button>`);
+                    } else {
+                        btns.push(`<button type="button" class="btn btn-light border text-secondary btn-icon-lgs" onClick="fntEditRuta(${data})" title="Ver Configuración de Ruta">
+                                    <i class="ri-route-line"></i>
+                                   </button>`);
+                    }
+
+                    return `<div class="d-inline-flex align-items-center justify-content-end gap-1 flex-nowrap">${btns.join('')}</div>`;
                 }
             }
         ],
-        "responsive": true,
+        "responsive": false,
+        "autoWidth": false,
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]],
@@ -420,6 +439,7 @@ function actualizarMetricasEnvios(data) {
     }
 
     if (document.getElementById('cardTotalEnvios')) document.getElementById('cardTotalEnvios').innerText = total;
+    if (document.getElementById('badgeTotalPreEnviosTab')) document.getElementById('badgeTotalPreEnviosTab').innerText = total;
     if (document.getElementById('cardEnviosCreados')) document.getElementById('cardEnviosCreados').innerText = creados;
     if (document.getElementById('cardEnviosPorAprobar')) document.getElementById('cardEnviosPorAprobar').innerText = porAprobar;
     if (document.getElementById('cardEnviosAprobados')) document.getElementById('cardEnviosAprobados').innerText = aprobados;
@@ -468,6 +488,157 @@ function getCatalogoDistribuidores() {
     return [];
 }
 
+/** Lee el catálogo estructurado de Plantas y Subalmacenes PT (wms_almacenes.pt = 1) */
+function getCatalogoPlantasWms() {
+    const el = document.getElementById('catalogoPlantasWms');
+    if (el) {
+        try {
+            const arr = JSON.parse(el.textContent);
+            if (Array.isArray(arr) && arr.length > 0) return arr;
+        } catch (e) {}
+    }
+    // Fallback derivando desde catalogoUbicaciones si no estuviera embebido catalogoPlantasWms
+    const map = {};
+    getCatalogoUbicaciones().forEach(u => {
+        if (parseInt(u.id_almacen_wms || 0, 10) > 0 && parseInt(u.almacen_pt || 0, 10) === 1) {
+            const pid = parseInt(u.id_planta_mrp || 0, 10);
+            if (!map[pid]) {
+                map[pid] = {
+                    id_planta: pid,
+                    cve_planta: u.cve_planta || (pid > 0 ? 'PL' + pid : 'PT'),
+                    nombre_planta: u.nombre_planta || (pid > 0 ? 'Planta #' + pid : 'Almacenes PT Generales'),
+                    subalmacenes: []
+                };
+            }
+            map[pid].subalmacenes.push({
+                id_ubicacion: parseInt(u.id || u.id_ubicacion, 10),
+                id_almacen_wms: parseInt(u.id_almacen_wms, 10),
+                cve_almacen: u.cve_almacen || '',
+                nombre: u.nombre || '',
+                direccion: u.direccion || '',
+                pt: 1
+            });
+        }
+    });
+    return Object.values(map);
+}
+
+/** Construye las opciones de Plantas WMS con almacenes PT */
+function buildPlantasWmsOptions(selectedPlantaId) {
+    const plantas = getCatalogoPlantasWms();
+    let html = '<option value="">Seleccione planta (WMS)...</option>';
+    plantas.forEach(p => {
+        const pid = String(p.id_planta);
+        const sel = (selectedPlantaId !== undefined && selectedPlantaId !== null && selectedPlantaId !== '' && pid === String(selectedPlantaId)) ? 'selected' : '';
+        const cnt = Array.isArray(p.subalmacenes) ? p.subalmacenes.length : 0;
+        const cve = p.cve_planta ? `${p.cve_planta} · ` : '';
+        const badgeAlm = cnt > 0 ? ` (${cnt} almacén PT)` : '';
+        html += `<option value="${escapeHtmlEnvios(pid)}" ${sel}>${escapeHtmlEnvios(cve + (p.nombre_planta || 'Planta'))}${escapeHtmlEnvios(badgeAlm)}</option>`;
+    });
+    return html;
+}
+
+/** Evita duplicar "Nombre — Nombre" cuando la dirección coincide con el nombre de la sede */
+function formatearEtiquetaUbicacion(nombre, direccion, prefijo = '') {
+    const nom = String(nombre || '').trim();
+    const dir = String(direccion || '').trim();
+    const norm = (v) => v.toLowerCase().replace(/\s+/g, ' ').trim();
+    const mostrarDir = dir !== '' && norm(dir) !== norm(nom);
+    return prefijo + nom + (mostrarDir ? ` — ${dir}` : '');
+}
+
+/** Sincroniza el select interno oculto .nodo-select-ubicacion con la ubicación elegida */
+function setUbicacionNodoHidden(card, idUbi, triggerChange = true) {
+    const selectUbi = card.querySelector('.nodo-select-ubicacion');
+    const infoSpan  = card.querySelector('.nodo-direccion-preview');
+    const legacyHint = card.querySelector('.nodo-legacy-hint');
+    if (legacyHint) legacyHint.style.display = 'none';
+
+    if (!selectUbi) return;
+
+    const valStr = idUbi ? String(idUbi) : '';
+    if (valStr && !Array.from(selectUbi.options).some(o => String(o.value) === valStr)) {
+        const ubiObj = getCatalogoUbicaciones().find(u => String(u.id || u.id_ubicacion) === valStr);
+        const opt = document.createElement('option');
+        opt.value = valStr;
+        opt.textContent = ubiObj ? ubiObj.nombre : ('Ubicación #' + valStr);
+        opt.setAttribute('data-direccion', ubiObj ? (ubiObj.direccion || '') : '');
+        opt.setAttribute('data-nombre', ubiObj ? (ubiObj.nombre || '') : '');
+        selectUbi.appendChild(opt);
+    }
+    selectUbi.value = valStr;
+
+    const optSel = selectUbi.selectedIndex >= 0 ? selectUbi.options[selectUbi.selectedIndex] : null;
+    const dir = optSel ? String(optSel.getAttribute('data-direccion') || '').trim() : '';
+    const nom = optSel ? String(optSel.getAttribute('data-nombre') || optSel.textContent || '').trim() : '';
+    const mostrarDir = dir !== '' && dir.toLowerCase().replace(/\s+/g, ' ') !== nom.toLowerCase().replace(/\s+/g, ' ');
+    if (infoSpan) {
+        infoSpan.innerHTML = valStr && mostrarDir ? `<i class="ri-map-pin-line text-danger me-1"></i>${escapeHtmlEnvios(dir)}` : '';
+    }
+
+    if (triggerChange) {
+        if (valStr) {
+            alCambiarUbicacionNodo(selectUbi);
+        } else {
+            serializarNodos();
+        }
+    }
+}
+
+/** Puebla los subalmacenes PT (wms_almacenes.pt = 1) de una planta seleccionada */
+function poblarSubalmacenesWms(card, idPlanta, selectedUbiId = '', triggerChange = true) {
+    const selSub = card.querySelector('.nodo-select-subalmacen');
+    if (!selSub) return;
+
+    if (idPlanta === undefined || idPlanta === null || String(idPlanta) === '') {
+        selSub.innerHTML = '<option value="">Primero seleccione planta...</option>';
+        selSub.disabled = true;
+        setUbicacionNodoHidden(card, '', triggerChange);
+        return;
+    }
+
+    const planta = getCatalogoPlantasWms().find(p => String(p.id_planta) === String(idPlanta));
+    const subs = planta && Array.isArray(planta.subalmacenes) ? planta.subalmacenes : [];
+    if (subs.length === 0) {
+        selSub.innerHTML = '<option value="">Sin almacén PT activo en esta planta</option>';
+        selSub.disabled = true;
+        setUbicacionNodoHidden(card, '', triggerChange);
+        return;
+    }
+
+    let chosenId = selectedUbiId ? String(selectedUbiId) : '';
+    if (!chosenId && subs.length === 1) {
+        chosenId = String(subs[0].id_ubicacion);
+    }
+
+    let opts = subs.length > 1 ? '<option value="">Seleccione subalmacén PT...</option>' : '';
+    subs.forEach(s => {
+        const sid = String(s.id_ubicacion);
+        const sel = (chosenId && sid === chosenId) ? 'selected' : '';
+        const cve = s.cve_almacen ? `${s.cve_almacen} · ` : '';
+        const label = formatearEtiquetaUbicacion(s.nombre || '', s.direccion || '', cve);
+        opts += `<option value="${escapeHtmlEnvios(sid)}" data-direccion="${escapeHtmlEnvios(s.direccion || '')}" data-nombre="${escapeHtmlEnvios(s.nombre || '')}" ${sel}>${escapeHtmlEnvios(label)}</option>`;
+    });
+    selSub.innerHTML = opts;
+    selSub.disabled = false;
+
+    setUbicacionNodoHidden(card, chosenId, triggerChange);
+}
+
+/** Evento al cambiar la planta WMS en un nodo */
+function onPlantaWmsChange(selPlanta) {
+    const card = selPlanta.closest('.nodo-item');
+    if (!card) return;
+    poblarSubalmacenesWms(card, selPlanta.value, '', true);
+}
+
+/** Evento al cambiar el subalmacén PT en un nodo */
+function onSubalmacenWmsChange(selSub) {
+    const card = selSub.closest('.nodo-item');
+    if (!card) return;
+    setUbicacionNodoHidden(card, selSub.value || '', true);
+}
+
 /** Construye el HTML de options agrupadas para el select de ubicación de cualquier nodo */
 function buildUbicacionOptions(selectedId) {
     const ubicaciones = getCatalogoUbicaciones();
@@ -503,9 +674,9 @@ function buildUbicacionOptions(selectedId) {
             html += `<optgroup label="${catName}">`;
             grupos[catName].forEach(u => {
                 const sel = (String(u.id || u.id_ubicacion) === String(selectedId)) ? 'selected' : '';
-                const dir = u.direccion ? ` — ${u.direccion}` : '';
                 const uId = u.id || u.id_ubicacion;
-                html += `<option value="${uId}" data-direccion="${u.direccion || ''}" data-nombre="${u.nombre}" ${sel}>${u.nombre}${dir}</option>`;
+                const label = formatearEtiquetaUbicacion(u.nombre || '', u.direccion || '');
+                html += `<option value="${uId}" data-direccion="${escapeHtmlEnvios(u.direccion || '')}" data-nombre="${escapeHtmlEnvios(u.nombre || '')}" ${sel}>${escapeHtmlEnvios(label)}</option>`;
             });
             html += `</optgroup>`;
         }
@@ -549,29 +720,40 @@ function onDistribuidorChange(selectDistribuidor) {
         return;
     }
 
-    // Buscar sedes del distribuidor en el catálogo local de ubicaciones
+    // Buscar sedes del distribuidor o cliente en el catálogo local de ubicaciones
+    const distribuidores = getCatalogoDistribuidores();
+    const distObj = distribuidores.find(d => String(d.id_distribuidor) === String(idDistribuidor));
+    const distClienteId = distObj && distObj.id_cliente ? String(distObj.id_cliente) : '';
     const ubicaciones = getCatalogoUbicaciones();
-    const sedes = ubicaciones.filter(u => String(u.id_distribuidor) === String(idDistribuidor) && (u.activo === undefined || u.activo == 1));
+    const sedes = ubicaciones.filter(u =>
+        (u.activo === undefined || u.activo == 1) && (
+            String(u.id_distribuidor) === String(idDistribuidor)
+            || (distClienteId !== '' && String(u.id_cliente || '') === distClienteId)
+        )
+    );
 
     if (selectSede) {
         if (sedes.length === 1) {
             // Auto-seleccionar la única sede
-            selectSede.innerHTML = `<option value="${sedes[0].id || sedes[0].id_ubicacion}" selected>${sedes[0].nombre}${sedes[0].direccion ? ' — ' + sedes[0].direccion : ''}</option>`;
+            const s0 = sedes[0];
+            const s0Id = s0.id || s0.id_ubicacion;
+            const s0Label = formatearEtiquetaUbicacion(s0.nombre || '', s0.direccion || '');
+            selectSede.innerHTML = `<option value="${escapeHtmlEnvios(String(s0Id))}" data-direccion="${escapeHtmlEnvios(s0.direccion || '')}" data-nombre="${escapeHtmlEnvios(s0.nombre || '')}" selected>${escapeHtmlEnvios(s0Label)}</option>`;
             selectSede.disabled = false;
             if (!isAbierto) {
-                if (selectUbi) selectUbi.value = sedes[0].id || sedes[0].id_ubicacion;
-                if (infoSpan) infoSpan.innerHTML = sedes[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${sedes[0].direccion}` : '';
+                setUbicacionNodoHidden(card, s0Id, false);
+                actualizarOpcionesOrigenReferencia();
             }
         } else if (sedes.length > 1) {
             let opts = '<option value="">Seleccione sede...</option>';
             sedes.forEach(s => {
-                const dir = s.direccion ? ` — ${s.direccion}` : '';
-                opts += `<option value="${s.id || s.id_ubicacion}" data-direccion="${s.direccion || ''}">${s.nombre}${dir}</option>`;
+                const sLabel = formatearEtiquetaUbicacion(s.nombre || '', s.direccion || '');
+                opts += `<option value="${escapeHtmlEnvios(String(s.id || s.id_ubicacion))}" data-direccion="${escapeHtmlEnvios(s.direccion || '')}" data-nombre="${escapeHtmlEnvios(s.nombre || '')}">${escapeHtmlEnvios(sLabel)}</option>`;
             });
             selectSede.innerHTML = opts;
             selectSede.disabled = false;
             if (!isAbierto) {
-                if (selectUbi) selectUbi.value = '';
+                setUbicacionNodoHidden(card, '', false);
                 if (infoSpan) infoSpan.innerHTML = `<span class="text-info"><i class="ri-building-2-line me-1"></i>${sedes.length} sedes disponibles</span>`;
             }
         } else {
@@ -588,15 +770,15 @@ function onDistribuidorChange(selectDistribuidor) {
                         if (res.status && res.data && res.data.length > 0) {
                             let opts = res.data.length === 1 ? '' : '<option value="">Seleccione sede...</option>';
                             res.data.forEach(s => {
-                                const dir = s.direccion ? ` — ${s.direccion}` : '';
+                                const sLabel = formatearEtiquetaUbicacion(s.nombre || '', s.direccion || '');
                                 const sel = res.data.length === 1 ? 'selected' : '';
-                                opts += `<option value="${s.id}" data-direccion="${s.direccion || ''}" ${sel}>${s.nombre}${dir}</option>`;
+                                opts += `<option value="${escapeHtmlEnvios(String(s.id))}" data-direccion="${escapeHtmlEnvios(s.direccion || '')}" data-nombre="${escapeHtmlEnvios(s.nombre || '')}" ${sel}>${escapeHtmlEnvios(sLabel)}</option>`;
                             });
                             selectSede.innerHTML = opts;
                             selectSede.disabled = false;
                             if (!isAbierto && res.data.length === 1) {
-                                if (selectUbi) selectUbi.value = res.data[0].id;
-                                if (infoSpan) infoSpan.innerHTML = res.data[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${res.data[0].direccion}` : '';
+                                setUbicacionNodoHidden(card, res.data[0].id, true);
+                                actualizarOpcionesOrigenReferencia();
                             }
                         } else {
                             selectSede.innerHTML = '<option value="">Sin sedes registradas</option>';
@@ -617,22 +799,7 @@ function onDistribuidorChange(selectDistribuidor) {
 function onSedeChange(selectSede) {
     const card = selectSede.closest('.nodo-item');
     if (!card) return;
-    const selectUbi = card.querySelector('.nodo-select-ubicacion');
-    const infoSpan = card.querySelector('.nodo-direccion-preview');
-    const optSelected = selectSede.selectedIndex >= 0 ? selectSede.options[selectSede.selectedIndex] : null;
-
-    if (selectUbi) selectUbi.value = selectSede.value || '';
-    if (infoSpan) {
-        const dir = optSelected ? optSelected.getAttribute('data-direccion') : '';
-        infoSpan.innerHTML = dir ? `<i class="ri-map-pin-line text-danger me-1"></i>${dir}` : '';
-    }
-
-    // Disparar la misma validación que el select de ubicación original
-    if (selectUbi && selectUbi.value) {
-        alCambiarUbicacionNodo(selectUbi);
-    } else {
-        serializarNodos();
-    }
+    setUbicacionNodoHidden(card, selectSede.value || '', true);
 }
 
 /** Formatea una fecha/hora para inputs de tipo datetime-local (YYYY-MM-DDTHH:mm) */
@@ -658,9 +825,13 @@ function getOrigenesDisponibles() {
         const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
         if (esPrimero || isCarga) {
             const selUbi = card.querySelector('.nodo-select-ubicacion');
+            const inpLibre = card.querySelector('.nodo-nombre-libre');
+            const esAbierto = card.getAttribute('data-fuente-nodo') === 'abierto' || card.getAttribute('data-destino-abierto') === '1';
             let nombre = 'Punto ' + (idx + 1);
             let ubiId = selUbi ? selUbi.value : '';
-            if (selUbi && selUbi.selectedIndex >= 0 && selUbi.value) {
+            if (esAbierto && inpLibre && inpLibre.value.trim()) {
+                nombre = 'Punto ' + (idx + 1) + ' (' + inpLibre.value.trim() + ')';
+            } else if (selUbi && selUbi.selectedIndex >= 0 && selUbi.value) {
                 nombre = 'Punto ' + (idx + 1) + ' (' + selUbi.options[selUbi.selectedIndex].text.split('—')[0].trim() + ')';
             }
             const idNodo = card.getAttribute('data-id-nodo-bd') || String(idx);
@@ -938,132 +1109,157 @@ function agregarNodoRuta(data, isCarga = false) {
         div.setAttribute('data-destino-abierto', '1');
     }
 
-    // Determinar si la ubicación seleccionada es un distribuidor (para preseleccionar la cascada)
+    // Determinar si la ubicación seleccionada es un distribuidor/cliente o una planta/almacén PT (WMS)
     let selDistribuidorId = '';
     if (data && data.id_distribuidor) {
         selDistribuidorId = data.id_distribuidor;
-    } else if (selUbicacionId && !esOrigen && !isCargaVal) {
+    } else if (data && data.id_cliente) {
+        const distObjCli = getCatalogoDistribuidores().find(d => String(d.id_cliente || '') === String(data.id_cliente));
+        if (distObjCli) {
+            selDistribuidorId = distObjCli.id_distribuidor;
+        }
+    } else if (selUbicacionId) {
         const ubicaciones = getCatalogoUbicaciones();
         const ubiSel = ubicaciones.find(u => String(u.id || u.id_ubicacion) === String(selUbicacionId));
         if (ubiSel && ubiSel.id_distribuidor) {
             selDistribuidorId = ubiSel.id_distribuidor;
+        } else if (ubiSel && ubiSel.id_cliente) {
+            const distObjCli = getCatalogoDistribuidores().find(d => String(d.id_cliente || '') === String(ubiSel.id_cliente));
+            if (distObjCli) selDistribuidorId = distObjCli.id_distribuidor;
         }
     }
 
-    // Construir HTML del bloque de ubicación según tipo de nodo
-    let htmlUbicacion = '';
-    if (!esOrigen && !isCargaVal) {
-        // NODOS DE DESCARGA: Switch Catálogo vs Destino Abierto (fuera de catálogo)
-        htmlUbicacion = `
-            <div class="d-flex align-items-center gap-3 mb-1">
-                <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-2-line text-warning me-1"></i>Punto de Descarga</span>
-                <div class="form-check form-switch form-check-inline m-0">
-                    <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
-                    <label class="form-check-label fs-11 text-primary fw-medium" for="check_abierto_${_nodoCounter}" style="cursor:pointer;" title="Permite ingresar un destino fuera de catálogo con KM manuales">
-                        <i class="ri-edit-line me-1"></i>Destino abierto
-                    </label>
-                </div>
-            </div>
-            <div class="row g-2 mb-1">
-                <!-- Columna Izquierda: Distribuidor Facturado (Siempre visible e informativo) -->
-                <div class="col-md-5">
-                    <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                        <i class="ri-file-text-line text-primary me-1"></i>Distribuidor Facturado <span class="badge bg-soft-primary text-primary fs-10 fw-semibold ms-1">Facturación</span>
-                    </label>
-                    <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)" title="Distribuidor con quien está facturada la unidad">
-                        ${buildDistribuidorOptions(selDistribuidorId)}
-                    </select>
-                    <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-info"></i>Entidad con quien se facturó el pedido.</small>
-                </div>
-                <!-- Columna Derecha: Sede de Catálogo (si no es abierto) o Destino Real de Entrega (si es abierto) -->
-                <div class="col-md-7">
-                    <!-- Modo Catálogo: Sede -->
-                    <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
-                        <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-store-2-line text-warning me-1"></i>Sede / Concesionario de Catálogo</label>
-                        <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
-                            <option value="">Primero seleccione distribuidor</option>
-                        </select>
-                        <details class="mt-1">
-                            <summary class="fs-10 text-muted" style="cursor:pointer;"><i class="ri-arrow-down-s-line me-1"></i>Selección directa (sin distribuidor)</summary>
-                            <select class="form-select form-select-sm nodo-select-ubicacion mt-1" onchange="alCambiarUbicacionNodo(this)">
-                                ${buildUbicacionOptions(selUbicacionId)}
-                            </select>
-                        </details>
-                    </div>
-                    <!-- Modo Abierto: Destino Real de Entrega / Dirección física -->
-                    <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
-                        <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                            <i class="ri-map-pin-user-line text-danger me-1"></i>Destino Real de Entrega / Dónde va físicamente <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
-                            value="${escapeHtmlEnvios(nombreLibre)}" 
-                            placeholder="Ej. Bodega Particular El Roble, Sucursal Tlalnepantla, Carr. México-Puebla Km 45..." 
-                            oninput="alCambiarNombreLibreNodo(this)">
-                        <small class="text-muted fs-10 d-block mt-1"><i class="ri-truck-line me-1 text-success"></i>Facturado al distribuidor de la izquierda; destino físico real donde se entrega la unidad.</small>
-                    </div>
-                </div>
-            </div>`;
-    } else if (isCargaVal && !esOrigen) {
-        // NODOS DE CARGA ADICIONAL: Switch Catálogo vs Carga Abierta (ej. Expo, evento, patio temporal)
-        htmlUbicacion = `
-            <div class="d-flex align-items-center gap-3 mb-1">
-                <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-add-line text-primary me-1"></i>Punto de Carga</span>
-                <div class="form-check form-switch form-check-inline m-0">
-                    <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
-                    <label class="form-check-label fs-11 text-primary fw-medium" for="check_abierto_${_nodoCounter}" style="cursor:pointer;" title="Permite ingresar un punto de recolección fuera de catálogo (ej. Expo, evento) con KM manuales">
-                        <i class="ri-edit-line me-1"></i>Carga abierta
-                    </label>
-                </div>
-            </div>
-            <!-- Bloque Catálogo -->
-            <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
-                <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
-                <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
-                    ${buildUbicacionOptions(selUbicacionId)}
-                </select>
-            </div>
-            <!-- Bloque Abierto -->
-            <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
-                <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                    <i class="ri-map-pin-user-line text-danger me-1"></i>Nombre / Dirección de Recolección Libre <span class="text-danger">*</span>
-                </label>
-                <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
-                    value="${escapeHtmlEnvios(nombreLibre)}" 
-                    placeholder="Ej. Expo Transporte Guadalajara, Stand D-12 / Patio Temporal" 
-                    oninput="alCambiarNombreLibreNodo(this)">
-                <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto de recolección fuera de catálogo. Se calculará el costo usando los KM capturados sin registrarlo en la memoria general.</small>
-            </div>`;
-    } else {
-        // PUNTO 1 (PUNTO DE PARTIDA / ORIGEN): Switch Catálogo vs Origen Abierto
-        htmlUbicacion = `
-            <div class="d-flex align-items-center gap-3 mb-1">
-                <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-user-line text-success me-1"></i>Punto de Partida / Carga</span>
-                <div class="form-check form-switch form-check-inline m-0">
-                    <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
-                    <label class="form-check-label fs-11 text-primary fw-medium" for="check_abierto_${_nodoCounter}" style="cursor:pointer;" title="Permite ingresar un punto de partida fuera de catálogo (ej. Expo, evento)">
-                        <i class="ri-edit-line me-1"></i>Origen abierto
-                    </label>
-                </div>
-            </div>
-            <!-- Bloque Catálogo -->
-            <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
-                <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
-                <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
-                    ${buildUbicacionOptions(selUbicacionId)}
-                </select>
-            </div>
-            <!-- Bloque Abierto -->
-            <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
-                <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                    <i class="ri-map-pin-user-line text-danger me-1"></i>Nombre / Dirección de Salida Libre <span class="text-danger">*</span>
-                </label>
-                <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
-                    value="${escapeHtmlEnvios(nombreLibre)}" 
-                    placeholder="Ej. Expo Transporte Guadalajara / Patio Temporal" 
-                    oninput="alCambiarNombreLibreNodo(this)">
-                <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto de salida fuera de catálogo. El tramo hacia el siguiente punto usará KM manuales sin grabarlo en la memoria general.</small>
-            </div>`;
+    let selPlantaWmsId = '';
+    let matchSubalmacenWms = false;
+    if (selUbicacionId) {
+        const plantasWms = getCatalogoPlantasWms();
+        for (const pWms of plantasWms) {
+            const subMatch = (pWms.subalmacenes || []).find(s => String(s.id_ubicacion) === String(selUbicacionId)
+                || (data && data.id_almacen_wms && String(s.id_almacen_wms) === String(data.id_almacen_wms)));
+            if (subMatch) {
+                selPlantaWmsId = String(pWms.id_planta);
+                matchSubalmacenWms = true;
+                break;
+            }
+        }
     }
+
+    let fuenteInicial = (esOrigen || isCargaVal) ? 'wms' : 'cli';
+    if (esAbiertoInicial) {
+        fuenteInicial = 'abierto';
+    } else if (matchSubalmacenWms) {
+        fuenteInicial = 'wms';
+    } else if (selDistribuidorId) {
+        fuenteInicial = 'cli';
+    }
+
+    const ubiHistorica = (selUbicacionId && !esAbiertoInicial && !matchSubalmacenWms && !selDistribuidorId)
+        ? ((data && data.nombre) || ((getCatalogoUbicaciones().find(u => String(u.id || u.id_ubicacion) === String(selUbicacionId)) || {}).nombre) || ('Ubicación #' + selUbicacionId))
+        : '';
+
+    div.setAttribute('data-fuente-nodo', fuenteInicial);
+
+    const placeholderAbierto = esOrigen
+        ? 'Ej. Expo Transporte Guadalajara / Patio Temporal'
+        : (isCargaVal
+            ? 'Ej. Expo Transporte Guadalajara, Stand D-12 / Patio Temporal'
+            : 'Ej. Bodega Particular El Roble, Sucursal Tlalnepantla, Carr. México-Puebla Km 45...');
+    const lblAbierto = esOrigen
+        ? 'Nombre / Dirección de Salida Libre'
+        : (isCargaVal ? 'Nombre / Dirección de Recolección Libre' : 'Destino Real de Entrega / Dónde va físicamente');
+    const hintAbierto = (!esOrigen && !isCargaVal)
+        ? '<i class="ri-truck-line me-1 text-success"></i>Facturado al distribuidor de la izquierda (opcional); destino físico real donde se entrega la unidad.'
+        : '<i class="ri-information-line me-1 text-primary"></i>Punto fuera de catálogo. Se calculará usando KM manuales sin grabarlo en la memoria general.';
+    const tituloCabeceraUbi = esOrigen
+        ? '<i class="ri-map-pin-user-line text-success me-1"></i>Origen / Carga'
+        : (isCargaVal
+            ? '<i class="ri-map-pin-add-line text-primary me-1"></i>Punto de Carga'
+            : '<i class="ri-map-pin-2-line text-warning me-1"></i>Punto de Descarga');
+
+    const clsBtnWms = fuenteInicial === 'wms' ? 'btn-primary text-white active' : 'btn-outline-secondary';
+    const clsBtnCli = fuenteInicial === 'cli' ? 'btn-info text-white active' : 'btn-outline-secondary';
+    const clsBtnAbr = fuenteInicial === 'abierto' ? 'btn-warning text-dark active' : 'btn-outline-secondary';
+
+    const showWms = fuenteInicial === 'wms';
+    const showCliDist = fuenteInicial === 'cli' || (fuenteInicial === 'abierto' && !esOrigen && !isCargaVal);
+    const showCliSede = fuenteInicial === 'cli';
+    const showAbr = fuenteInicial === 'abierto';
+    const colAbr = (!esOrigen && !isCargaVal) ? 'col-md-7' : 'col-12';
+    const lblDist = (!esOrigen && !isCargaVal)
+        ? '<i class="ri-file-text-line text-primary me-1"></i>Cliente / Distribuidor <span class="badge bg-soft-primary text-primary fs-10 fw-semibold ms-1">CLI</span>'
+        : '<i class="ri-building-2-line text-primary me-1"></i>Cliente / Distribuidor <span class="badge bg-soft-primary text-primary fs-10 fw-semibold ms-1">CLI</span>';
+    const lblSede = (!esOrigen && !isCargaVal)
+        ? '<i class="ri-store-2-line text-warning me-1"></i>Sede / Dirección de Entrega <span class="text-danger">*</span>'
+        : '<i class="ri-store-2-line text-primary me-1"></i>Sede / Sucursal de Recolección <span class="text-danger">*</span>';
+
+    const htmlUbicacion = `
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <span class="fs-11 text-muted fw-bold">${tituloCabeceraUbi}</span>
+            <div class="btn-group btn-group-sm nodo-fuente-tabs" role="group" aria-label="Fuente de ubicación">
+                <button type="button" class="btn py-0 px-2 fs-11 ${clsBtnWms}" data-fuente="wms" onclick="setFuenteNodo(this, 'wms')" title="Plantas MRP y Almacenes de Producto Terminado (pt = 1)">
+                    <i class="ri-building-4-line me-1"></i>Planta / Almacén PT
+                </button>
+                <button type="button" class="btn py-0 px-2 fs-11 ${clsBtnCli}" data-fuente="cli" onclick="setFuenteNodo(this, 'cli')" title="Clientes / Distribuidores y sus Sedes">
+                    <i class="ri-store-2-line me-1"></i>Cliente / Distribuidor
+                </button>
+                <button type="button" class="btn py-0 px-2 fs-11 ${clsBtnAbr}" data-fuente="abierto" onclick="setFuenteNodo(this, 'abierto')" title="Ubicación fuera de catálogo con KM manuales">
+                    <i class="ri-edit-line me-1"></i>Abierto
+                </button>
+            </div>
+            <input type="checkbox" class="d-none nodo-check-abierto" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
+        </div>
+
+        <!-- Bloque WMS: Planta -> Subalmacén PT -->
+        <div class="row g-2 mb-1 nodo-bloque-wms" style="${showWms ? '' : 'display:none;'}">
+            <div class="col-md-5">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-building-4-line text-success me-1"></i>Planta (MRP / WMS) <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm nodo-select-planta" onchange="onPlantaWmsChange(this)">
+                    ${buildPlantasWmsOptions(selPlantaWmsId)}
+                </select>
+            </div>
+            <div class="col-md-7">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-archive-drawer-line text-success me-1"></i>Subalmacén PT (<code>pt = 1</code>) <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm nodo-select-subalmacen" onchange="onSubalmacenWmsChange(this)" ${selPlantaWmsId ? '' : 'disabled'}>
+                    <option value="">Primero seleccione planta...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Bloque CLI / Abierto compartido para Cliente -> Sede -->
+        <div class="row g-2 mb-1 nodo-bloque-cli-row" style="${(showCliDist || showCliSede || showAbr) ? '' : 'display:none;'}">
+            <div class="col-md-5 nodo-bloque-cli-dist" style="${showCliDist ? '' : 'display:none;'}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">${lblDist}</label>
+                <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
+                    ${buildDistribuidorOptions(selDistribuidorId)}
+                </select>
+            </div>
+            <div class="col-md-7 nodo-bloque-cli-sede" style="${showCliSede ? '' : 'display:none;'}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">${lblSede}</label>
+                <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
+                    <option value="">Primero seleccione distribuidor</option>
+                </select>
+            </div>
+            <div class="${colAbr} nodo-bloque-abierto" style="${showAbr ? '' : 'display:none;'}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-map-pin-user-line text-danger me-1"></i>${lblAbierto} <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-sm nodo-nombre-libre"
+                    value="${escapeHtmlEnvios(nombreLibre)}"
+                    placeholder="${placeholderAbierto}"
+                    oninput="alCambiarNombreLibreNodo(this)">
+                <small class="text-muted fs-10 d-block mt-1">${hintAbierto}</small>
+            </div>
+        </div>
+
+        <!-- Select oculto de compatibilidad para id_ubicacion y envíos históricos -->
+        <select class="form-select form-select-sm nodo-select-ubicacion d-none" onchange="alCambiarUbicacionNodo(this)">
+            ${buildUbicacionOptions(selUbicacionId)}
+        </select>
+        ${ubiHistorica ? `<div class="alert alert-light border py-1 px-2 mt-1 mb-0 fs-10 text-muted nodo-legacy-hint"><i class="ri-history-line me-1 text-info"></i>Ubicación histórica conservada: <strong>${escapeHtmlEnvios(ubiHistorica)}</strong> (puede elegir Planta/Almacén PT o Cliente para actualizarla).</div>` : ''}`;
 
     div.innerHTML = `
         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -1146,17 +1342,27 @@ function agregarNodoRuta(data, isCarga = false) {
         cont.appendChild(div);
     }
 
-    if (selDistribuidorId) {
+    if (fuenteInicial === 'wms' && selPlantaWmsId) {
+        const selPlanta = div.querySelector('.nodo-select-planta');
+        if (selPlanta) {
+            selPlanta.value = selPlantaWmsId;
+            poblarSubalmacenesWms(div, selPlantaWmsId, selUbicacionId, false);
+        }
+    } else if (selDistribuidorId && (fuenteInicial === 'cli' || fuenteInicial === 'abierto')) {
         const selDist = div.querySelector('.nodo-select-distribuidor');
         if (selDist) {
             selDist.value = String(selDistribuidorId);
             onDistribuidorChange(selDist);
             const selSede = div.querySelector('.nodo-select-sede');
-            if (selSede && selUbicacionId) {
+            if (selSede && selUbicacionId && fuenteInicial === 'cli') {
                 selSede.value = selUbicacionId;
                 onSedeChange(selSede);
             }
         }
+    }
+
+    if (selUbicacionId && !esAbiertoInicial) {
+        setUbicacionNodoHidden(div, selUbicacionId, false);
     }
 
     if (!data) {
@@ -1226,6 +1432,10 @@ function alCambiarUbicacionNodo(selObj) {
                 icon: "warning"
             });
             selObj.value = "";
+            const subSel = card.querySelector('.nodo-select-subalmacen');
+            const sedeSel = card.querySelector('.nodo-select-sede');
+            if (subSel && card.getAttribute('data-fuente-nodo') === 'wms') subSel.value = "";
+            if (sedeSel && card.getAttribute('data-fuente-nodo') === 'cli') sedeSel.value = "";
             if (infoSpan) infoSpan.innerHTML = "";
             serializarNodos();
             return;
@@ -1241,13 +1451,126 @@ function alCambiarUbicacionNodo(selObj) {
                 icon: "warning"
             });
             selObj.value = "";
+            const subSel = card.querySelector('.nodo-select-subalmacen');
+            const sedeSel = card.querySelector('.nodo-select-sede');
+            if (subSel && card.getAttribute('data-fuente-nodo') === 'wms') subSel.value = "";
+            if (sedeSel && card.getAttribute('data-fuente-nodo') === 'cli') sedeSel.value = "";
             if (infoSpan) infoSpan.innerHTML = "";
             serializarNodos();
             return;
         }
     }
 
+    actualizarOpcionesOrigenReferencia();
     serializarNodos();
+    verificarYCalcularRuta();
+}
+
+/** Cambia la fuente de ubicación de cualquier nodo entre WMS (Planta->Subalmacén PT), CLI (Cliente->Sede) o Abierto */
+function setFuenteNodo(el, fuente) {
+    const card = el.closest('.nodo-item');
+    if (!card) return;
+    const prevFuente = card.getAttribute('data-fuente-nodo') || '';
+    if (prevFuente === fuente) return;
+
+    const cont = document.getElementById('contenedor-nodos-ruta');
+    const items = cont ? Array.from(cont.querySelectorAll('.nodo-item')) : [];
+    const idx = items.indexOf(card);
+    const esOrigen = (idx === 0);
+    const isCargaVal = card.getAttribute('data-tipo-nodo') === 'carga';
+
+    card.setAttribute('data-fuente-nodo', fuente);
+
+    // Actualizar apariencia de pestañas
+    card.querySelectorAll('.nodo-fuente-tabs button').forEach(btn => {
+        const bf = btn.getAttribute('data-fuente');
+        btn.classList.remove('btn-primary', 'btn-info', 'btn-warning', 'btn-outline-secondary', 'text-white', 'text-dark', 'active');
+        if (bf === fuente) {
+            if (bf === 'wms') btn.classList.add('btn-primary', 'text-white', 'active');
+            else if (bf === 'cli') btn.classList.add('btn-info', 'text-white', 'active');
+            else btn.classList.add('btn-warning', 'text-dark', 'active');
+        } else {
+            btn.classList.add('btn-outline-secondary');
+        }
+    });
+
+    const bloqueWms    = card.querySelector('.nodo-bloque-wms');
+    const rowCli       = card.querySelector('.nodo-bloque-cli-row');
+    const colCliDist   = card.querySelector('.nodo-bloque-cli-dist');
+    const colCliSede   = card.querySelector('.nodo-bloque-cli-sede');
+    const colAbr       = card.querySelector('.nodo-bloque-abierto');
+    const chkAbierto   = card.querySelector('.nodo-check-abierto');
+    const inpLibre     = card.querySelector('.nodo-nombre-libre');
+    const selPlanta    = card.querySelector('.nodo-select-planta');
+    const selSub       = card.querySelector('.nodo-select-subalmacen');
+    const selDist      = card.querySelector('.nodo-select-distribuidor');
+    const selSede      = card.querySelector('.nodo-select-sede');
+    const inpKm        = card.querySelector('.nodo-km-tramo');
+    const badgeKm      = card.querySelector('.nodo-memoria-badge');
+
+    const showWms     = (fuente === 'wms');
+    const showCliDist = (fuente === 'cli') || (fuente === 'abierto' && !esOrigen && !isCargaVal);
+    const showCliSede = (fuente === 'cli');
+    const showAbr     = (fuente === 'abierto');
+
+    if (bloqueWms) bloqueWms.style.display = showWms ? '' : 'none';
+    if (rowCli)    rowCli.style.display = (showCliDist || showCliSede || showAbr) ? '' : 'none';
+    if (colCliDist) colCliDist.style.display = showCliDist ? '' : 'none';
+    if (colCliSede) colCliSede.style.display = showCliSede ? '' : 'none';
+    if (colAbr) {
+        colAbr.className = `${(!esOrigen && !isCargaVal) ? 'col-md-7' : 'col-12'} nodo-bloque-abierto`;
+        colAbr.style.display = showAbr ? '' : 'none';
+    }
+
+    if (fuente === 'abierto') {
+        card.setAttribute('data-destino-abierto', '1');
+        if (chkAbierto) chkAbierto.checked = true;
+        setUbicacionNodoHidden(card, '', false);
+        if (inpKm) inpKm.placeholder = 'KM manual';
+        if (badgeKm) badgeKm.innerHTML = '<span class="text-warning"><i class="ri-pencil-line me-1"></i>Manual (Solo este envío)</span>';
+        if (inpLibre) inpLibre.focus();
+    } else {
+        card.removeAttribute('data-destino-abierto');
+        if (chkAbierto) chkAbierto.checked = false;
+        if (inpLibre) inpLibre.value = '';
+        if (prevFuente === 'abierto' && inpKm) {
+            inpKm.placeholder = '0.0';
+            inpKm.value = '';
+        }
+        if (badgeKm) badgeKm.innerHTML = '<i class="ri-history-line me-1"></i>Memoria';
+
+        if (fuente === 'wms') {
+            if (selDist) selDist.value = '';
+            if (selSede) {
+                selSede.innerHTML = '<option value="">Primero seleccione distribuidor</option>';
+                selSede.disabled = true;
+            }
+            if (selPlanta && selPlanta.value) {
+                poblarSubalmacenesWms(card, selPlanta.value, '', false);
+            } else {
+                if (selSub) {
+                    selSub.innerHTML = '<option value="">Primero seleccione planta...</option>';
+                    selSub.disabled = true;
+                }
+                setUbicacionNodoHidden(card, '', false);
+            }
+        } else {
+            if (selPlanta) selPlanta.value = '';
+            if (selSub) {
+                selSub.innerHTML = '<option value="">Primero seleccione planta...</option>';
+                selSub.disabled = true;
+            }
+            if (selDist && selDist.value) {
+                onDistribuidorChange(selDist);
+            } else {
+                setUbicacionNodoHidden(card, '', false);
+            }
+        }
+    }
+
+    actualizarOpcionesOrigenReferencia();
+    serializarNodos();
+    recalcularKmTotalVisual();
     verificarYCalcularRuta();
 }
 
@@ -1255,54 +1578,15 @@ function alCambiarUbicacionNodo(selObj) {
 function toggleNodoDestinoAbierto(chk) {
     const card = chk.closest('.nodo-item');
     if (!card) return;
-    const esAbierto = chk.checked;
-    const bloqueCat = card.querySelector('.nodo-bloque-catalogo');
-    const bloqueAbierto = card.querySelector('.nodo-bloque-abierto');
-    const inpLibre = card.querySelector('.nodo-nombre-libre');
-    const selDist = card.querySelector('.nodo-select-distribuidor');
-    const selSede = card.querySelector('.nodo-select-sede');
-    const selUbi = card.querySelector('.nodo-select-ubicacion');
-    const inpKm = card.querySelector('.nodo-km-tramo');
-    const badgeKm = card.querySelector('.nodo-memoria-badge');
-    const infoSpan = card.querySelector('.nodo-direccion-preview');
-
-    if (esAbierto) {
-        card.setAttribute('data-destino-abierto', '1');
-        if (bloqueCat) bloqueCat.style.display = 'none';
-        if (bloqueAbierto) bloqueAbierto.style.display = '';
-        if (infoSpan) infoSpan.innerHTML = '';
-        // NO limpiamos selDist.value para conservar el distribuidor a la izquierda como referencia
-        if (selUbi) selUbi.value = '';
-
-        if (inpKm) {
-            inpKm.placeholder = 'KM manual';
-        }
-        if (badgeKm) {
-            badgeKm.innerHTML = '<span class="text-warning"><i class="ri-pencil-line me-1"></i>Manual (Solo este envío)</span>';
-        }
-        if (inpLibre) {
-            inpLibre.focus();
-        }
+    if (chk.checked) {
+        setFuenteNodo(chk, 'abierto');
     } else {
-        card.removeAttribute('data-destino-abierto');
-        if (bloqueAbierto) bloqueAbierto.style.display = 'none';
-        if (bloqueCat) bloqueCat.style.display = '';
-        if (inpLibre) inpLibre.value = '';
-        if (inpKm) {
-            inpKm.placeholder = '0.0';
-            inpKm.value = '';
-        }
-        if (badgeKm) {
-            badgeKm.innerHTML = '<i class="ri-history-line me-1"></i>Memoria';
-        }
-        if (selDist && selDist.value) {
-            onDistribuidorChange(selDist);
-        }
+        const cont = document.getElementById('contenedor-nodos-ruta');
+        const items = cont ? Array.from(cont.querySelectorAll('.nodo-item')) : [];
+        const idx = items.indexOf(card);
+        const esCarga = idx === 0 || card.getAttribute('data-tipo-nodo') === 'carga';
+        setFuenteNodo(chk, esCarga ? 'wms' : 'cli');
     }
-
-    serializarNodos();
-    recalcularKmTotalVisual();
-    verificarYCalcularRuta();
 }
 
 /** Evento al modificar el nombre libre del destino fuera de catálogo */
@@ -1422,8 +1706,9 @@ function serializarNodos() {
         const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
         const tipoNodo = (idx === 0) ? 'origen' : (isCarga ? 'carga' : 'entrega');
 
+        const fuenteNodo = card.getAttribute('data-fuente-nodo') || '';
         const chkAbierto = card.querySelector('.nodo-check-abierto');
-        const esAbierto = (chkAbierto && chkAbierto.checked) || card.getAttribute('data-destino-abierto') === '1';
+        const esAbierto = fuenteNodo === 'abierto' || (chkAbierto && chkAbierto.checked) || card.getAttribute('data-destino-abierto') === '1';
 
         let idUbi = null;
         let nombreLibre = '';
@@ -1434,12 +1719,11 @@ function serializarNodos() {
         } else {
             const selUbi = card.querySelector('.nodo-select-ubicacion');
             idUbi = selUbi && selUbi.value ? parseInt(selUbi.value) : null;
-            const inpLibreHidden = card.querySelector('.nodo-nombre-libre');
-            nombreLibre = inpLibreHidden ? inpLibreHidden.value.trim() : '';
+            nombreLibre = '';
         }
 
         const selDist = card.querySelector('.nodo-select-distribuidor');
-        const idDist = (selDist && selDist.value) ? parseInt(selDist.value) : null;
+        const idDist = (fuenteNodo !== 'wms' && selDist && selDist.value) ? parseInt(selDist.value) : null;
 
         const selOrigenRef = card.querySelector('.nodo-select-origen-ref');
         let idOrigenRef = null;
@@ -1851,10 +2135,17 @@ function openModal() {
     window.g_editEnvioTipoTrasladoOriginal = null;
     window.g_editEnvioTieneVins = false;
 
+    const isPre = esModoPreEnvioJS();
     document.querySelector('#id_envio').value = "";
-    document.querySelector('#btnText').innerHTML = "Guardar Envío";
-    document.querySelector('#form-envio-title').innerHTML = "Crear Solicitud de Traslado";
+    document.querySelector('#btnText').innerHTML = isPre ? "Guardar Pre-envío" : "Guardar Envío";
+    document.querySelector('#form-envio-title').innerHTML = isPre ? "Crear Pre-envío / Posible Envío (PE-)" : "Crear Solicitud de Traslado";
+    if (document.querySelector('#breadcrumb-form-envio')) {
+        document.querySelector('#breadcrumb-form-envio').innerHTML = isPre ? "Nuevo Pre-envío" : "Nuevo Envío";
+    }
     document.querySelector("#formEnvio").reset();
+    if (document.querySelector('#es_preenvio')) {
+        document.querySelector('#es_preenvio').value = isPre ? '1' : '0';
+    }
     actualizarEstatusLateralEnvio(1);
 
     window.g_modalidadModificadaManualmente = false;
@@ -2016,23 +2307,29 @@ function ejecutarGuardadoEnvioFinal() {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status === 'success' || objData.status === true || objData.code === 200) {
                         const idEnvioGuardado = (objData.data && objData.data.id_envio) ? objData.data.id_envio : (objData.id_envio || null);
+                        const esPreGuardado   = (objData.data && parseInt(objData.data.es_preenvio) === 1) || esModoPreEnvioJS();
                         document.querySelector("#formEnvio").reset();
                         if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                        if (typeof tableBandeja !== 'undefined' && tableBandeja) tableBandeja.ajax.reload();
+                        if (typeof cargarUnidadesPTGlobales === 'function') cargarUnidadesPTGlobales(false);
                         
                         Swal.fire({
-                            title: "¡Envío Guardado!",
+                            title: esPreGuardado ? "¡Pre-envío Guardado!" : "¡Envío Guardado!",
                             text: objData.message || objData.msg || "Guardado exitosamente con ruta multi-nodo.",
                             icon: "success",
                             showCancelButton: true,
-                            confirmButtonColor: "#C46623",
+                            confirmButtonColor: esPreGuardado ? "#0284C7" : "#C46623",
                             cancelButtonColor: "#64748B",
                             confirmButtonText: '<i class="ri-dashboard-line me-1"></i> Ir al Acomodo de VINs',
-                            cancelButtonText: '<i class="ri-list-check me-1"></i> Ir al Listado de Envíos'
+                            cancelButtonText: esPreGuardado ? '<i class="ri-list-check me-1"></i> Ir al Listado de Pre-envíos' : '<i class="ri-list-check me-1"></i> Ir al Listado de Envíos'
                         }).then((result) => {
                             if (result.isConfirmed && idEnvioGuardado) {
                                 window.location.href = base_url + '/Lgs_envios/detalle/' + idEnvioGuardado;
                             } else {
                                 fntSwitchView('grid');
+                                if (esPreGuardado && typeof irATabPreEnvios === 'function') {
+                                    irATabPreEnvios();
+                                }
                             }
                         });
                     } else {
@@ -2096,6 +2393,19 @@ function cargarProveedoresTrasladistas() {
                         });
                         if (document.getElementById('id_destino')) document.getElementById('id_destino').innerHTML = htmlDest;
                     }
+
+                    if (objData.data.ubicaciones && document.getElementById('catalogoUbicaciones')) {
+                        document.getElementById('catalogoUbicaciones').textContent = JSON.stringify(objData.data.ubicaciones);
+                    }
+                    if (objData.data.plantas_wms && document.getElementById('catalogoPlantasWms')) {
+                        document.getElementById('catalogoPlantasWms').textContent = JSON.stringify(objData.data.plantas_wms);
+                    }
+                    if (objData.data.destinos && document.getElementById('catalogoDestinos')) {
+                        document.getElementById('catalogoDestinos').textContent = JSON.stringify(objData.data.destinos);
+                    }
+                    if (objData.data.distribuidores && document.getElementById('catalogoDistribuidores')) {
+                        document.getElementById('catalogoDistribuidores').textContent = JSON.stringify(objData.data.distribuidores);
+                    }
                 }
             } catch(e) {}
         }
@@ -2128,9 +2438,16 @@ function fntEditRuta(idEnvio) {
                     window.g_editEnvioTipoTrasladoOriginal = envio.id_tipo_traslado || '';
                     window.g_editEnvioTieneVins = (existentes.length > 0);
 
+                    const esPreEdit = parseInt(envio.es_preenvio) === 1 || String(envio.folio || '').startsWith('PE-') || esModoPreEnvioJS();
                     document.querySelector('#id_envio').value = envio.id_envio;
-                    document.querySelector('#btnText').innerHTML = "Actualizar Envío";
-                    document.querySelector('#form-envio-title').innerHTML = "Editar Itinerario de Envío: " + (envio.folio || ('#' + envio.id_envio));
+                    if (document.querySelector('#es_preenvio')) {
+                        document.querySelector('#es_preenvio').value = esPreEdit ? '1' : '0';
+                    }
+                    document.querySelector('#btnText').innerHTML = esPreEdit ? "Actualizar Pre-envío" : "Actualizar Envío";
+                    document.querySelector('#form-envio-title').innerHTML = (esPreEdit ? "Editar Itinerario de Pre-envío: " : "Editar Itinerario de Envío: ") + (envio.folio || ('#' + envio.id_envio));
+                    if (document.querySelector('#breadcrumb-form-envio')) {
+                        document.querySelector('#breadcrumb-form-envio').innerHTML = esPreEdit ? ('Editar ' + (envio.folio || 'Pre-envío')) : ('Editar ' + (envio.folio || 'Envío'));
+                    }
                     actualizarEstatusLateralEnvio(envio.id_estado);
 
                     if (document.querySelector('#id_tipo_traslado')) document.querySelector('#id_tipo_traslado').value = envio.id_tipo_traslado || '';
@@ -2184,7 +2501,7 @@ function fntEditRuta(idEnvio) {
 
                     if (nodos.length > 0) {
                         nodos.forEach((n, nIdx) => {
-                            const isCarga = (n.tipo_nodo === 'carga' || parseInt(n.id_tipo_destino) === 5);
+                            const isCarga = n.tipo_nodo ? (n.tipo_nodo === 'carga') : (parseInt(n.id_tipo_destino) === 5);
                             if (!n.fecha_estimada) {
                                 if (nIdx === 0 && envio.fecha_tentativa_envio) {
                                     n.fecha_estimada = envio.fecha_tentativa_envio;
@@ -2576,6 +2893,203 @@ function fntReanudarEnvio(idEnvio, folio) {
                 Swal.fire("Error", "Error de red al reanudar el envío.", "error");
             });
         }
+    });
+}
+
+function _escExcepHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function fntMostrarModalSolicitudAutorizacion(idEnvio, folio, dataAuth) {
+    const observados = Array.isArray(dataAuth.vins_observados) ? dataAuth.vins_observados : [];
+    const solPend    = dataAuth.solicitud_pendiente || null;
+    const ultRech    = dataAuth.ultima_rechazada || null;
+
+    const rowsHtml = observados.map(w => {
+        const facBadge = parseInt(w.cumple_factura || 0, 10) === 1
+            ? `<span class="badge bg-soft-success text-success">SÍ (${_escExcepHtml(w.factura)})</span>`
+            : '<span class="badge bg-soft-danger text-danger">Sin Factura</span>';
+        const pagBadge = parseInt(w.cumple_pago || 0, 10) === 1
+            ? `<span class="badge bg-soft-success text-success">${_escExcepHtml(w.estatus_pago_texto)}</span>`
+            : `<span class="badge bg-soft-warning text-dark">${_escExcepHtml(w.estatus_pago_texto || 'Pendiente')}</span>`;
+        const autBadge = parseInt(w.cumple_autorizacion || 0, 10) === 1
+            ? '<span class="badge bg-soft-success text-success">Autorizada</span>'
+            : '<span class="badge bg-soft-danger text-danger">Sin Aut. Mov.</span>';
+        return `<tr>
+            <td class="text-start font-monospace fw-bold fs-11">${_escExcepHtml(w.vin)}<div class="text-muted fw-normal">${_escExcepHtml(w.modelo || '')}</div></td>
+            <td>${facBadge}</td>
+            <td>${pagBadge}</td>
+            <td>${autBadge}</td>
+        </tr>`;
+    }).join('');
+
+    let estadoPrevHtml = '';
+    if (ultRech && !solPend) {
+        estadoPrevHtml = `<div class="alert alert-soft-danger border border-danger-subtle text-start fs-12 py-2 px-3 mb-2">
+            <strong><i class="ri-close-circle-line me-1"></i>Solicitud previa rechazada (${_escExcepHtml(ultRech.folio_solicitud || '')}):</strong>
+            ${_escExcepHtml(ultRech.obs_aprobador || 'Sin comentarios')}
+        </div>`;
+    }
+
+    if (solPend) {
+        Swal.fire({
+            title: 'Solicitud Pendiente de Aprobación',
+            width: '720px',
+            icon: 'info',
+            html: `
+                <div class="text-start fs-13 mb-2">
+                    El registro <strong>${_escExcepHtml(folio || ('#' + idEnvio))}</strong> tiene unidades sin Factura, Pago o Autorización de Movimiento y ya cuenta con la solicitud
+                    <span class="badge bg-warning text-dark">${_escExcepHtml(solPend.folio_solicitud)}</span> pendiente de dictamen en <strong>Aprobaciones</strong>.
+                </div>
+                <div class="p-2 bg-light border rounded text-start fs-12 mb-3">
+                    <strong>Justificación enviada:</strong> ${_escExcepHtml(solPend.motivo_solicitud || '')}
+                </div>
+                <div class="table-responsive border rounded" style="max-height:220px; overflow-y:auto;">
+                    <table class="table table-sm align-middle mb-0 fs-11">
+                        <thead class="table-light"><tr><th class="text-start">VIN / Modelo</th><th>Factura</th><th>Pago</th><th>Aut. Mov.</th></tr></thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: '#C46623',
+            cancelButtonColor: '#64748B',
+            confirmButtonText: '<i class="ri-shield-check-line me-1"></i> Ir a Aprobaciones',
+            cancelButtonText: 'Cerrar'
+        }).then((r) => {
+            if (r.isConfirmed) {
+                window.location.href = base_url + '/Lgs_aprobaciones?tab=preenvios';
+            }
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: 'Validación de Factura / Pago / Autorización',
+        width: '760px',
+        icon: 'warning',
+        html: `
+            ${estadoPrevHtml}
+            <p class="text-start fs-13 mb-2">
+                No es posible pasar <strong>${_escExcepHtml(folio || ('#' + idEnvio))}</strong> directamente a Envío Oficial (<code>EN-</code>) porque las siguientes unidades aún no cumplen Factura, Pago/Crédito y Autorización de Movimiento:
+            </p>
+            <div class="table-responsive border rounded mb-3" style="max-height:220px; overflow-y:auto;">
+                <table class="table table-sm align-middle mb-0 fs-11">
+                    <thead class="table-light"><tr><th class="text-start">VIN / Modelo</th><th>Factura</th><th>Pago</th><th>Aut. Mov.</th></tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+            <div class="text-start">
+                <label class="form-label fs-12 fw-bold text-dark mb-1">
+                    <i class="ri-send-plane-line text-warning me-1"></i> Forzar bajo solicitud (Justificación para Aprobaciones) <span class="text-danger">*</span>
+                </label>
+                <textarea id="swal_motivo_excepcion_envio" class="form-control fs-12" rows="3" placeholder="Ej. Cliente autorizado por Dirección Comercial; factura en proceso de emisión / pago confirmado por tesorería..."></textarea>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-shield-user-line me-1"></i> Solicitar Autorización en Aprobaciones',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const motivo = (document.getElementById('swal_motivo_excepcion_envio')?.value || '').trim();
+            if (motivo.length < 5) {
+                Swal.showValidationMessage('Ingrese el motivo o justificación (mínimo 5 caracteres).');
+                return false;
+            }
+            return motivo;
+        }
+    }).then((conf) => {
+        if (!conf.isConfirmed) return;
+        Swal.fire({ title: 'Enviando Solicitud...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const fd = new FormData();
+        fd.append('id_envio', idEnvio);
+        fd.append('motivo_solicitud', conf.value);
+        fetch(base_url + '/Lgs_envios/solicitarAutorizacionConversion', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(resp => {
+                if (!resp || (resp.status !== 'success' && resp.status !== true && resp.code !== 200)) {
+                    throw new Error(resp?.message || 'No se pudo enviar la solicitud.');
+                }
+                if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                Swal.fire({
+                    title: 'Solicitud Enviada a Aprobaciones',
+                    text: resp.message || 'Un aprobador debe autorizar la excepción para pasarlo a Envío Oficial.',
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#C46623',
+                    cancelButtonColor: '#64748B',
+                    confirmButtonText: '<i class="ri-shield-check-line me-1"></i> Ir a Aprobaciones',
+                    cancelButtonText: 'Seguir aquí'
+                }).then((go) => {
+                    if (go.isConfirmed) {
+                        window.location.href = base_url + '/Lgs_aprobaciones?tab=preenvios';
+                    }
+                });
+            })
+            .catch(err => Swal.fire('Error', err.message || 'Error de comunicación con el servidor.', 'error'));
+    });
+}
+
+function fntConvertirPreEnvio(idEnvio, folio) {
+    Swal.fire({
+        title: `¿Pasar ${folio || 'Pre-envío'} a Envío Oficial (EN-)?`,
+        text: 'Se validará ruta, acomodo con Madrina/Chofer, Factura, Pago y Autorización de Movimiento de cada unidad.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-exchange-line me-1"></i> Validar y Pasar a Envío',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Validando Pre-envío...',
+            text: 'Verificando factura, cobranza, autorización y generando folio EN-...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const formData = new FormData();
+        formData.append('id_envio', idEnvio);
+
+        fetch(base_url + '/Lgs_envios/convertirAEnvioOficial', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(objData => {
+            if (!objData || (objData.status !== 'success' && objData.status !== true && objData.code !== 200)) {
+                throw new Error(objData?.message || 'No se pudo convertir el pre-envío.');
+            }
+            if (objData.data && objData.data.requires_authorization) {
+                fntMostrarModalSolicitudAutorizacion(idEnvio, folio, objData.data);
+                return;
+            }
+            if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+            if (typeof cargarUnidadesPTGlobales === 'function') cargarUnidadesPTGlobales(false);
+
+            Swal.fire({
+                title: '¡Convertido a Envío Oficial!',
+                text: objData.message || 'El pre-envío pasó correctamente al módulo de Envíos.',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonColor: '#C46623',
+                cancelButtonColor: '#64748B',
+                confirmButtonText: '<i class="ri-truck-line me-1"></i> Pasar al Módulo de Envíos',
+                cancelButtonText: 'Seguir aquí'
+            }).then((go) => {
+                if (go.isConfirmed) {
+                    window.location.href = base_url + '/Lgs_envios';
+                }
+            });
+        })
+        .catch(err => Swal.fire('Validación', err.message || 'Error de comunicación con el servidor.', 'warning'));
     });
 }
 

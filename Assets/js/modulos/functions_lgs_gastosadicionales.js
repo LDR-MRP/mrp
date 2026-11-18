@@ -639,7 +639,7 @@ function onTipoGastoChange() {
                     <div class="col-md-4">
                         <label class="form-label fs-12 fw-medium text-muted">KM Adicionales Recorridos <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="number" id="km_adicionales" name="km_adicionales" class="form-control" min="0.1" step="0.1" required oninput="calcularPreviewGasto();" placeholder="Ej. 25.0">
+                            <input type="number" id="km_adicionales" name="km_adicionales" class="form-control" min="0.00001" step="0.00001" required oninput="calcularPreviewGasto();" placeholder="Ej. 25.0">
                             <span class="input-group-text">KM</span>
                         </div>
                     </div>
@@ -657,13 +657,13 @@ function onTipoGastoChange() {
                 <div class="row g-2">
                     <div class="col-md-4">
                         <label class="form-label fs-12 fw-medium text-muted">Cantidad (Días / Eventos) <span class="text-danger">*</span></label>
-                        <input type="number" id="cantidad" name="cantidad" class="form-control" min="1" step="0.5" value="1" required oninput="calcularPreviewGasto();">
+                        <input type="number" id="cantidad" name="cantidad" class="form-control" min="0.00001" step="0.00001" value="1" required oninput="calcularPreviewGasto();">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fs-12 fw-medium text-muted">Precio Unitario ($ sin IVA) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" id="precio_unitario" name="precio_unitario" class="form-control" min="0" step="0.5" required oninput="calcularPreviewGasto();" placeholder="Ej. 1500.00">
+                            <input type="number" id="precio_unitario" name="precio_unitario" class="form-control" min="0" step="0.00001" required oninput="calcularPreviewGasto();" placeholder="Ej. 1500.00">
                         </div>
                     </div>
                     <div class="col-md-4 d-flex align-items-center">
@@ -681,7 +681,7 @@ function onTipoGastoChange() {
                         <label class="form-label fs-12 fw-medium text-muted">Monto Total a Asignar ($ MXN sin IVA) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" id="monto_final_input" name="monto_final" class="form-control" min="0.01" step="0.01" required oninput="calcularPreviewGasto();" placeholder="Ej. 3500.00">
+                            <input type="number" id="monto_final_input" name="monto_final" class="form-control" min="0.00001" step="0.00001" required oninput="calcularPreviewGasto();" placeholder="Ej. 3500.00">
                         </div>
                     </div>
                     <div class="col-md-7">

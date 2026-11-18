@@ -140,7 +140,7 @@
                             <thead class="table-light fs-12 text-uppercase text-muted">
                                 <tr>
                                     <th>Folio</th>
-                                    <th>Planta de Origen</th>
+                                    <th>Almacén / Origen</th>
                                     <th>Fecha Tentativa Recolección</th>
                                     <th>Unidades Solicitadas</th>
                                     <th>Disponibilidad Confirmada</th>
@@ -178,13 +178,14 @@
                 <form id="formNuevaPreplan" onsubmit="event.preventDefault(); guardarNuevaPreplaneacion();">
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fs-12 fw-bold text-muted text-uppercase mb-1">Planta de Ensamble / Patio <span class="text-danger">*</span></label>
-                            <select class="form-select border rounded-3" id="nueva_id_planta" name="id_planta" required onchange="cargarVinsDisponiblesParaPreplan();">
-                                <option value="">Seleccione Planta...</option>
-                                <?php foreach ($data['plantas'] ?? [] as $pl): ?>
-                                    <option value="<?= $pl['idplanta']; ?>"><?= htmlspecialchars($pl['nombre_planta'], ENT_QUOTES, 'UTF-8'); ?> (<?= htmlspecialchars($pl['cve_planta'], ENT_QUOTES, 'UTF-8'); ?>)</option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label class="form-label fs-12 fw-bold text-muted text-uppercase mb-1">
+                                Almacén / Origen <span class="badge bg-info-subtle text-info border border-info-subtle ms-1" style="font-size: 10px;">Informativo</span>
+                            </label>
+                            <input type="hidden" id="nueva_id_planta" name="id_planta" value="0">
+                            <div class="form-control bg-light border rounded-3 d-flex align-items-center text-muted fs-12" id="boxOrigenInformativoPreplan" style="min-height: 38px;">
+                                <i class="ri-store-2-line text-info fs-16 me-2"></i>
+                                <span id="lblOrigenInformativoPreplan" class="text-truncate">Se mostrará al buscar o seleccionar un VIN...</span>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fs-12 fw-bold text-muted text-uppercase mb-1">Fecha y Hora Tentativa de Recolección <span class="text-danger">*</span></label>
@@ -199,12 +200,12 @@
                             <span class="badge bg-primary fs-11" id="lblCountVinsSeleccionados">0 seleccionados</span>
                         </div>
                         <p class="text-muted fs-11 mb-2">
-                            Marque los VINs que planea incluir en el viaje. Planta verificará que no tengan faltantes ni bloqueos de PDI.
+                            Busque por VIN, serie o modelo y marque las unidades a incluir. El almacén u origen se muestra de forma informativa.
                         </p>
                         
                         <div class="input-group input-group-sm mb-2">
                             <span class="input-group-text bg-white border"><i class="ri-search-line"></i></span>
-                            <input type="text" class="form-control" id="buscarVinPreplan" placeholder="Filtrar por VIN, número de serie o modelo..." onkeyup="filtrarTablaVinsPreplan();">
+                            <input type="text" class="form-control" id="buscarVinPreplan" placeholder="Buscar por VIN, número de serie, modelo o almacén..." oninput="filtrarTablaVinsPreplan();">
                         </div>
 
                         <div class="table-responsive bg-white rounded border" style="max-height: 240px; overflow-y: auto;">
@@ -215,15 +216,15 @@
                                             <input type="checkbox" class="form-check-input" id="checkTodosVinsPreplan" onchange="toggleSeleccionarTodosVins(this.checked);">
                                         </th>
                                         <th>VIN</th>
-                                        <th>Modelo</th>
-                                        <th>Serie / Consecutivo</th>
+                                        <th>Modelo / Serie</th>
+                                        <th>Almacén / Origen (Informativo)</th>
                                         <th>Destino Sugerido</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyVinsSeleccionPreplan">
                                     <tr>
                                         <td colspan="5" class="text-center py-4 text-muted">
-                                            Seleccione una Planta arriba para cargar las unidades disponibles.
+                                            Cargando unidades disponibles...
                                         </td>
                                     </tr>
                                 </tbody>

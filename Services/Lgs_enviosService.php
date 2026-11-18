@@ -11,8 +11,8 @@ class Lgs_enviosService {
     /**
      * Obtiene todos los envíos para la vista principal
      */
-    public function getAllEnvios(): array {
-        return $this->model->getEnviosDataTable();
+    public function getAllEnvios(int $esPreEnvio = 0): array {
+        return $this->model->getEnviosDataTable($esPreEnvio);
     }
 
     public function getCatalogosSelect(): array {
@@ -348,7 +348,8 @@ class Lgs_enviosService {
                         $distanciaUsar = 0;
                     }
 
-                    $costoSubEnvio = ($distanciaUsar * $costoPorKm * $factor * $numVinsDest) + $costoPlano;
+                    $precioUnitarioKm = round($costoPorKm * $factor, 5);
+                    $costoSubEnvio = ($distanciaUsar * $precioUnitarioKm * $numVinsDest) + $costoPlano;
                     if ($kmTramo == 0 && $costoPlano == 0) {
                         $costoSubEnvio = 0;
                     }
@@ -527,7 +528,8 @@ class Lgs_enviosService {
                         $distanciaUsar = 0;
                     }
 
-                    $costoTramo = ($distanciaUsar * $costoPorKm * $factor * $volumenTotal) + $costoPlano;
+                    $precioUnitarioKm = round($costoPorKm * $factor, 5);
+                    $costoTramo = ($distanciaUsar * $precioUnitarioKm * $volumenTotal) + $costoPlano;
                     if ($kmTramo == 0 && $costoPlano == 0) {
                         $costoTramo = 0;
                     }

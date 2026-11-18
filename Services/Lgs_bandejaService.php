@@ -142,4 +142,40 @@ class Lgs_bandejaService {
         }
         return $this->model->actualizarEstatusFinanzas($idLgsUnidad, $estatusUpper, $userId);
     }
+
+    // ─── Pestaña 2: Catálogo Global Unidades PT y Simulador de Posibles Envíos ─
+
+    public function getUnidadesPTGlobales(array $filtros = []): array {
+        return $this->model->getUnidadesPTGlobales($filtros);
+    }
+
+    public function getSedesAgrupadasPorCliente(): array {
+        return $this->model->getSedesAgrupadasPorCliente();
+    }
+
+    public function asignarSedeUnidadPT(int $idNumerosSerie, string $vin, int $idUbicacion, int $userId, array $unitSnapshot = []): array {
+        return $this->model->asignarSedeUnidadPT($idNumerosSerie, $vin, $idUbicacion, $userId, $unitSnapshot);
+    }
+
+    public function getCatalogosSimuladorBandeja(): array {
+        return $this->model->getCatalogosSimuladorBandeja();
+    }
+
+    public function simularPosibleEnvioPT(array $params): array {
+        return $this->model->simularPosibleEnvioPT($params);
+    }
+
+    public function sincronizarUnidadesPTEnBandeja(array $vins, int $userId): array {
+        if (empty($vins)) {
+            throw new Exception("Debe seleccionar al menos una unidad PT para sincronizar a la bandeja.");
+        }
+        return $this->model->sincronizarUnidadesPTEnBandeja($vins, $userId);
+    }
+
+    public function crearPreEnvioDesdePT(array $data, array $vins, int $userId): array {
+        if (empty($vins)) {
+            throw new Exception("Debe seleccionar al menos una unidad PT para generar el envío.");
+        }
+        return $this->model->crearPreEnvioDesdePT($data, $vins, $userId);
+    }
 }

@@ -1334,6 +1334,18 @@ class Cli_clientes extends Controllers
         exit;
     }
 
+    private function syncLogisticaCliente(int $idcliente): void
+    {
+        if ($idcliente <= 0) {
+            return;
+        }
+        try {
+            (new Lgs_clientesSyncService())->sincronizarCliente($idcliente);
+        } catch (Throwable $e) {
+            error_log('Cli_clientes::syncLogisticaCliente(' . $idcliente . '): ' . $e->getMessage());
+        }
+    }
+
 
     /*
      * FUNCION PARA IMPLEMENTAR EL REGISTRO DE LA INFORMACIÓN GENERAL
@@ -1396,6 +1408,8 @@ class Cli_clientes extends Controllers
                 $this->json(false, 'No fue posible guardar la información general.', [], 500);
             if ($idcliente <= 0)
                 $idcliente = (int) $resultado;
+
+            $this->syncLogisticaCliente($idcliente);
 
             $this->json(true, 'La información general se guardó correctamente.', [
                 'idcliente' => $idcliente,
@@ -1554,6 +1568,7 @@ class Cli_clientes extends Controllers
                 : $this->model->insertSucursal($idcliente, $data);
             if (!$resultado) $this->json(false, 'No fue posible guardar la sucursal.', [], 500);
             if ($idsucursal <= 0) $idsucursal = (int)$resultado;
+            $this->syncLogisticaCliente($idcliente);
             $this->json(true, 'La sucursal se guardó correctamente.', ['idsucursal' => $idsucursal]);
         } catch (Throwable $e) {
             error_log('setSucursal: ' . $e->getMessage());
@@ -1571,6 +1586,7 @@ class Cli_clientes extends Controllers
             if (!$this->model->deleteSucursal($idsucursal, $idcliente, (int)($_SESSION['idUser'] ?? 0))) {
                 $this->json(false, 'No fue posible eliminar la sucursal.', [], 500);
             }
+            $this->syncLogisticaCliente($idcliente);
             $this->json(true, 'Sucursal eliminada correctamente.');
         } catch (Throwable $e) {
             $this->json(false, 'Ocurrió un error al eliminar la sucursal.', [], 500);
@@ -1742,6 +1758,8 @@ class Cli_clientes extends Controllers
             die();
         }
 
+        $this->syncLogisticaCliente($idcliente);
+
         echo json_encode([
             'status' => true,
             'message' => 'La dirección se actualizó correctamente.',
@@ -1774,6 +1792,8 @@ class Cli_clientes extends Controllers
 
         die();
     }
+
+    $this->syncLogisticaCliente($idcliente);
 
     echo json_encode([
         'status' => true,
@@ -1866,6 +1886,8 @@ public function delDireccion()
 
         die();
     }
+
+    $this->syncLogisticaCliente($idcliente);
 
     echo json_encode([
         'status' => true,

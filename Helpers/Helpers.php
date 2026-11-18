@@ -462,8 +462,8 @@ function getPermisos(int $idmodulo)
         $permisos = is_array($arrPermisos) ? $arrPermisos : [];
         $permisosMod = $permisos[$idmodulo] ?? "";
 
-        // Si es Administrador (rol 1) o Planeador / Gerente de Logística (rol 65), garantizar acceso a módulos de logística
-        if ($idrol === 1 || $idrol === 65) {
+        // Si es Administrador (rol 1), Planeador / Gerente de Logística (rol 65) o Admin Logística (rol 70), garantizar acceso a módulos de logística
+        if ($idrol === 1 || $idrol === 65 || $idrol === 70) {
             $logisticaModulos = [150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162];
             foreach ($logisticaModulos as $modId) {
                 if (empty($permisos[$modId]['r'])) {
@@ -471,6 +471,17 @@ function getPermisos(int $idmodulo)
                 }
             }
             if (empty($permisosMod) && in_array($idmodulo, $logisticaModulos)) {
+                $permisosMod = ['r' => 1, 'w' => 1, 'u' => 1, 'd' => 1];
+            }
+        } elseif ($idrol === 56) {
+            // Director Corporativo / Aprobador: garantizar acceso de consulta y aprobación en Logística
+            $aprobModulos = [155, 156, 157, 161, 162];
+            foreach ($aprobModulos as $modId) {
+                if (empty($permisos[$modId]['r']) || empty($permisos[$modId]['u'])) {
+                    $permisos[$modId] = ['r' => 1, 'w' => 1, 'u' => 1, 'd' => 1];
+                }
+            }
+            if (empty($permisosMod) && in_array($idmodulo, $aprobModulos)) {
                 $permisosMod = ['r' => 1, 'w' => 1, 'u' => 1, 'd' => 1];
             }
         }

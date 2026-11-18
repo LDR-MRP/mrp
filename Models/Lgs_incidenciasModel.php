@@ -35,10 +35,36 @@ class Lgs_incidenciasModel extends Mysql
     }
 
     /**
+     * Asegura de forma idempotente el alta de los tipos de incidencia operativos
+     */
+    private function ensureTiposIncidenciaOperativos(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        try {
+            $sql = "INSERT INTO lgs_cat_tipos_incidencia (clave, nombre, requiere_dictamen, requiere_evidencia, id_tipo_gasto_sugerido, activo)
+                    VALUES 
+                    ('FALLA_MECANICA', 'Falla mecánica', 0, 1, 5, 1),
+                    ('CHOQUE', 'Choque', 1, 1, 7, 1),
+                    ('MADRINA_DESCOMPUESTA', 'Madrina descompuesta', 0, 1, 5, 1)
+                    ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), activo = 1";
+            $this->conexion->exec($sql);
+        } catch (Throwable $e) {
+            error_log("Error al asegurar tipos de incidencia operativos: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Catálogos para formularios y filtros
      */
     public function getCatalogosFormulario(): array
     {
+        $this->ensureTiposIncidenciaOperativos();
+
         $tipos = $this->select_all("SELECT id_tipo_incidencia, clave, nombre, requiere_dictamen, requiere_evidencia, id_tipo_gasto_sugerido 
                                     FROM lgs_cat_tipos_incidencia WHERE activo = 1 ORDER BY id_tipo_incidencia ASC") ?: [];
 

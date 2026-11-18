@@ -1,4 +1,19 @@
 <?php headerAdmin($data); ?>
+<style>
+.btn-table-action {
+    height: 30px;
+    padding: 0 11px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+    line-height: 1;
+}
+</style>
 
 <script>
     const ES_APROBADOR_GASTOS = <?= !empty($data['es_aprobador']) ? 'true' : 'false' ?>;
@@ -56,6 +71,12 @@
                         <button class="nav-link px-4 py-2 fs-14 fw-bold rounded-pill shadow-sm" id="tab-gastos-btn" data-bs-toggle="pill" data-bs-target="#tab-gastos" type="button" role="tab">
                             <i class="ri-money-dollar-circle-line me-1"></i> Aprobación de Gastos Directos y Adicionales
                             <span class="badge bg-danger ms-1 d-none" id="badgeGastosPendientesAprob">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-4 py-2 fs-14 fw-bold rounded-pill shadow-sm" id="tab-preenvios-exc-btn" data-bs-toggle="pill" data-bs-target="#tab-preenvios-exc" type="button" role="tab">
+                            <i class="ri-shield-keyhole-line me-1"></i> Autorización Pre-envíos (Sin Fac./Pago/Aut.)
+                            <span class="badge bg-warning text-dark ms-1 d-none" id="badgePreEnviosPendientesAprob">0</span>
                         </button>
                     </li>
                 </ul>
@@ -179,14 +200,13 @@
                                     <table id="tableAprobaciones" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                         <thead class="bg-light">
                                             <tr>
-                                                <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
-                                                <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Plan</th>
+                                                <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-3">Folio Plan</th>
                                                 <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Descripción</th>
                                                 <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Total Envíos</th>
                                                 <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Km Totales</th>
                                                 <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Costo Est.</th>
                                                 <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
-                                                <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
+                                                <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-3">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -361,8 +381,204 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- PESTAÑA 3: SOLICITUDES EXCEPCIONALES PRE-ENVÍO -> ENVÍO OFICIAL -->
+                    <div class="tab-pane fade" id="tab-preenvios-exc" role="tabpanel">
+                        <div class="row mb-4 g-3">
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor:pointer;" onclick="filtrarPreEnvioExcPorChip('PENDIENTE', document.getElementById('chip-pe-exc-pendientes'));">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Solicitudes Pendientes</p>
+                                                <h4 class="fs-22 fw-bold text-body mb-2"><span id="kpiPreExcPendientes">0</span></h4>
+                                                <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Requieren dictamen</span>
+                                            </div>
+                                            <div class="avatar-sm flex-shrink-0">
+                                                <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
+                                                    <i class="ri-shield-keyhole-line"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor:pointer;" onclick="filtrarPreEnvioExcPorChip('APROBADA', document.getElementById('chip-pe-exc-aprobadas'));">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Aprobadas (En Envío)</p>
+                                                <h4 class="fs-22 fw-bold text-success mb-2"><span id="kpiPreExcAprobadas">0</span></h4>
+                                                <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Convertidas a EN-</span>
+                                            </div>
+                                            <div class="avatar-sm flex-shrink-0">
+                                                <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
+                                                    <i class="ri-checkbox-circle-line"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor:pointer;" onclick="filtrarPreEnvioExcPorChip('RECHAZADA', document.getElementById('chip-pe-exc-rechazadas'));">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Rechazadas</p>
+                                                <h4 class="fs-22 fw-bold text-danger mb-2"><span id="kpiPreExcRechazadas">0</span></h4>
+                                                <span class="badge bg-soft-danger text-danger fw-medium mb-0 px-2 py-1">Permanece en PE-</span>
+                                            </div>
+                                            <div class="avatar-sm flex-shrink-0">
+                                                <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-3">
+                                                    <i class="ri-close-circle-line"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">VINs Observados Pend.</p>
+                                                <h4 class="fs-22 fw-bold text-info mb-2"><span id="kpiPreExcVinsObs">0</span></h4>
+                                                <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Sin Fac./Pago/Aut.</span>
+                                            </div>
+                                            <div class="avatar-sm flex-shrink-0">
+                                                <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
+                                                    <i class="ri-car-line"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-xl rounded-3 overflow-hidden">
+                            <div class="bg-info" style="height: 4px;"></div>
+                            <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle">
+                                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                                    <div class="d-flex align-items-center w-100" style="max-width: 340px;">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-light border-end-0"><i class="ri-search-line text-muted"></i></span>
+                                            <input type="text" id="buscarPreExcInput" class="form-control bg-light border-start-0" placeholder="Buscar folio, PE-, EN-, solicitante..." oninput="filtrarTablaPreExc(this.value);">
+                                            <button class="btn btn-light border border-start-0 text-muted" type="button" onclick="document.getElementById('buscarPreExcInput').value=''; filtrarTablaPreExc('');"><i class="ri-close-line"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                        <span class="fs-11 text-muted text-uppercase fw-bold me-1"><i class="ri-filter-3-line me-1"></i>Filtro:</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fs-12 chip-pe-exc-btn" id="chip-pe-exc-todas" onclick="filtrarPreEnvioExcPorChip('', this);">📌 Todas</button>
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 py-1 fs-12 active chip-pe-exc-btn" id="chip-pe-exc-pendientes" onclick="filtrarPreEnvioExcPorChip('PENDIENTE', this);">⏳ Pendientes</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fs-12 chip-pe-exc-btn" id="chip-pe-exc-aprobadas" onclick="filtrarPreEnvioExcPorChip('APROBADA', this);">✅ Aprobadas</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fs-12 chip-pe-exc-btn" id="chip-pe-exc-rechazadas" onclick="filtrarPreEnvioExcPorChip('RECHAZADA', this);">❌ Rechazadas</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="tableAprobPreEnvios" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Solicitud</th>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Pre-envío / Envío</th>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Ruta / Trasladista</th>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Unidades</th>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Justificación</th>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Solicitante</th>
+                                                <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estatus</th>
+                                                <th class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EVALUAR SOLICITUD EXCEPCIONAL PRE-ENVÍO -> ENVÍO OFICIAL -->
+<div class="modal fade" id="modalEvaluarPreEnvioExc" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom-0 pb-3">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="ri-shield-keyhole-line text-warning me-2"></i> Autorización Excepcional de Paso a Envío:
+                    <span id="lblFolioSolPreExc" class="badge bg-info fs-13 ms-1"></span>
+                    <span id="lblFolioPreEnvioExc" class="badge bg-primary fs-13 ms-1"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 border h-100">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Ruta / Trasladista</span>
+                            <div class="fw-bold text-dark fs-13" id="lblRutaPreExc">-</div>
+                            <small class="text-muted" id="lblTrasladistaPreExc">-</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-soft-success rounded-3 border border-success-subtle text-center h-100">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Costo Est. / KM</span>
+                            <h4 class="fw-bold text-success mb-0" id="lblCostoPreExc">$0.00</h4>
+                            <small class="text-muted" id="lblKmPreExc">0 km</small>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="p-3 bg-soft-warning rounded-3 border border-warning-subtle h-100">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Justificación del Solicitante (<span id="lblSolicitantePreExc">-</span>)</span>
+                            <p class="fs-12 text-dark mb-0" id="lblMotivoPreExc">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-uppercase fs-12 text-muted mb-2"><i class="ri-car-line me-1 text-primary"></i> Validación por Unidad (Factura, Cobranza y Autorización de Movimiento)</h6>
+                <div class="table-responsive border rounded-3 mb-3">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light fs-11 text-uppercase text-muted">
+                            <tr>
+                                <th>VIN / Modelo</th>
+                                <th>Cliente / Sede</th>
+                                <th>Factura</th>
+                                <th>Pago / Cobranza</th>
+                                <th>Aut. Movimiento</th>
+                                <th>Envío SÍ/NO</th>
+                                <th>Observación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyVinsPreExc" class="fs-12"></tbody>
+                    </table>
+                </div>
+
+                <form id="formDictamenPreExc">
+                    <input type="hidden" id="exc_id_solicitud" value="">
+                    <label class="form-label fw-bold text-muted fs-11 text-uppercase">
+                        <i class="ri-edit-line me-1"></i> Comentarios / Dictamen del Aprobador (Obligatorio si se rechaza)
+                    </label>
+                    <textarea class="form-control" id="exc_obs_aprobador" rows="2" placeholder="Indique condiciones, autorización comercial/finanzas o motivo de rechazo..."></textarea>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
+                <button type="button" id="btnRechazarPreExcModal" class="btn btn-sm btn-soft-danger rounded-pill px-4 fw-semibold shadow-sm" onclick="enviarDictamenPreExc('rechazar');">
+                    <i class="ri-close-circle-line me-1"></i> Rechazar Solicitud
+                </button>
+                <div>
+                    <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold me-2" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" id="btnAprobarPreExcModal" class="btn btn-sm btn-success px-4 rounded-pill fw-semibold shadow-sm" onclick="enviarDictamenPreExc('aprobar');">
+                        <i class="ri-checkbox-circle-line me-1"></i> Autorizar y Pasar a Envío (EN-)
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

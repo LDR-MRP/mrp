@@ -33,78 +33,104 @@ document.addEventListener('DOMContentLoaded', function () {
             "dataSrc": ""
         },
         "columns": [
-            { "data": "id_planeacion" },
-            { 
+            {
                 "data": "folio",
-                "render": function(data) {
-                    return '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
+                "className": "ps-3",
+                "render": function(data, type, row) {
+                    if (type !== 'display') return `${data || ''} ${row.id_planeacion || ''}`;
+                    return '<span class="badge bg-soft-primary text-primary border border-primary-subtle fs-12 fw-bold px-2 py-1">' + (data || 'S/F') + '</span>';
                 }
             },
             { 
                 "data": "descripcion",
                 "render": function(data) {
-                    return '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
+                    return '<span class="fw-medium text-dark fs-13">' + (data || '-') + '</span>';
                 }
             },
             { 
                 "data": "total_rutas",
                 "render": function(data) {
-                    return '<span class="badge bg-primary fs-12">' + (data || 0) + ' Envíos</span>';
+                    return '<span class="badge bg-soft-primary text-primary fs-11">' + (data || 0) + ' Envío(s)</span>';
                 }
             },
             { 
                 "data": "costo_total",
                 "render": function (data) {
                     if (data == null) return '$0.00';
-                    return '<span class="fw-bold text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
+                    return '<span class="fw-bold text-success fs-13">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
                 }
             },
-            { "data": "created_at" },
+            {
+                "data": "created_at",
+                "render": function (data) {
+                    if (!data) return '<span class="text-muted fs-11">-</span>';
+                    return '<span class="text-muted fs-12">' + String(data).substring(0, 16) + '</span>';
+                }
+            },
             { 
                 "data": "id_estado",
-                "render": function (data) {
+                "render": function (data, type, row) {
                     let badge = '';
-                    switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Pendiente Aprobación</span>'; break;
+                    const st = parseInt(data);
+                    switch(st) {
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-11"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-11"><i class="ri-time-line me-1"></i>Pendiente Aprobación</span>'; break;
                         case 3:
-                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
-                        case 5: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobada</span>'; break;
-                        default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-11"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-success text-success fs-11"><i class="ri-checkbox-circle-line me-1"></i>Aprobada</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-info text-info fs-11"><i class="ri-restart-line me-1"></i>Solicitud Reapertura</span>'; break;
+                        default: badge = '<span class="badge bg-light text-dark fs-11">Estado ' + data + '</span>'; break;
+                    }
+                    const obsAp = (row && row.obs_aprobador) ? String(row.obs_aprobador) : '';
+                    if (st !== 6 && st !== 2) {
+                        if (obsAp.includes('[Reapertura Aprobada]')) {
+                            badge += '<div class="mt-1"><span class="badge bg-soft-success text-success fs-10"><i class="ri-lock-unlock-line me-1"></i>Reapertura Aprobada</span></div>';
+                        } else if (obsAp.includes('[Reapertura Denegada]')) {
+                            badge += '<div class="mt-1"><span class="badge bg-soft-danger text-danger fs-10"><i class="ri-lock-line me-1"></i>Reapertura Denegada</span></div>';
+                        }
                     }
                     return badge;
                 }
             },
             {
                 "data": "id_planeacion",
+                "className": "text-end pe-3",
+                "orderable": false,
                 "render": function (data, type, row) {
-                    let btnActionExtra = '';
-                    if (parseInt(row.id_estado) === 1) {
-                        btnActionExtra = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntEditPlan(${data})" title="Editar Planeación">
-                                            <i class="ri-pencil-fill me-1"></i> Editar
-                                          </button>
-                                          <button class="btn btn-sm btn-soft-success rounded-pill px-3 fw-semibold me-1" onClick="fntEnviarAprobacionPlan(${data})" title="Enviar a Aprobación">
-                                            <i class="ri-send-plane-fill me-1"></i> Enviar
-                                          </button>`;
-                    } else if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 2 || parseInt(row.id_estado) === 5) {
-                        btnActionExtra = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirPlan(${data})" title="Solicitar Reapertura y Desbloquear Planeación">
-                                            <i class="ri-restart-line me-1"></i> Solicitar Reapertura
-                                          </button>`;
-                    } else if (parseInt(row.id_estado) === 4) {
-                        btnActionExtra = `<button class="btn btn-sm btn-soft-info rounded-pill px-3 fw-semibold me-1" onClick="clonarPlaneacion(${data})" title="Clonar (Reutilizar Histórico)">
-                                            <i class="ri-file-copy-line me-1"></i> Clonar
-                                          </button>`;
+                    const st = parseInt(row.id_estado);
+                    const btns = [];
+
+                    if (st === 1) {
+                        btns.push(`<button type="button" class="btn btn-sm btn-success btn-table-action" onClick="fntEnviarAprobacionPlan(${data})" title="Enviar Planeación a Aprobación">
+                                    <i class="ri-send-plane-fill"></i> Enviar
+                                   </button>`);
+                        btns.push(`<button type="button" class="btn btn-light border text-secondary btn-icon-lgs" onClick="fntEditPlan(${data})" title="Editar Planeación">
+                                    <i class="ri-edit-line"></i>
+                                   </button>`);
                     }
-                    return `<div class="text-end">
-                                ${btnActionExtra}
-                                <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" onClick="fntViewPlan(${data})" title="Ver Detalle">
-                                    <i class="ri-eye-line me-1"></i> Detalle
-                                </button>
-                            </div>`;
+
+                    btns.push(`<button type="button" class="btn btn-sm btn-soft-primary btn-table-action" onClick="fntViewPlan(${data})" title="Ver Detalle de la Planeación">
+                                <i class="ri-eye-line"></i> Detalle
+                               </button>`);
+
+                    if (st === 3 || st === 4) {
+                        btns.push(`<button type="button" class="btn btn-soft-info btn-icon-lgs" onClick="clonarPlaneacion(${data})" title="Clonar Planeación como Nuevo Borrador">
+                                    <i class="ri-file-copy-line"></i>
+                                   </button>`);
+                    }
+
+                    if (st === 2 || st === 3 || st === 4 || st === 5) {
+                        btns.push(`<button type="button" class="btn btn-soft-warning btn-icon-lgs" onClick="fntReabrirPlan(${data})" title="Solicitar Reapertura para Edición">
+                                    <i class="ri-restart-line"></i>
+                                   </button>`);
+                    }
+
+                    return `<div class="d-inline-flex align-items-center justify-content-end gap-1 flex-nowrap">${btns.join('')}</div>`;
                 }
             }
         ],
-        "responsive": true,
+        "responsive": false,
+        "autoWidth": false,
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]],
@@ -235,7 +261,12 @@ function cargarEnviosDisponibles(idPlaneacion = 0, enviosAsignados = []) {
                 });
                 htmlBody += '</tbody></table></div>';
             } else {
-                htmlBody = '<div class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20 me-1"></i>No hay envíos disponibles pendientes de agrupar.</div>';
+                htmlBody = `<div class="text-center text-muted py-4">
+                    <i class="ri-inbox-line fs-24 d-block mb-1 text-secondary"></i>
+                    <div class="fw-semibold text-dark fs-13">No hay envíos oficializados pendientes de agrupar</div>
+                    <small class="d-block mb-2">Los envíos aparecen aquí una vez que su Acomodo ha sido finalizado (o convertido desde Pre-envío).</small>
+                    <a href="${base_url}/Lgs_envios" class="btn btn-sm btn-soft-primary rounded-pill px-3"><i class="ri-truck-line me-1"></i>Ir a Bandeja de Envíos</a>
+                </div>`;
             }
             
             let container = document.getElementById('containerEnviosDisponibles');
@@ -296,11 +327,11 @@ function savePlaneacion() {
         if (request.readyState == 4 && request.status == 200) {
             let objData = JSON.parse(request.responseText);
             if (objData.status) {
-                Swal.fire("¡Éxito!", objData.msg, "success");
+                Swal.fire("¡Éxito!", objData.msg || objData.message || "Planeación guardada correctamente.", "success");
                 tablePlaneaciones.ajax.reload();
                 fntSwitchView('grid');
             } else {
-                Swal.fire("Error", objData.msg || "Error al guardar la planeación", "error");
+                Swal.fire("Error", objData.msg || objData.message || "Error al guardar la planeación", "error");
             }
         }
     }
@@ -330,6 +361,8 @@ function fntEditPlan(idPlaneacion) {
                         
                         document.querySelector("#id_planeacion").value = plan.id_planeacion;
                         document.querySelector("#titulo_plan").value = plan.descripcion || '';
+                        const obsEl = document.querySelector("#obs_operador_plan");
+                        if (obsEl) obsEl.value = (plan.obs_operador && plan.obs_operador !== 'null') ? plan.obs_operador : '';
                         
                         document.querySelector("#form-plan-title").innerText = 'Editar Planeación ' + plan.folio;
                         document.querySelector("#breadcrumb-form-plan").innerText = 'Editar Planeación';
@@ -406,12 +439,23 @@ function fntViewPlan(idPlaneacion) {
                     setTxt('vdp_obs_aprobador', (plan.obs_aprobador && plan.obs_aprobador !== 'null') ? plan.obs_aprobador : defaultObsAprobador);
 
                     let badgeEstado = '';
-                    switch(parseInt(plan.id_estado)) {
+                    const stPlan = parseInt(plan.id_estado);
+                    switch(stPlan) {
                         case 1: badgeEstado = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
                         case 2: badgeEstado = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Pendiente Aprobación</span>'; break;
-                        case 3: badgeEstado = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
+                        case 3:
+                        case 4: badgeEstado = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
                         case 5: badgeEstado = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobada</span>'; break;
+                        case 6: badgeEstado = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-restart-line me-1"></i>Solicitud Reapertura</span>'; break;
                         default: badgeEstado = '<span class="badge bg-light text-dark fs-12">Estado ' + plan.id_estado + '</span>'; break;
+                    }
+                    const obsApPlan = plan.obs_aprobador ? String(plan.obs_aprobador) : '';
+                    if (stPlan !== 6 && stPlan !== 2) {
+                        if (obsApPlan.includes('[Reapertura Aprobada]')) {
+                            badgeEstado += ' <span class="badge bg-soft-success text-success fs-11 ms-1"><i class="ri-lock-unlock-line me-1"></i>Reapertura Aprobada</span>';
+                        } else if (obsApPlan.includes('[Reapertura Denegada]')) {
+                            badgeEstado += ' <span class="badge bg-soft-danger text-danger fs-11 ms-1"><i class="ri-lock-line me-1"></i>Reapertura Denegada</span>';
+                        }
                     }
                     setHtml('vdp_estado_badge', badgeEstado);
 
@@ -500,7 +544,10 @@ function fntViewPlan(idPlaneacion) {
                         const st = parseInt(plan.id_estado);
                         if (st === 1) {
                             footerActions.innerHTML = `
-                                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="fntEnviarAprobacionPlan(${plan.id_planeacion});">
+                                <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold me-2" onclick="$('#modalViewDetallePlan').modal('hide'); fntEditPlan(${plan.id_planeacion});">
+                                    <i class="ri-edit-line me-1"></i> Editar Planeación
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-4 fw-semibold shadow-sm" onclick="fntEnviarAprobacionPlan(${plan.id_planeacion});">
                                     <i class="ri-send-plane-fill me-1"></i> Enviar a Aprobación
                                 </button>
                             `;
@@ -513,11 +560,17 @@ function fntViewPlan(idPlaneacion) {
                                     <i class="ri-shield-check-line me-1"></i> Ir al Panel de Aprobaciones
                                 </a>
                             `;
-                        } else if (st === 3 || st === 5) {
+                        } else if (st === 3 || st === 4 || st === 5) {
                             footerActions.innerHTML = `
                                 <button type="button" class="btn btn-sm btn-soft-warning rounded-pill px-4 fw-semibold shadow-sm" onclick="$('#modalViewDetallePlan').modal('hide'); fntReabrirPlan(${plan.id_planeacion});">
                                     <i class="ri-restart-line me-1"></i> Solicitar Reapertura
                                 </button>
+                            `;
+                        } else if (st === 6) {
+                            footerActions.innerHTML = `
+                                <a href="${base_url}/Lgs_aprobaciones" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm">
+                                    <i class="ri-shield-check-line me-1"></i> Ir al Panel de Aprobaciones
+                                </a>
                             `;
                         } else {
                             footerActions.innerHTML = '';
@@ -594,10 +647,10 @@ function confirmarReaperturaPlan() {
             let objData = JSON.parse(request.responseText);
             if (objData.status) {
                 bootstrap.Modal.getInstance(document.getElementById('modalReabrirPlan')).hide();
-                Swal.fire("¡Planeación Reabierta!", objData.msg, "success");
+                Swal.fire("¡Solicitud de Reapertura Enviada!", objData.msg || objData.message || "Solicitud enviada a Aprobaciones.", "success");
                 tablePlaneaciones.ajax.reload();
             } else {
-                Swal.fire("Error", objData.msg || "No se pudo reabrir la planeación", "error");
+                Swal.fire("Error", objData.msg || objData.message || "No se pudo reabrir la planeación", "error");
             }
         }
     };
@@ -634,10 +687,10 @@ function fntEnviarAprobacionPlan(idPlaneacion) {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status) {
                         $('#modalViewDetallePlan').modal('hide');
-                        Swal.fire("¡Enviada con Éxito!", objData.msg, "success");
+                        Swal.fire("¡Enviada con Éxito!", objData.msg || objData.message || "Planeación enviada a aprobación.", "success");
                         tablePlaneaciones.ajax.reload();
                     } else {
-                        Swal.fire("Error", objData.msg || "No se pudo enviar a aprobación", "error");
+                        Swal.fire("Error", objData.msg || objData.message || "No se pudo enviar a aprobación", "error");
                     }
                 }
             };
@@ -674,13 +727,14 @@ function clonarPlaneacion(idPlaneacion) {
                         try {
                             let objData = JSON.parse(request.responseText);
                             if (objData.status) {
-                                Swal.fire("Éxito", objData.msg, "success");
+                                Swal.fire("Éxito", objData.msg || objData.message || "Planeación clonada con éxito.", "success");
                                 tablePlaneaciones.ajax.reload();
-                                if (document.getElementById('view-detalle-planeaciones').style.display !== 'none') {
+                                const detView = document.getElementById('view-detalle-planeaciones');
+                                if (detView && detView.style.display !== 'none') {
                                     fntSwitchView('grid');
                                 }
                             } else {
-                                Swal.fire("Error", objData.msg || "Error al clonar", "error");
+                                Swal.fire("Error", objData.msg || objData.message || "Error al clonar", "error");
                             }
                         } catch(e) {
                             Swal.fire("Error de Servidor", "La respuesta no es válida.", "error");

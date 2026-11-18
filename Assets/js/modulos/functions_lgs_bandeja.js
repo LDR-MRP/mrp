@@ -4,9 +4,27 @@
    ============================================================================= */
 
 let tableBandeja;
+let catalogoUnidadesPT = [];
+let mapaUnidadesPT = {};
+window.catalogoUnidadesPT = catalogoUnidadesPT;
+let sedesPorClientePT = (window.LGS_BANDEJA_SEDES_INIT && window.LGS_BANDEJA_SEDES_INIT.sedes_por_cliente) ? window.LGS_BANDEJA_SEDES_INIT.sedes_por_cliente : {};
+let clientesCatalogoPT = (window.LGS_BANDEJA_SEDES_INIT && Array.isArray(window.LGS_BANDEJA_SEDES_INIT.clientes)) ? window.LGS_BANDEJA_SEDES_INIT.clientes : [];
 
 document.addEventListener('DOMContentLoaded', function () {
     initTableBandeja();
+    cargarUnidadesPTGlobales(false);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = (urlParams.get('tab') || '').toLowerCase();
+    const editParam = parseInt(urlParams.get('edit') || '0', 10);
+
+    if (tabParam === 'pt' || tabParam === 'preenvios') {
+        irATabPreEnvios();
+    }
+
+    if (editParam > 0 && typeof fntEditRuta === 'function') {
+        setTimeout(() => fntEditRuta(editParam), 250);
+    }
 });
 
 // ─── DataTable ────────────────────────────────────────────────────────────────
@@ -117,9 +135,10 @@ function initTableBandeja() {
                     return html;
                 }
             },
-            { data: 'options', orderable: false }
+            { data: 'options', orderable: false, className: 'text-end pe-3' }
         ],
-        responsive: true,
+        responsive: false,
+        autoWidth: false,
         bDestroy: true,
         iDisplayLength: 25,
         order: [[0, 'desc']],
@@ -389,4 +408,203 @@ function _esc(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// =============================================================================
+// CATÁLOGO PT PARA PRE-ENVÍOS Y ASIGNACIÓN DE SEDES POR CLIENTE
+// =============================================================================
+
+function cargarUnidadesPTGlobales(mostrarLoading = false) {
+    fetch(base_url + '/Lgs_bandeja/getUnidadesPT')
+        .then(r => r.json())
+        .then(res => {
+            const isOk = (res && (res.status === 'success' || res.status === true || res.code === 200));
+            const rows = isOk && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+            catalogoUnidadesPT = rows;
+            window.catalogoUnidadesPT = rows;
+            mapaUnidadesPT = {};
+            rows.forEach(u => {
+                if (u.vin) {
+                    mapaUnidadesPT[String(u.vin).toUpperCase()] = u;
+                }
+            });
+
+            if (typeof renderizarSelectorPTFormulario === 'function') {
+                renderizarSelectorPTFormulario();
+            }
+        })
+        .catch(() => {
+            catalogoUnidadesPT = [];
+            window.catalogoUnidadesPT = [];
+            mapaUnidadesPT = {};
+        });
+
+    if (mostrarLoading || !Object.keys(sedesPorClientePT || {}).length) {
+        fetch(base_url + '/Lgs_bandeja/getSedesCliente')
+            .then(r => r.json())
+            .then(res => {
+                if (res && res.data) {
+                    if (res.data.sedes_por_cliente) sedesPorClientePT = res.data.sedes_por_cliente;
+                    if (Array.isArray(res.data.clientes)) clientesCatalogoPT = res.data.clientes;
+                }
+            })
+            .catch(() => {});
+    }
+}
+
+function onAbrirTabPreEnvios() {
+    if (!catalogoUnidadesPT.length) {
+        cargarUnidadesPTGlobales(false);
+    }
+    setTimeout(() => {
+        if (typeof tableEnvios !== 'undefined' && tableEnvios) {
+            try { tableEnvios.columns.adjust(); } catch (e) {}
+        }
+    }, 120);
+}
+
+function irATabPreEnvios() {
+    const tabBtn = document.getElementById('tab-preenvios-btn');
+    if (tabBtn && window.bootstrap && bootstrap.Tab) {
+        bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+    }
+    onAbrirTabPreEnvios();
+}
+
+function abrirModalSedeUnidadPT(vinUpper) {
+    const row = mapaUnidadesPT[String(vinUpper || '').toUpperCase()];
+    if (!row) return;
+
+    document.getElementById('sedePTVin').value = row.vin || '';
+    document.getElementById('sedePTIdNs').value = parseInt(row.id_numeros_serie || 0, 10);
+    document.getElementById('sedePTVinLabel').textContent = row.vin + (row.modelo ? ` · ${row.modelo}` : '');
+
+    let badgeHtml = '';
+    if (row.folio_pedido) {
+        badgeHtml += `<span class="badge bg-soft-warning text-warning border me-1">Pedido: ${_esc(row.folio_pedido)}</span>`;
+    }
+    if (parseInt(row.facturado) === 1 && row.factura) {
+        badgeHtml += `<span class="badge bg-soft-success text-success border">Factura: ${_esc(row.factura)}</span>`;
+    }
+    document.getElementById('sedePTPedidoFactBadge').innerHTML = badgeHtml;
+
+    const selCli = document.getElementById('sedePTClienteSelect');
+    const hintCli = document.getElementById('sedePTClienteHint');
+    let cliHtml = '<option value="">-- Seleccionar cliente --</option>';
+    (clientesCatalogoPT || []).forEach(c => {
+        cliHtml += `<option value="${c.id_cliente}">${_esc(c.nombre)}</option>`;
+    });
+    const idCliActual = parseInt(row.id_cliente || 0, 10);
+    if (idCliActual > 0 && !(clientesCatalogoPT || []).some(c => parseInt(c.id_cliente, 10) === idCliActual)) {
+        cliHtml += `<option value="${idCliActual}">${_esc(row.cliente_nombre || row.distribuidor || ('Cliente #' + idCliActual))}</option>`;
+    }
+    selCli.innerHTML = cliHtml;
+
+    if (idCliActual > 0) {
+        selCli.value = String(idCliActual);
+        selCli.disabled = true;
+        if (hintCli) hintCli.textContent = 'Cliente fijado por Facturación/Pedido. Solo puede elegir una sede de este cliente.';
+    } else {
+        selCli.value = '';
+        selCli.disabled = false;
+        if (hintCli) hintCli.textContent = 'Seleccione primero el cliente para filtrar sus sedes.';
+    }
+
+    poblarSedesModalPT(selCli.value, parseInt(row.sede_id || 0, 10));
+
+    const modalEl = document.getElementById('modalSeleccionarSedePT');
+    if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function poblarSedesModalPT(idCliente, sedePreselect = 0) {
+    const selSede = document.getElementById('sedePTSelect');
+    const preview = document.getElementById('sedePTDireccionPreview');
+    if (!selSede) return;
+
+    const cid = String(parseInt(idCliente || 0, 10));
+    if (cid === '0') {
+        selSede.innerHTML = '<option value="">Primero seleccione un cliente...</option>';
+        if (preview) preview.textContent = '';
+        return;
+    }
+
+    const sedes = sedesPorClientePT[cid] || [];
+    if (!sedes.length) {
+        // Consultar en vivo por si se creó recientemente en Clientes
+        selSede.innerHTML = '<option value="">Consultando sedes...</option>';
+        fetch(`${base_url}/Lgs_bandeja/getSedesCliente?id_cliente=${encodeURIComponent(cid)}`)
+            .then(r => r.json())
+            .then(res => {
+                const list = res?.data?.sedes || [];
+                sedesPorClientePT[cid] = list;
+                renderOpcionesSedesModalPT(selSede, preview, list, sedePreselect);
+            })
+            .catch(() => renderOpcionesSedesModalPT(selSede, preview, [], sedePreselect));
+        return;
+    }
+
+    renderOpcionesSedesModalPT(selSede, preview, sedes, sedePreselect);
+}
+
+function renderOpcionesSedesModalPT(selSede, preview, sedes, sedePreselect) {
+    if (!sedes.length) {
+        selSede.innerHTML = '<option value="">Este cliente aún no tiene sucursales o direcciones de entrega activas</option>';
+        if (preview) preview.textContent = '';
+        return;
+    }
+    let html = sedes.length > 1 ? '<option value="">-- Seleccione sede --</option>' : '';
+    sedes.forEach(s => {
+        const dir = s.direccion ? ` — ${s.direccion}` : '';
+        const selected = (sedePreselect && parseInt(s.id, 10) === parseInt(sedePreselect, 10)) || sedes.length === 1 ? 'selected' : '';
+        html += `<option value="${s.id}" data-dir="${_esc(s.direccion || '')}" ${selected}>${_esc(s.nombre)}${_esc(dir)}</option>`;
+    });
+    selSede.innerHTML = html;
+    const optSel = selSede.options[selSede.selectedIndex];
+    if (preview) preview.textContent = optSel ? (optSel.getAttribute('data-dir') || '') : '';
+    selSede.onchange = () => {
+        const opt = selSede.options[selSede.selectedIndex];
+        if (preview) preview.textContent = opt ? (opt.getAttribute('data-dir') || '') : '';
+    };
+}
+
+async function guardarSedeUnidadPT() {
+    const vin = document.getElementById('sedePTVin').value;
+    const idNs = parseInt(document.getElementById('sedePTIdNs').value || '0', 10);
+    const idUbi = parseInt(document.getElementById('sedePTSelect').value || '0', 10);
+
+    if (!idUbi) {
+        Swal.fire('Atención', 'Seleccione una sede válida para la unidad.', 'warning');
+        return;
+    }
+
+    const snapshot = mapaUnidadesPT[String(vin).toUpperCase()] || {};
+    try {
+        const resp = await fetch(`${base_url}/Lgs_bandeja/asignarSedeUnidadPT`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                vin: vin,
+                id_numeros_serie: idNs,
+                id_ubicacion: idUbi,
+                unit: snapshot
+            })
+        });
+        const json = await resp.json();
+        if (!json || (json.status !== 'success' && json.status !== true && json.code !== 200)) {
+            throw new Error(json?.message || 'No se pudo asignar la sede.');
+        }
+        const modalEl = document.getElementById('modalSeleccionarSedePT');
+        if (modalEl && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        }
+        Swal.fire({ icon: 'success', title: 'Sede asignada', text: json.message || 'Sede guardada.', timer: 1400, showConfirmButton: false });
+        cargarUnidadesPTGlobales(false);
+        if (typeof cargarSelectorPTFormulario === 'function') {
+            cargarSelectorPTFormulario(true);
+        }
+    } catch (err) {
+        Swal.fire('Error', err.message || 'No se pudo guardar la sede.', 'error');
+    }
 }

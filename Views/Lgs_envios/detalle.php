@@ -95,11 +95,30 @@
 .sortable-chosen {
     box-shadow: 0 12px 24px -4px rgba(196, 102, 35, 0.2) !important;
 }
+.btn-toolbar-lgs {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+}
 </style>
 
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
+            <?php
+                $folioCabecera = (string)($data['envio']['folio'] ?? '');
+                $esPreEnvioDetalle = (intval($data['envio']['es_preenvio'] ?? 0) === 1 || strpos($folioCabecera, 'PE-') === 0);
+                $urlBandejaDetalle = $esPreEnvioDetalle ? (base_url() . '/Lgs_bandeja?tab=preenvios') : (base_url() . '/Lgs_envios');
+                $urlEditDetalle    = $esPreEnvioDetalle ? (base_url() . '/Lgs_bandeja?tab=preenvios&edit=' . $data['id_envio']) : (base_url() . '/Lgs_envios?edit=' . $data['id_envio']);
+            ?>
             <!-- HEADER -->
             <div class="row align-items-center mb-3">
                 <div class="col-12">
@@ -107,7 +126,7 @@
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0 fs-13">
                                 <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                <li class="breadcrumb-item"><a href="<?= base_url(); ?>/Lgs_envios">Envíos</a></li>
+                                <li class="breadcrumb-item"><a href="<?= $urlBandejaDetalle; ?>"><?= $esPreEnvioDetalle ? 'Pre-envíos (Bandeja PT)' : 'Envíos'; ?></a></li>
                                 <li class="breadcrumb-item active text-primary fw-semibold">Acomodo de VINs</li>
                             </ol>
                         </div>
@@ -115,75 +134,84 @@
                 </div>
             </div>
 
-            <!-- TÍTULO -->
-            <div class="row mb-4 align-items-center">
-                <div class="col-md-7">
-                    <div class="d-flex align-items-center">
-                        <div class="avatar-md me-3">
-                            <span class="avatar-title text-white rounded-circle fs-2 shadow-sm border border-light" style="background-color: var(--brand-primary) !important;">
-                                <i class="ri-drag-move-2-line"></i>
+            <!-- TÍTULO Y TOOLBAR UNIFICADA -->
+            <?php 
+                $estadoEnvio = intval($data['envio']['id_estado'] ?? 1);
+                $estadoPlan = intval($data['estado_planeacion'] ?? 0);
+                $enPlaneacionAbierta = ($estadoEnvio === 2 && $estadoPlan < 2);
+                $puedeEditar = ($estadoEnvio === 8 || $enPlaneacionAbierta);
+                $folioDisplay = $folioCabecera !== '' ? $folioCabecera : (($esPreEnvioDetalle ? 'PE-' : 'EN-') . str_pad((string)$data['id_envio'], 6, '0', STR_PAD_LEFT));
+                $estadoBadgeHtml = match($estadoEnvio) {
+                    1 => '<span class="badge bg-soft-secondary text-secondary border border-secondary-subtle fs-11"><i class="ri-draft-line me-1"></i>Borrador</span>',
+                    2 => '<span class="badge bg-soft-warning text-warning border border-warning-subtle fs-11"><i class="ri-time-line me-1"></i>Por Aprobar</span>',
+                    3 => '<span class="badge bg-soft-primary text-primary border border-primary-subtle fs-11"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>',
+                    4 => '<span class="badge bg-soft-danger text-danger border border-danger-subtle fs-11"><i class="ri-close-circle-line me-1"></i>Rechazado</span>',
+                    5 => '<span class="badge bg-soft-info text-info border border-info-subtle fs-11"><i class="ri-calendar-check-line me-1"></i>Programado</span>',
+                    6 => '<span class="badge bg-soft-primary text-primary border border-primary fs-11"><i class="ri-truck-line me-1"></i>En Tránsito</span>',
+                    7 => '<span class="badge bg-soft-success text-success border border-success-subtle fs-11"><i class="ri-check-double-line me-1"></i>Entregado</span>',
+                    8 => '<span class="badge bg-soft-dark text-dark border fs-11"><i class="ri-check-line me-1"></i>Finalizado</span>',
+                    default => ''
+                };
+            ?>
+            <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3 bg-white p-3 rounded-3 border border-light-subtle shadow-xs mb-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm me-3 flex-shrink-0">
+                        <span class="avatar-title text-white rounded-3 fs-4 shadow-xs" style="background-color: <?= $esPreEnvioDetalle ? '#0284C7' : 'var(--brand-primary)'; ?> !important;">
+                            <i class="ri-drag-move-2-line"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <h4 class="mb-0 fw-bold text-dark text-uppercase ls-1 fs-16">
+                                Asignación y Acomodo
+                            </h4>
+                            <span class="badge <?= $esPreEnvioDetalle ? 'bg-info text-white' : 'bg-soft-primary text-primary border border-primary-subtle'; ?> fs-12 px-2 py-1 fw-bold">
+                                <?= htmlspecialchars($folioDisplay, ENT_QUOTES, 'UTF-8'); ?>
                             </span>
+                            <?= $estadoBadgeHtml; ?>
                         </div>
-                        <div>
-                            <h3 class="mb-1 fw-bold text-dark text-uppercase ls-1">
-                                Asignación y Acomodo (Envío #<?= $data['id_envio'] ?>)
-                            </h3>
-                            <p class="text-muted fs-13 mb-0">Arrastre los VINs desde el pool disponible hacia la Madrina/Chofer y ordénelos según su destino de entrega.</p>
-                        </div>
+                        <p class="text-muted fs-12 mb-0 mt-1">Arrastre los VINs hacia la Madrina, Plataforma o Chofer y defina subida/bajada por parada.</p>
                     </div>
                 </div>
-                <div class="col-md-5 text-md-end mt-3 mt-md-0">
-                    <?php 
-                        $estadoEnvio = intval($data['envio']['id_estado'] ?? 1);
-                        $estadoPlan = intval($data['estado_planeacion'] ?? 0);
-                        
-                        $enPlaneacionAbierta = ($estadoEnvio === 2 && $estadoPlan < 2);
-                        $puedeEditar = ($estadoEnvio === 8 || $enPlaneacionAbierta);
-                    ?>
-                    <a href="<?= base_url(); ?>/Lgs_incidencias?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-danger rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Reportar Incidencia Operativa">
-                        <i class="ri-alarm-warning-line me-1"></i> Incidencia
+
+                <div class="d-flex align-items-center flex-wrap gap-2 justify-content-xl-end">
+                    <a href="<?= $urlBandejaDetalle; ?>" class="btn btn-light border text-secondary btn-toolbar-lgs" title="Regresar al listado">
+                        <i class="ri-arrow-left-line"></i> Volver
                     </a>
-                    <a href="<?= base_url(); ?>/Lgs_gastosadicionales?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-success rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Registrar Gasto Adicional">
-                        <i class="ri-money-dollar-circle-line me-1"></i> + Gasto Adicional
+
+                    <a href="<?= $urlEditDetalle; ?>" class="btn btn-light border text-dark btn-toolbar-lgs" title="<?= ($estadoEnvio === 1 || $puedeEditar) ? 'Modificar paradas, nodos y datos de ruta' : 'Consultar configuración de ruta'; ?>">
+                        <i class="ri-route-line text-primary"></i> <?= ($estadoEnvio === 1 || $puedeEditar) ? 'Editar Ruta' : 'Ver Ruta'; ?>
                     </a>
-                    <?php 
-                        if ($estadoEnvio === 1): 
-                    ?>
-                        <a href="<?= base_url(); ?>/Lgs_envios?edit=<?= $data['id_envio']; ?>" class="btn btn-light border rounded-pill px-3 py-2 shadow-sm me-2 fw-semibold text-secondary" title="Modificar paradas, nodos y datos de ruta del envío">
-                            <i class="ri-route-line me-1 text-primary"></i> Editar Ruta / Envío
-                        </a>
-                        <button class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold" onclick="guardarAcomodo(true);" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
-                            <i class="ri-check-double-line me-1"></i> Finalizar y Volver
+
+                    <?php if ($estadoEnvio === 1): ?>
+                        <button type="button" class="btn btn-primary btn-toolbar-lgs shadow-xs" onclick="guardarAcomodo(true);" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                            <i class="ri-check-double-line"></i> Finalizar y Guardar
                         </button>
                     <?php elseif ($puedeEditar): ?>
-                        <a href="<?= base_url(); ?>/Lgs_envios?edit=<?= $data['id_envio']; ?>" class="btn btn-light border rounded-pill px-3 py-2 shadow-sm me-2 fw-semibold text-secondary" title="Modificar paradas, nodos y datos de ruta del envío">
-                            <i class="ri-route-line me-1 text-primary"></i> Editar Ruta / Envío
-                        </a>
-                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm me-2 fw-semibold text-secondary">
-                            <i class="ri-arrow-go-back-line me-1"></i> Volver
-                        </a>
-                        <button class="btn btn-warning rounded-pill px-4 py-2 shadow-sm fw-semibold" onclick="regresarABorrador();">
-                            <i class="ri-edit-line me-1"></i> <?= $enPlaneacionAbierta ? 'Editar (Regresa a Borrador)' : 'Editar (Regresa a Borrador)' ?>
+                        <button type="button" class="btn btn-warning text-dark btn-toolbar-lgs shadow-xs" onclick="regresarABorrador();">
+                            <i class="ri-edit-line"></i> Abrir Edición
                         </button>
-                    <?php else: ?>
-                        <a href="<?= base_url(); ?>/Lgs_envios?edit=<?= $data['id_envio']; ?>" class="btn btn-light border rounded-pill px-3 py-2 shadow-sm me-2 fw-semibold text-secondary" title="Consultar configuración de ruta">
-                            <i class="ri-route-line me-1 text-primary"></i> Ver Ruta / Envío
-                        </a>
-                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm fw-semibold text-secondary">
-                            <i class="ri-arrow-go-back-line me-1"></i> Volver (Solo Lectura)
-                        </a>
+                    <?php endif; ?>
+
+                    <?php if ($esPreEnvioDetalle): ?>
+                        <button type="button" class="btn btn-success btn-toolbar-lgs shadow-xs" onclick="convertirPreEnvioAEnvioDesdeDetalle(<?= $data['id_envio'] ?>);" title="Validar Factura/Pago/Aut. y convertir en Envío Oficial (EN-)">
+                            <i class="ri-exchange-line"></i> Pasar a Envío (EN-)
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>
 
-            <!-- LEYENDA INFORMATIVA ORDEN DE CARGA Y LOGÍSTICA MULTI-ORIGEN / MULTI-DESTINO -->
-            <div class="alert alert-soft-primary border-0 shadow-xs rounded-3 mb-4 d-flex align-items-center">
-                <i class="ri-information-line fs-22 me-3 text-primary flex-shrink-0"></i>
-                <div class="fs-13">
+            <!-- LEYENDA INFORMATIVA COMPACTA -->
+            <div class="alert alert-soft-primary border-0 shadow-xs rounded-3 py-2 px-3 mb-3 d-flex align-items-center">
+                <i class="ri-information-line fs-18 me-2 text-primary flex-shrink-0"></i>
+                <div class="fs-12">
                     <strong class="text-dark">Ruta Multi-Origen y Multi-Destino:</strong>
-                    Para cada unidad asignada a la madrina, defina el nodo de <span class="badge bg-success">🟢 Subida (Carga)</span> y el nodo de <span class="badge text-white" style="background-color: #fd7e14;">🟠 Descarga (Bajada)</span>. El sistema adicionará el factor volumétrico en las recolecciones y lo descontará en las entregas intermedias, calculando el costo exacto por tramo con tarifas o memoria de distancias $/km.
+                    En cada unidad asignada defina el nodo de <span class="badge bg-success">🟢 Subida</span> y <span class="badge text-white" style="background-color: #fd7e14;">🟠 Bajada</span>. El costo se recalcula automáticamente por tramo según factor volumétrico y tarifa $/km.
                 </div>
             </div>
+
+            <!-- BANNER DE SOLICITUD EXCEPCIONAL (SI APLICA) -->
+            <div id="banner-solicitud-excepcion-detalle" class="mb-3 d-none"></div>
 
             <!-- RESUMEN EJECUTIVO DE LA RUTA Y KM -->
             <div class="row mb-4" id="card-resumen-ruta-envio">
@@ -221,7 +249,7 @@
 
             <?php 
                 $audit = $data['auditoria_financiera'] ?? null;
-                if (!empty($audit)): 
+                if (!$esPreEnvioDetalle && $estadoEnvio !== 1 && !empty($audit)): 
                     $totales = $audit['totales'] ?? [];
             ?>
             <!-- ── SECCIÓN: AUDITORÍA FINANCIERA, INCIDENCIAS Y COSTO REAL POR VIN ── -->
@@ -474,8 +502,15 @@
                             <div>
                                 <h6 class="card-title mb-0 fw-bold text-dark fs-14">
                                     <i class="ri-car-line text-primary me-1 align-middle"></i> VINs Disponibles
+                                    <?php if ($esPreEnvioDetalle): ?>
+                                        <span class="badge bg-info text-white fs-10 ms-1">Todos los PT</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-soft-primary text-primary fs-10 ms-1">Bandeja / Facturadas</span>
+                                    <?php endif; ?>
                                 </h6>
-                                <small class="text-muted fs-11">Unidades listas en el origen del envío</small>
+                                <small class="text-muted fs-11">
+                                    <?= $esPreEnvioDetalle ? 'Todas las unidades PT vigentes (no bloquea VINs entre Pre-envíos)' : 'Unidades en Bandeja / Facturadas con estatus Sí / No para envío'; ?>
+                                </small>
                             </div>
                             <span class="badge bg-primary-subtle text-primary rounded-pill fs-11" id="badge-total-pool-vins">Pool</span>
                         </div>
@@ -483,7 +518,35 @@
                         <!-- Buscador en tiempo real estilo Search Pill -->
                         <div class="search-pill-modern d-flex align-items-center w-100 my-2">
                             <i class="ri-search-line text-muted me-2"></i>
-                            <input type="text" id="buscar-vin-pool" class="w-100" placeholder="Buscar por VIN, N/S o Modelo...">
+                            <input type="text" id="buscar-vin-pool" class="w-100" placeholder="Buscar VIN, N/S, modelo, pedido o factura...">
+                        </div>
+
+                        <!-- Filtros de Autorización / Cliente / Cobranza -->
+                        <div class="row g-1 mb-1">
+                            <div class="col-12">
+                                <select id="filtro-vin-autorizacion" class="form-select form-select-sm bg-light border-0 fs-11" onchange="aplicarFiltrosPoolVins();">
+                                    <option value="">Estatus Envío: Todos (Sí y No)</option>
+                                    <option value="SI">✅ Sí se envía (Factura + Pago + Aut. Mov.)</option>
+                                    <option value="NO">❌ No se envía (Falta algún requisito)</option>
+                                    <option value="FAC_PAG_SIN_AUT">📄 Cumple Fac. y Pago (Falta Aut. Mov.)</option>
+                                    <option value="AUT_SIN_FAC_PAG">⚡ Con Aut. Mov. (Falta Fac. o Pago)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <select id="filtro-vin-cliente" class="form-select form-select-sm bg-light border-0 fs-11" onchange="aplicarFiltrosPoolVins();">
+                                    <option value="">Cliente: Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <select id="filtro-vin-cobranza" class="form-select form-select-sm bg-light border-0 fs-11" onchange="aplicarFiltrosPoolVins();">
+                                    <option value="">Cobranza: Todas</option>
+                                    <option value="3">Pagada</option>
+                                    <option value="1">Crédito</option>
+                                    <option value="2">Parcial</option>
+                                    <option value="0">Pendiente</option>
+                                    <option value="-1">Sin Facturar</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="flex-grow-1 overflow-auto mt-2" style="max-height: 600px;">

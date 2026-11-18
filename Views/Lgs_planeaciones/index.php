@@ -1,4 +1,43 @@
 <?php headerAdmin($data); ?>
+<style>
+.btn-toolbar-lgs {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+.btn-table-action {
+    height: 30px;
+    padding: 0 11px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+    line-height: 1;
+}
+.btn-icon-lgs {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+</style>
 
 <div class="main-content">
     <div class="page-content">
@@ -22,25 +61,23 @@
                 </div>
 
                 <!-- 2. HEADER CON DESCRIPCIÓN Y ACCIÓN PRINCIPAL -->
-                <div class="row align-items-center mb-4">
-                    <div class="col-md-7">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-md me-4">
-                                <span class="avatar-title text-white rounded-circle fs-2 shadow-lg border border-light" style="background-color: #C46623 !important;">
-                                    <i class="ri-file-list-3-line"></i>
-                                </span>
-                            </div>
-                            <div>
-                                <h3 class="mb-1 fw-bold text-uppercase ls-1 text-body">Mis Planeaciones</h3>
-                                <p class="text-muted mb-0 fs-14">
-                                    Agrupación centralizada de envíos para revisión, estimación de costos y autorización.
-                                </p>
-                            </div>
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 bg-white p-3 rounded-3 border border-light-subtle shadow-xs mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar-sm me-3 flex-shrink-0">
+                            <span class="avatar-title text-white rounded-3 fs-4 shadow-xs" style="background-color: #C46623 !important;">
+                                <i class="ri-file-list-3-line"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="mb-0 fw-bold text-uppercase ls-1 text-dark fs-16">Mis Planeaciones</h4>
+                            <p class="text-muted mb-0 fs-12 mt-1">
+                                Agrupación centralizada de envíos confirmados para revisión, estimación de costos y autorización.
+                            </p>
                         </div>
                     </div>
-                    <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="openModalPlan();">
-                            <i class="ri-add-line align-middle fs-16 me-1"></i> Agrupar Envíos (Nuevo Plan)
+                    <div class="flex-shrink-0">
+                        <button type="button" class="btn btn-primary btn-toolbar-lgs shadow-xs" onclick="openModalPlan();" style="background-color: #C46623; border-color: #C46623;">
+                            <i class="ri-add-line fs-16"></i> Agrupar Envíos (Nuevo Plan)
                         </button>
                     </div>
                 </div>
@@ -202,14 +239,13 @@
                             <table id="tablePlaneaciones" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Plan</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-3">Folio Plan</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Título / Descripción</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Total Envíos</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Costo Total Est.</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha Creación</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
-                                        <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
+                                        <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-3">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -286,8 +322,13 @@
                                         <div class="col-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Seleccionar Envíos Disponibles <span class="text-danger">*</span></label>
                                             <div id="containerEnviosDisponibles" class="p-3 bg-light rounded border border-light">
-                                                <small class="text-muted">Cargando envíos en borrador...</small>
+                                                <small class="text-muted">Cargando envíos disponibles...</small>
                                             </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Observaciones para Aprobación (Opcional)</label>
+                                            <textarea class="form-control bg-light border-0 fs-13" id="obs_operador_plan" name="obs_operador" rows="2" placeholder="Notas o justificación operativa para el comité aprobador..."></textarea>
                                         </div>
                                     </div>
                                 </div>

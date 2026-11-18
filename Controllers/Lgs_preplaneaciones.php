@@ -101,7 +101,8 @@ class Lgs_preplaneaciones extends Controllers
     {
         try {
             $idPlanta = intval($_GET['id_planta'] ?? 0);
-            $vins = $this->model->getVinsDisponibles($idPlanta);
+            $busqueda = trim($_GET['q'] ?? '');
+            $vins = $this->model->getVinsDisponibles($idPlanta, $busqueda);
             echo $this->successResponse($vins, "Unidades obtenidas");
         } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
@@ -121,11 +122,6 @@ class Lgs_preplaneaciones extends Controllers
             $vins = json_decode($vinsJson, true);
             $userId = intval($_SESSION['idUser'] ?? 1);
 
-            if ($idPlanta <= 0) {
-                echo $this->errorResponse("Debe seleccionar una Planta de origen.", 400);
-                return;
-            }
-
             if (empty($fechaTentativa)) {
                 echo $this->errorResponse("Debe indicar la Fecha Tentativa de Recolección.", 400);
                 return;
@@ -134,6 +130,16 @@ class Lgs_preplaneaciones extends Controllers
             if (!is_array($vins) || count($vins) === 0) {
                 echo $this->errorResponse("Debe agregar al menos una unidad / VIN a la preplaneación.", 400);
                 return;
+            }
+
+            if ($idPlanta <= 0) {
+                foreach ($vins as $v) {
+                    $candPlanta = intval($v['id_planta'] ?? 0);
+                    if ($candPlanta > 0) {
+                        $idPlanta = $candPlanta;
+                        break;
+                    }
+                }
             }
 
             $res = $this->model->insertPreplaneacion([

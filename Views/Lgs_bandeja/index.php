@@ -1,8 +1,14 @@
 <?php headerAdmin($data); ?>
+<?php include __DIR__ . '/../Lgs_envios/_partial_envios_styles.php'; ?>
+<script>
+    window.LGS_ENVIOS_CONFIG = { modoPreEnvio: true };
+    window.LGS_BANDEJA_SEDES_INIT = <?= json_encode($data['catalogos_sedes_cli'] ?? ['sedes_por_cliente' => [], 'clientes' => []], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+</script>
 <div id="contentAjax"></div>
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
+            <div id="tabsBandejaWrapper">
             <section id="view-index-bandeja">
                 <!-- 1. BREADCRUMBS -->
                 <div class="row align-items-center mb-4">
@@ -37,6 +43,28 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- NAVEGACIÓN POR PESTAÑAS: BANDEJA OPERATIVA vs PRE-ENVÍOS (PE-) + UNIDADES PT -->
+                <ul class="nav nav-pills nav-customs nav-danger mb-4 gap-2 bg-white p-2 rounded-3 shadow-sm" id="tabsBandejaLogistica" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-semibold rounded-3 px-3 py-2" id="tab-bandeja-operativa-btn"
+                                data-bs-toggle="tab" data-bs-target="#tabPaneBandejaOperativa" type="button" role="tab"
+                                aria-controls="tabPaneBandejaOperativa" aria-selected="true">
+                            <i class="ri-inbox-archive-line me-1 align-bottom"></i> Bandeja Operativa de Logística
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-semibold rounded-3 px-3 py-2" id="tab-preenvios-btn"
+                                data-bs-toggle="tab" data-bs-target="#tabPanePreEnvios" type="button" role="tab"
+                                aria-controls="tabPanePreEnvios" aria-selected="false" onclick="onAbrirTabPreEnvios();">
+                            <i class="ri-route-line me-1 align-bottom"></i> Pre-envíos / Envíos Ficticios (PE-)
+                            <span class="badge bg-info text-white ms-1" id="badgeTotalPreEnviosTab">0</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="tabsBandejaLogisticaContent">
+                    <div class="tab-pane fade show active" id="tabPaneBandejaOperativa" role="tabpanel" aria-labelledby="tab-bandeja-operativa-btn">
 
                 <!-- 3. BLOQUE DE KPIS CIRCULARES -->
                 <div class="row mb-4">
@@ -212,7 +240,24 @@
                         </div>
                     </div>
                 </div>
+                    </div><!-- /#tabPaneBandejaOperativa -->
+
+                    <!-- PESTAÑA 2 UNIFICADA: UNA SOLA TABLA BASE DE PRE-ENVÍOS (PE-) DONDE VIVEN TODAS LAS PT -->
+                    <div class="tab-pane fade" id="tabPanePreEnvios" role="tabpanel" aria-labelledby="tab-preenvios-btn">
+                        <?php
+                            $esModoPreEnvio = true;
+                            $ocultarBreadcrumbsGrid = true;
+                            include __DIR__ . '/../Lgs_envios/_partial_envios_grid.php';
+                        ?>
+                    </div><!-- /#tabPanePreEnvios -->
+                </div><!-- /.tab-content -->
             </section>
+            </div><!-- /#tabsBandejaWrapper -->
+
+            <?php
+                $esModoPreEnvio = true;
+                include __DIR__ . '/../Lgs_envios/_partial_envios_form.php';
+            ?>
         </div>
     </div>
 </div>
@@ -312,6 +357,57 @@
             <div class="modal-footer bg-light border-top-0 pt-3">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-warning px-4 shadow-sm" onclick="fntGuardarFechas()"><i class="ri-save-line me-1"></i> Guardar Fechas</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL SELECCIÓN DIRECTA DE SEDE PARA UNIDAD PT (RESTRINGIDA AL CLIENTE DEL VIN) -->
+<div class="modal fade" id="modalSeleccionarSedePT" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom-0 pb-3">
+                <div>
+                    <h5 class="modal-title fw-bold text-primary mb-0"><i class="ri-store-2-line me-2"></i>Seleccionar Sede de Entrega</h5>
+                    <small class="text-muted">Solo se muestran sedes y direcciones registradas para el cliente de la unidad.</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="sedePTVin">
+                <input type="hidden" id="sedePTIdNs">
+
+                <div class="bg-light rounded p-2 mb-3 border">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <span class="fs-11 text-muted text-uppercase fw-bold d-block">Unidad / VIN</span>
+                            <span class="font-monospace fw-bold text-primary fs-13" id="sedePTVinLabel">-</span>
+                        </div>
+                        <div class="text-end" id="sedePTPedidoFactBadge"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="sedePTClienteSelect" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Cliente / Distribuidor</label>
+                    <select id="sedePTClienteSelect" class="form-select" onchange="poblarSedesModalPT(this.value);">
+                        <option value="">-- Seleccionar cliente --</option>
+                    </select>
+                    <small class="text-muted fs-11" id="sedePTClienteHint"></small>
+                </div>
+
+                <div class="mb-2">
+                    <label for="sedePTSelect" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Sede / Dirección de Entrega <span class="text-danger">*</span></label>
+                    <select id="sedePTSelect" class="form-select">
+                        <option value="">Primero seleccione un cliente...</option>
+                    </select>
+                    <small class="text-muted fs-11 d-block mt-1" id="sedePTDireccionPreview"></small>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="guardarSedeUnidadPT();">
+                    <i class="ri-check-line me-1"></i> Guardar Sede
+                </button>
             </div>
         </div>
     </div>

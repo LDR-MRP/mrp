@@ -327,7 +327,7 @@ class Lgs_gastosadicionalesService
     public function tienePermisoAprobacion(int $userId): bool
     {
         $userRole = (int)($_SESSION['userData']['idrol'] ?? ($_SESSION['rolid'] ?? 0));
-        if ($userRole === 1 || $userRole === 70) return true; // Administrador general o Admin Logística
+        if (in_array($userRole, [1, 56, 65, 70], true)) return true; // Administrador, Director Corporativo, Gerente/Admin Logística
 
         // 1. Revisar permisos en sesión para módulo de gastos (162) o aprobaciones (157)
         if (!empty($_SESSION['permisos'][162]['u']) || !empty($_SESSION['permisos'][157]['u']) ||
@@ -343,7 +343,7 @@ class Lgs_gastosadicionalesService
                 FROM usuarios u
                 LEFT JOIN permisos p ON p.rolid = u.rolid AND p.moduloid IN (157, 162) AND (p.u = 1 OR p.w = 1)
                 LEFT JOIN lgs_aprobadores ap ON ap.id_usuario = u.idusuario AND ap.activo = 1
-                WHERE u.idusuario = ? AND (u.rolid IN (1, 70) OR p.idpermiso IS NOT NULL OR ap.id IS NOT NULL)
+                WHERE u.idusuario = ? AND (u.rolid IN (1, 56, 65, 70) OR u.idusuario = 72 OR p.idpermiso IS NOT NULL OR ap.id IS NOT NULL)
             ");
             $stmt->execute([$userId]);
             return (int)$stmt->fetchColumn() > 0;

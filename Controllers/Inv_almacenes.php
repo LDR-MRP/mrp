@@ -33,6 +33,20 @@ class Inv_almacenes extends Controllers
 		$this->views->getView($this, "inv_almacenes", $data);
 	}
 
+	private function syncLogisticaPlantasWms(): void
+	{
+		try {
+			if (!class_exists('Lgs_enviosModel') && file_exists('Models/Lgs_enviosModel.php')) {
+				require_once 'Models/Lgs_enviosModel.php';
+			}
+			if (class_exists('Lgs_enviosModel')) {
+				(new Lgs_enviosModel())->sincronizarPlantasYAlmacenes();
+			}
+		} catch (Throwable $e) {
+			error_log('Inv_almacenes::syncLogisticaPlantasWms: ' . $e->getMessage());
+		}
+	}
+
 	public function setAlmacen()
 	{
 		if ($_POST) {
@@ -92,6 +106,7 @@ class Inv_almacenes extends Controllers
 
 					$arrResponse = array('status' => false, 'msg' => '¡Atención! El almacen ya existe.');
 				} else if ($request_almacen > 0) {
+					$this->syncLogisticaPlantasWms();
 
 					if ($option == 1) {
 						$arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
@@ -179,6 +194,7 @@ class Inv_almacenes extends Controllers
 				$intidalmacen = intval($_POST['idalmacen']);
 				$requestDelete = $this->model->deleteAlmacen($intidalmacen);
 				if ($requestDelete) {
+					$this->syncLogisticaPlantasWms();
 					$arrResponse = array('status' => true, 'msg' => 'El registro fue eliminado satisfactoriamente.');
 				} else {
 					$arrResponse = array('status' => false, 'msg' => 'Error al eliminar el usuario.');

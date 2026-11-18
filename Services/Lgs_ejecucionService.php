@@ -81,6 +81,9 @@ class Lgs_ejecucionService {
             // 2. Generar las solicitudes de entrega para el área de planta/almacén con el orden de acomodo
             $this->model->crearSolicitudesEntrega($db, $idEnvio);
 
+            // 3. Registrar salida automática de inventario (Ventas) para VINs facturados vigentes (estatus = 1)
+            $this->registrarSalidaVentasFacturados($db, $idEnvio, null, $userId);
+
             if ($db->inTransaction()) {
                 $db->commit();
             }
@@ -128,6 +131,9 @@ class Lgs_ejecucionService {
 
             // 1. Confirmar entrega del VIN
             $this->model->confirmarEntregaVinPlanta($db, $idEnvio, $idUnidad, $userId);
+
+            // 1b. Registrar salida automática de inventario (Ventas) si el VIN tiene facturación pendiente de salida (estatus = 1)
+            $this->registrarSalidaVentasFacturados($db, $idEnvio, $idUnidad, $userId);
 
             // 2. Comprobar si ya se entregaron TODOS los VINs del envío
             $todosCompletos = $this->model->checkTodosVinsEntregados($db, $idEnvio);
@@ -703,6 +709,124 @@ class Lgs_ejecucionService {
         } catch (Throwable $e) {
             error_log("Error al obtenerVinUnidad: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Genera la salida automática de inventario (concepto Ventas) para los VINs facturados vigentes (`estatus = 1`)
+     * de un envío cuando Logística despacha o confirma salida física de planta.
+     */
+    private function registrarSalidaVentasFacturados(PDO $db, int $idEnvio, ?int $idUnidadFiltro, int $userId): void
+    {
+        try {
+            $chk = $db->query("SHOW TABLES LIKE 'wms_vin_facturacion'")->fetch();
+            if (!$chk) {
+                return;
+            }
+
+            $sql = "
+                SELECT DISTINCT
+                       ev.id_unidad,
+                       ns.id_numeros_serie,
+                       ns.numero_serie,
+                       ns.inventarioid,
+                       ns.almacenid,
+                       ns.costo,
+                       ns.estado AS ns_estado,
+                       f.idfacturacion,
+                       f.id_cliente,
+                       f.distribuidor,
+                       f.factura
+                FROM lgs_envios_vins ev
+                INNER JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+                INNER JOIN wms_numeros_series ns ON (
+                    ns.id_numeros_serie = COALESCE(ev.id_numeros_serie, u.id_numeros_serie)
+                    OR CONVERT(UPPER(TRIM(ns.numero_serie)) USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(UPPER(TRIM(u.vin)) USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                )
+                INNER JOIN wms_vin_facturacion f ON f.id_numeros_serie = ns.id_numeros_serie AND f.estatus = 1
+                WHERE ev.id_envio = ?
+            ";
+            $params = [$idEnvio];
+            if ($idUnidadFiltro !== null && $idUnidadFiltro > 0) {
+                $sql .= " AND ev.id_unidad = ?";
+                $params[] = $idUnidadFiltro;
+            }
+
+            $st = $db->prepare($sql);
+            $st->execute($params);
+            $items = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            if (empty($items)) {
+                return;
+            }
+
+            if (!class_exists('Inv_movventasmasivaModel')) {
+                require_once "Models/Inv_movventasmasivaModel.php";
+            }
+            if (!class_exists('Inv_movimientosinventarioModel')) {
+                require_once "Models/Inv_movimientosinventarioModel.php";
+            }
+
+            $ventasModel = new Inv_movventasmasivaModel();
+            $concepto = $ventasModel->selectConceptoVentas();
+            if (!$concepto || empty($concepto['idconcepmov'])) {
+                error_log("Lgs_ejecucionService::registrarSalidaVentasFacturados: No se encontró concepto de Ventas.");
+                return;
+            }
+
+            $movModel = new Inv_movimientosinventarioModel();
+            $concepmovid = intval($concepto['idconcepmov']);
+
+            foreach ($items as $it) {
+                $idNs    = intval($it['id_numeros_serie']);
+                $idAlm   = intval($it['almacenid']);
+                $idInv   = intval($it['inventarioid']);
+                $idFact  = intval($it['idfacturacion']);
+                if ($idNs <= 0 || $idAlm <= 0 || $idInv <= 0) {
+                    continue;
+                }
+                if (!in_array((string)$it['ns_estado'], ['1', '2'], true)) {
+                    continue;
+                }
+
+                $almPermitido = $movModel->almacenVentaUnidades($idAlm);
+                if (empty($almPermitido['permitido'])) {
+                    error_log("Lgs_ejecucionService: Almacén {$idAlm} no permitido para salida automática de ventas (VIN {$it['numero_serie']}).");
+                    continue;
+                }
+
+                $resMov = $movModel->insertMovimientoMasivo(
+                    $idAlm,
+                    $concepmovid,
+                    null,
+                    [$idInv],
+                    [1],
+                    [floatval($it['costo'] ?? 0)],
+                    mb_substr((string)($it['factura'] ?? ''), 0, 20),
+                    null,
+                    !empty($it['id_cliente']) ? intval($it['id_cliente']) : null,
+                    [0 => [$idNs]],
+                    $userId,
+                    (string)($it['distribuidor'] ?? '')
+                );
+
+                if (is_array($resMov) && !empty($resMov['numero_movimiento'])) {
+                    $stMov = $db->prepare("SELECT idmovinventario FROM wms_movimientos_inventario WHERE numero_movimiento = ? AND almacenid = ? LIMIT 1");
+                    $stMov->execute([$resMov['numero_movimiento'], $idAlm]);
+                    $idMovVenta = intval($stMov->fetchColumn() ?: 0);
+
+                    $db->prepare("
+                        UPDATE wms_vin_facturacion
+                        SET estatus = 2,
+                            idmov_venta = ?,
+                            almacenid_salida = ?
+                        WHERE idfacturacion = ?
+                    ")->execute([$idMovVenta > 0 ? $idMovVenta : null, $idAlm, $idFact]);
+                } else {
+                    error_log("Lgs_ejecucionService: No se generó salida de venta para VIN {$it['numero_serie']}: " . (is_string($resMov) ? $resMov : 'error'));
+                }
+            }
+        } catch (Throwable $e) {
+            error_log("Lgs_ejecucionService::registrarSalidaVentasFacturados error: " . $e->getMessage());
         }
     }
 }
