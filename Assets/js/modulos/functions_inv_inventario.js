@@ -3859,6 +3859,9 @@ function formatoNumero(valor) {
 
 // Lista de precios asignados al producto (pestaña Precio) para elegir el que
 // se publica. Se preselecciona el que coincide con el precio ya publicado.
+// Precio ya publicado de la unidad (para validar al publicar sin precios asignados)
+let pwPrecioGuardadoActual = 0;
+
 function renderPreciosPortalWeb(precios, registro, editable) {
   const sel = document.getElementById("pw_precio_select");
   const hint = document.getElementById("pw_precio_hint");
@@ -3867,6 +3870,7 @@ function renderPreciosPortalWeb(precios, registro, editable) {
   sel.innerHTML = "";
   sel.disabled = !editable;
   const precioGuardado = registro ? parseFloat(registro.precio_estimado || 0) : 0;
+  pwPrecioGuardadoActual = precioGuardado;
 
   if (!precios.length) {
     sel.innerHTML = '<option value="">Sin precios asignados</option>';
@@ -3888,6 +3892,7 @@ function renderPreciosPortalWeb(precios, registro, editable) {
   precios.forEach((p) => {
     const opt = document.createElement("option");
     opt.value = p.id_inv_precio;
+    opt.dataset.precio = Number(p.precio) || 0;
     opt.textContent = p.cve_precio + (p.anio_precio ? " " + p.anio_precio : "") + " — " + formatoPrecioPw(p.precio);
     if (!seleccionado && precioGuardado > 0 && Math.abs(parseFloat(p.precio) - precioGuardado) < 0.005) {
       opt.selected = true;
@@ -4126,9 +4131,23 @@ function guardarPortalWeb() {
     fd.append("marca", document.getElementById("pw_marca").value || "");
     const selPrecio = document.getElementById("pw_precio_select");
     const publicar = document.getElementById("pw_web_distribuidores").checked;
-    if (publicar && selPrecio && !selPrecio.disabled && !selPrecio.value) {
-      Swal.fire("Aviso", "Selecciona el precio que se publicará en el portal", "warning");
-      return;
+    if (publicar) {
+      // No se permite publicar sin precio (evita unidades en 0.00 en el portal)
+      if (!selPrecio || (selPrecio.disabled && !(pwPrecioGuardadoActual > 0))) {
+        Swal.fire("Aviso", "No se puede publicar en el portal sin precio. Asigna un precio en la pestaña Precio.", "warning");
+        return;
+      }
+      if (!selPrecio.disabled && !selPrecio.value) {
+        Swal.fire("Aviso", "Selecciona el precio que se publicará en el portal", "warning");
+        return;
+      }
+      if (!selPrecio.disabled) {
+        const optSel = selPrecio.options[selPrecio.selectedIndex];
+        if (optSel && !(parseFloat(optSel.dataset.precio || 0) > 0)) {
+          Swal.fire("Aviso", "El precio seleccionado es 0.00; elige o asigna un precio válido antes de publicar.", "warning");
+          return;
+        }
+      }
     }
     fd.append("id_inv_precio", selPrecio ? selPrecio.value : "");
 

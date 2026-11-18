@@ -67,10 +67,10 @@ class Inv_inventario extends Controllers
 			$tipo_elemento    = strClean($_POST['tipo_elemento']); // P S K
 			$unidad_entrada   = strClean($_POST['unidad_entrada'] ?? '');
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
-			$unidad_empaque   = strClean($_POST['unidad_empaque'] ?? '');
+			$unidad_empaque   = (string) floatval($_POST['unidad_empaque'] ?? 0); // opcional: vacío = 0 (columna DECIMAL NOT NULL)
 			$ultimo_costo     = floatval($_POST['ultimo_costo'] ?? 0);
 			$ubicacion     	  = strClean($_POST['ubicacion']);
-			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
+			$factor_unidades  = (isset($_POST['factor_unidades']) && trim((string) $_POST['factor_unidades']) !== '') ? floatval($_POST['factor_unidades']) : 1; // opcional: vacío = 1
 			$tiempo_surtido   = intval($_POST['tiempo_surtido'] ?? 0);
 			$serie            = strClean($_POST['serie'] ?? 'N');
 			$lote             = strClean($_POST['lote'] ?? 'N');
@@ -2194,6 +2194,16 @@ class Inv_inventario extends Controllers
 
 			$publicar = !empty($_POST['web_distribuidores']);
 			$estatusRadio = $_POST['estatus'] ?? '2';
+
+			// No se permite publicar en el portal de distribuidores sin un
+			// precio mayor a 0 (antes se publicaban unidades en 0.00).
+			if ($publicar && round($precioPortal, 2) <= 0) {
+				echo json_encode([
+					'status' => false,
+					'msg' => 'No se puede publicar en el portal sin precio. Asigna un precio en la pestaña Precio y selecciónalo en Portal Web.',
+				]);
+				die();
+			}
 
 			if (!$publicar) {
 				$estadoFinal = 0;
