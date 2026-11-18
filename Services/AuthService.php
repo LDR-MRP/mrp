@@ -40,15 +40,43 @@ class AuthService{
             $tokenPayload = [];
 
             // =================================================================
-            // FLUJO A: LOGIN PROVEEDORES (SRM) - Cifrado Moderno
+            // FLUJO A: LOGIN PROVEEDORES (SRM) - Cifrado Moderno con RFC
             // =================================================================
             if ($loginType === 'VENDOR') {
-                $user = $this->vendorModel->findByEmail($strUsuario);
+                $strUsuario  = strtolower(trim($payload['txtEmail'] ?? ''));
+                $rawPassword = $payload['txtPassword'] ?? '';
 
-                if (!$user) {
-                    return \ServiceResponse::error("El usuario no se encuentra registrado.", 401);
+                // Detectar si es RFC (13 caracteres) o Email
+                $isRfc = (strlen($strUsuario) === 13 || strlen($strUsuario) === 12);
+
+                $user = null;
+
+                if ($isRfc) {
+                    // Flujo con RFC
+                    $user = $this->vendorModel->findByRfc($strUsuario);
+
+                    if (!$user) {
+                        return \ServiceResponse::error("El RFC no se encuentra registrado en el sistema.", 401);
+                    }
+
+                    // Verificar si es RFC genérico (extranjeros)
+                    if ($this->vendorModel->isGenericRfc($strUsuario)) {
+                        // Para RFCs genéricos, requerir también email
+                        // Por ahora, si es genérico, intentamos buscar por email
+                        $user = $this->vendorModel->findByEmail($strUsuario);
+                        if (!$user) {
+                            return \ServiceResponse::error("Para RFCs genéricos de extranjeros, debe usar su correo electrónico para iniciar sesión.", 401);
+                        }
+                    }
+                } else {
+                    // Flujo con Email (extranjeros o compatibilidad)
+                    $user = $this->vendorModel->findByEmail($strUsuario);
+
+                    if (!$user) {
+                        return \ServiceResponse::error("El correo electrónico no se encuentra registrado.", 401);
+                    }
                 }
-                
+
                 if (!password_verify($rawPassword, $user['password'])) {
                     return \ServiceResponse::error("La contraseña ingresada es incorrecta.", 401);
                 }

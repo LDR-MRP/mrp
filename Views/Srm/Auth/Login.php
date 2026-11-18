@@ -44,8 +44,9 @@
                                 <form name="formSrmLogin" id="formSrmLogin" action="">
                                     
                                     <div class="mb-4">
-                                        <label for="txtEmail" class="form-label fw-medium text-dark">Correo Electrónico</label>
-                                        <input id="txtEmail" name="txtEmail" type="email" class="form-control form-control-lg bg-light border-0" placeholder="ejemplo@tuempresa.com" required>
+                                        <label for="txtEmail" class="form-label fw-medium text-dark">RFC (Nacionales) o Correo Electrónico (Extranjeros)</label>
+                                        <input id="txtEmail" name="txtEmail" type="text" class="form-control form-control-lg bg-light border-0" placeholder="RFC o correo electrónico" required>
+                                        <small class="text-muted fs-12">Para proveedores nacionales: ingrese su RFC. Para extranjeros: ingrese su correo electrónico.</small>
                                     </div>
 
                                     <div class="mb-4">
