@@ -156,8 +156,7 @@
                     <input type="number" class="form-control"
                         placeholder="Ingresa el factor entre unidades" id="factor_unidades" step="0.000001"
                         min="0" name="factor_unidades"
-                        aria-describedby="factor-unidades-addon" required>
-                    <div class="invalid-feedback">El campo factor entre unidades es obligatorio</div>
+                        aria-describedby="factor-unidades-addon">
                 </div>
             </div>
         </div>
@@ -171,8 +170,8 @@
                     <input type="number" class="form-control"
                         placeholder="Ingresa el tiempo de surtido" id="tiempo_surtido" step="0.000001"
                         min="0" name="tiempo_surtido"
-                        aria-describedby="tiempo-surtido-addon" required>
-                    <div class="invalid-feedback">El campo tiempo de surtido es obligatorio</div>
+                        aria-describedby="tiempo-surtido-addon">
+                    
                 </div>
             </div>
         </div>
@@ -186,8 +185,8 @@
                     <input type="number" class="form-control"
                         placeholder="Ingresa el volumen" id="volumen" step="0.000001"
                         min="0" name="volumen"
-                        aria-describedby="volumen-addon" required>
-                    <div class="invalid-feedback">El campo volumen es obligatorio</div>
+                        aria-describedby="volumen-addon">
+                    
                 </div>
             </div>
         </div>
@@ -201,8 +200,8 @@
                     <input type="number" class="form-control"
                         placeholder="Ingresa el peso" id="peso" step="0.000001"
                         min="0" name="peso"
-                        aria-describedby="peso-addon" required>
-                    <div class="invalid-feedback">El campo peso es obligatorio</div>
+                        aria-describedby="peso-addon">
+                    
                 </div>
             </div>
         </div>
@@ -216,8 +215,8 @@
                     <input type="number" class="form-control"
                         placeholder="Ingresa la unidad de empaque" id="unidad_empaque" step="0.000001"
                         min="0" name="unidad_empaque"
-                        aria-describedby="unidad_empaque-addon" required>
-                    <div class="invalid-feedback">El campo unidad de empaque es obligatorio</div>
+                        aria-describedby="unidad_empaque-addon">
+                    
                 </div>
             </div>
         </div>
@@ -231,8 +230,8 @@
                     <input type="number" class="form-control"
                         placeholder="Ingresa el ultimo costo" id="ultimo_costo" step="0.000001"
                         min="0" name="ultimo_costo"
-                        aria-describedby="ultimo_costo-addon" required>
-                    <div class="invalid-feedback">El campo ultimo costo es obligatorio</div>
+                        aria-describedby="ultimo_costo-addon">
+                    
                 </div>
             </div>
         </div>
