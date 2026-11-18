@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use Requests\Supplier\StoreBankAccountRequest;
 use Requests\Supplier\StoreSupplierRequest;
-use Com_ordenCompraModel;
-use AccountsPayableInvoiceModel;
 use Psr\Log\LogLevel;
 
 class SupplierService
@@ -16,8 +14,8 @@ class SupplierService
     private readonly \Prv_detExpedienteModel $expedienteModel;
     private readonly \Prv_detCuentaBancariaModel $bankModel;
     private readonly \CatBancoModel $catBancoModel;
-    private readonly Com_ordenCompraModel $poModel;
-    private readonly AccountsPayableInvoiceModel $cxpModel;
+    private $poModel;
+    private $cxpModel;
     private readonly \UsuariosModel $usuarioModel;
     private object $db;
 

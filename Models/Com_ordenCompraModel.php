@@ -4,9 +4,9 @@ class Com_ordenCompraModel extends Mysql {
 
     use Auditable;
 
-    protected string $table = 'com_ordenes_compra';
+    private string $table = 'com_ordenes_compra';
 
-    protected string $detailTable = 'com_ordenes_compra_detalle';
+    private string $detailTable = 'com_ordenes_compra_detalle';
 
     public function __construct() {
         parent::__construct();

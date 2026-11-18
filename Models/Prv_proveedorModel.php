@@ -167,7 +167,7 @@ class Prv_proveedorModel extends Mysql
             -- Onboarding Information JOIN
             -- LEFT JOIN `prv_tra_onboarding`
             --     ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
-            WHERE `prv_cat_proveedores`.`deleted_at` IS NULL";
+            WHERE `prv_cat_proveedores`.`deleted_at` IS NULL ";
 
         if(array_key_exists('id_proveedor', $filters)){ $sql .= "AND `prv_cat_proveedores`.`id_proveedor` = '{$filters['id_proveedor']}'"; }
         if(array_key_exists('estado', $filters)){ $sql .= "AND ``estado` = '{$filters['estado']}'"; }
