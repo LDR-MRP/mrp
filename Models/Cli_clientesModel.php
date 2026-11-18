@@ -15,22 +15,31 @@ class Cli_clientesModel extends Mysql
 | FUNCIÓN PARA OBTENER TODOS LOS CLIENTES
 |--------------------------------------------------------------------------
 */
-public function selectTodos()
+public function selectTodos(int $tipo = 0)
 {
     $sql = "SELECT 
                 c.*,
                 cc.limite_credito,
                 cc.dias_credito,
                 cf.rfc,
-                cf.regimen_fiscal
+                cf.regimen_fiscal,
+                tc.nombre AS tipo_cliente,
+                CASE WHEN c.idtipo_cliente = 1 THEN (
+                    SELECT MAX(e.fecha_envio)
+                    FROM cli_usuarios_acceso_envios e
+                    WHERE e.idcliente = c.idcliente
+                      AND e.resultado = 'ENVIADO'
+                      AND e.tipo_envio IN ('CREDENCIALES', 'REENVIO_CREDENCIALES')
+                ) END AS fecha_envio_accesos
             FROM cli_clientes AS c
+            LEFT JOIN cli_tipos_cliente AS tc ON tc.id = c.idtipo_cliente
             LEFT JOIN cli_clientes_comercial AS cc
                 ON cc.idcliente = c.idcliente
                 AND cc.estado <> 0
             LEFT JOIN cli_clientes_fiscal AS cf
                 ON cf.idcliente = c.idcliente
                 AND cf.estado <> 0
-            WHERE c.estado <> 0
+            WHERE c.estado <> 0" . ($tipo > 0 ? " AND c.idtipo_cliente = $tipo" : "") . "
             ORDER BY c.idcliente DESC";
 
     return $this->select_all($sql);
@@ -42,24 +51,7 @@ public function selectTodos()
 */
 public function selectDistribuidores()
 {
-    $sql = "SELECT 
-                c.*,
-                cc.limite_credito,
-                cc.dias_credito,
-                cf.rfc,
-                cf.regimen_fiscal
-            FROM cli_clientes AS c
-            LEFT JOIN cli_clientes_comercial AS cc
-                ON cc.idcliente = c.idcliente
-                AND cc.estado <> 0
-            LEFT JOIN cli_clientes_fiscal AS cf
-                ON cf.idcliente = c.idcliente
-                AND cf.estado <> 0
-            WHERE c.idtipo_cliente = 1
-                AND c.estado <> 0
-            ORDER BY c.idcliente DESC";
-
-    return $this->select_all($sql);
+    return $this->selectTodos(1);
 }
 
 
@@ -70,24 +62,7 @@ public function selectDistribuidores()
 */
 public function selectInternos()
 {
-    $sql = "SELECT 
-                c.*,
-                cc.limite_credito,
-                cc.dias_credito,
-                cf.rfc,
-                cf.regimen_fiscal
-            FROM cli_clientes AS c
-            LEFT JOIN cli_clientes_comercial AS cc
-                ON cc.idcliente = c.idcliente
-                AND cc.estado <> 0
-            LEFT JOIN cli_clientes_fiscal AS cf
-                ON cf.idcliente = c.idcliente
-                AND cf.estado <> 0
-            WHERE c.idtipo_cliente = 2
-                AND c.estado <> 0
-            ORDER BY c.idcliente DESC";
-
-    return $this->select_all($sql);
+    return $this->selectTodos(2);
 }
 
 
@@ -98,24 +73,7 @@ public function selectInternos()
 */
 public function selectExternos()
 {
-    $sql = "SELECT 
-                c.*,
-                cc.limite_credito,
-                cc.dias_credito,
-                cf.rfc,
-                cf.regimen_fiscal
-            FROM cli_clientes AS c
-            LEFT JOIN cli_clientes_comercial AS cc
-                ON cc.idcliente = c.idcliente
-                AND cc.estado <> 0
-            LEFT JOIN cli_clientes_fiscal AS cf
-                ON cf.idcliente = c.idcliente
-                AND cf.estado <> 0
-            WHERE c.idtipo_cliente = 3
-                AND c.estado <> 0
-            ORDER BY c.idcliente DESC";
-
-    return $this->select_all($sql);
+    return $this->selectTodos(3);
 }
 
 
@@ -126,24 +84,7 @@ public function selectExternos()
 */
 public function selectGubernamentales()
 {
-    $sql = "SELECT 
-                c.*,
-                cc.limite_credito,
-                cc.dias_credito,
-                cf.rfc,
-                cf.regimen_fiscal
-            FROM cli_clientes AS c
-            LEFT JOIN cli_clientes_comercial AS cc
-                ON cc.idcliente = c.idcliente
-                AND cc.estado <> 0
-            LEFT JOIN cli_clientes_fiscal AS cf
-                ON cf.idcliente = c.idcliente
-                AND cf.estado <> 0
-            WHERE c.idtipo_cliente = 4
-                AND c.estado <> 0
-            ORDER BY c.idcliente DESC";
-
-    return $this->select_all($sql);
+    return $this->selectTodos(4);
 }
 
     ////////////////////////////////////////////////////////////////////
@@ -176,6 +117,7 @@ public function selectGubernamentales()
         $sql = "SELECT
                 ua.idusuario_acceso,
                 ua.idcliente,
+                ua.idcontacto,
                 ua.nombre_usuario,
                 ua.nombre,
                 ua.apellido,
@@ -193,11 +135,31 @@ public function selectGubernamentales()
                 ua.fecha_creacion,
                 ua.fecha_actualizacion
             FROM cli_usuarios_acceso ua
-            WHERE ua.idcliente = $idcliente
+            JOIN cli_clientes c ON c.idcliente = ua.idcliente
+            WHERE ua.idcliente = $idcliente AND (ua.idcontacto IS NULL OR ua.correo = c.correo)
+            ORDER BY (ua.correo = c.correo) DESC, ua.idusuario_acceso
             LIMIT 1
         ";
 
         return $this->select($sql);
+    }
+
+    public function selectContactoAcceso(int $idcliente, int $idcontacto)
+    {
+        return $this->select(
+            "SELECT nombre, correo, telefono FROM cli_clientes_contactos
+             WHERE idcliente = ? AND idcontacto = ? AND estado <> 0",
+            [$idcliente, $idcontacto]
+        );
+    }
+
+    public function selectUsuarioContacto(int $idcliente, int $idcontacto)
+    {
+        return $this->select(
+            "SELECT idusuario_acceso, nombre_usuario, url_portal, doble_autenticacion
+             FROM cli_usuarios_acceso WHERE idcliente = ? AND idcontacto = ?",
+            [$idcliente, $idcontacto]
+        );
     }
 
     public function selectUsuarioAccesoPorId(int $idusuarioAcceso)
@@ -213,6 +175,7 @@ public function selectGubernamentales()
                 telefono,
                 url_portal,
                 ultimo_login,
+                ultimo_envio_accesos,
                 doble_autenticacion,
                 requiere_cambio_password,
                 fecha_cambio_password,
@@ -263,11 +226,13 @@ public function selectGubernamentales()
         string $telefono,
         string $urlPortal,
         int $dobleAutenticacion,
-        int $usuarioRegistro
+        int $usuarioRegistro,
+        ?int $idcontacto = null
     ) {
         $sql = "INSERT INTO cli_usuarios_acceso
         (
             idcliente,
+            idcontacto,
             nombre_usuario,
             nombre,
             apellido,
@@ -281,10 +246,14 @@ public function selectGubernamentales()
             intentos_fallidos,
             estado,
             created_by,
+            ultimo_login,
+            token_recuperacion,
+            token_recuperacion_expira,
             fecha_creacion,
             fecha_actualizacion
         )
         VALUES (
+            ?,
             ?,
             ?,
             ?,
@@ -299,6 +268,9 @@ public function selectGubernamentales()
             0,
             2,
             ?,
+            NULL,
+            '',
+            '',
             CONVERT_TZ(
                 UTC_TIMESTAMP(),
                 '+00:00',
@@ -316,6 +288,7 @@ public function selectGubernamentales()
             $sql,
             [
                 $idcliente,
+                $idcontacto,
                 $nombreUsuario,
                 $nombre,
                 $apellido,
@@ -337,10 +310,12 @@ public function selectGubernamentales()
         string $passwordHash,
         string $urlPortal,
         int $dobleAutenticacion,
-        int $usuarioActualiza
+        int $usuarioActualiza,
+        ?int $idcontacto = null
     ) {
         $sql = "UPDATE cli_usuarios_acceso
         SET
+            idcontacto = COALESCE(?, idcontacto),
             nombre_usuario = ?,
             correo = ?,
             password_hash = ?,
@@ -359,11 +334,13 @@ public function selectGubernamentales()
             )
         WHERE idusuario_acceso = ?
           AND idcliente = ?
+          AND (? IS NULL OR idcontacto IS NULL OR idcontacto = ?)
     ";
 
         return $this->update(
             $sql,
             [
+                $idcontacto,
                 $nombreUsuario,
                 $correo,
                 $passwordHash,
@@ -371,7 +348,9 @@ public function selectGubernamentales()
                 $dobleAutenticacion,
                 $usuarioActualiza,
                 $idusuarioAcceso,
-                $idcliente
+                $idcliente,
+                $idcontacto,
+                $idcontacto
             ]
         );
     }
@@ -544,6 +523,32 @@ public function selectGubernamentales()
                 $motivo
             ]
         );
+    }
+
+    public function selectEnviosCredenciales(int $idcliente)
+    {
+        $sql = "SELECT
+                    e.idenvio,
+                    e.fecha_envio,
+                    e.idusuario_acceso,
+                    ua.nombre_usuario,
+                    contacto.nombre AS nombre_contacto,
+                    e.correo_destino,
+                    e.tipo_envio,
+                    e.asunto,
+                    e.resultado,
+                    e.detalle,
+                    e.enviado_por
+                FROM cli_usuarios_acceso_envios e
+                LEFT JOIN cli_usuarios_acceso ua
+                    ON ua.idusuario_acceso = e.idusuario_acceso AND ua.idcliente = e.idcliente
+                LEFT JOIN cli_clientes_contactos contacto
+                    ON contacto.idcontacto = ua.idcontacto AND contacto.idcliente = e.idcliente
+                WHERE e.idcliente = ?
+                  AND e.tipo_envio IN ('CREDENCIALES', 'REENVIO_CREDENCIALES')
+                ORDER BY e.fecha_envio DESC, e.idenvio DESC";
+
+        return $this->select_all($sql, [$idcliente]);
     }
 
     public function selectLogsAcceso(int $idcliente)
@@ -1239,10 +1244,11 @@ public function selectGubernamentales()
         return $request;
     }
 
-    public function selectOptionTipoClientes()
+    public function selectOptionTipoClientes(int $tipoActual = 0)
     {
-        $sql = "SELECT * FROM  cli_tipos_cliente
-                    WHERE estado = 2";
+        $sql = "SELECT id, nombre FROM cli_tipos_cliente
+                    WHERE estado = 2 OR id = $tipoActual
+                    ORDER BY id";
         $request = $this->select_all($sql);
         return $request;
     }
@@ -2409,9 +2415,7 @@ public function selectGubernamentales()
         /*
          * Valores normalizados.
          */
-        $listaPrecio = trim(
-            $d['lista_precio'] ?? ''
-        );
+        $precioId = $d['precioid'] ?? '8';
 
         $moneda = trim(
             $d['moneda'] ?? 'MXN'
@@ -2459,7 +2463,7 @@ public function selectGubernamentales()
         if (!empty($actual)) {
             $sql = "UPDATE cli_clientes_comercial
                 SET
-                    lista_precio = ?,
+                    precioid = ?,
                     moneda = ?,
                     forma_pago = ?,
                     limite_credito = ?,
@@ -2476,7 +2480,7 @@ public function selectGubernamentales()
                   AND estado <> 0";
 
             $arrData = [
-                $listaPrecio,
+                $precioId,
                 $moneda,
                 $formaPago,
                 $limiteCredito,
@@ -2503,7 +2507,7 @@ public function selectGubernamentales()
         $sql = "INSERT INTO cli_clientes_comercial
             (
                 idcliente,
-                lista_precio,
+                precioid,
                 moneda,
                 forma_pago,
                 limite_credito,
@@ -2539,7 +2543,7 @@ public function selectGubernamentales()
 
         $arrData = [
             $idcliente,
-            $listaPrecio,
+            $precioId,
             $moneda,
             $formaPago,
             $limiteCredito,
@@ -2833,7 +2837,23 @@ public function selectGubernamentales()
                 estado,
                 usuarioid,
                 fecha_creacion,
-                fecha_actualizacion
+                fecha_actualizacion,
+                COALESCE((
+                    SELECT cuenta.doble_autenticacion
+                    FROM cli_usuarios_acceso cuenta
+                    WHERE cuenta.idcontacto = cli_clientes_contactos.idcontacto
+                      AND cuenta.idcliente = cli_clientes_contactos.idcliente
+                ), 0) AS doble_autenticacion,
+                (SELECT MAX(e.fecha_envio)
+                 FROM cli_usuarios_acceso ua
+                 JOIN cli_usuarios_acceso_envios e ON e.idusuario_acceso = ua.idusuario_acceso
+                   AND e.idcliente = ua.idcliente
+                 WHERE ua.idcontacto = cli_clientes_contactos.idcontacto
+                   AND ua.idcliente = cli_clientes_contactos.idcliente
+                   AND e.correo_destino COLLATE utf8mb4_general_ci = cli_clientes_contactos.correo
+                   AND e.resultado = 'ENVIADO'
+                   AND e.tipo_envio IN ('CREDENCIALES', 'REENVIO_CREDENCIALES')
+                ) AS fecha_envio_accesos
             FROM cli_clientes_contactos
             WHERE idcliente = $idcliente
               AND estado <> 0
@@ -2900,11 +2920,29 @@ public function selectGubernamentales()
         return $this->select_all($sql);
     }
 
+    public function selectListasPrecioActivas()
+    {
+        return $this->select_all(
+            "SELECT idprecio, cve_precio
+             FROM wms_precios
+             WHERE estado = 2
+             ORDER BY cve_precio, idprecio"
+        );
+    }
+
+    public function existeListaPrecioActiva(string $idprecio): bool
+    {
+        return (bool) $this->select(
+            "SELECT idprecio FROM wms_precios WHERE idprecio = ? AND estado = 2 LIMIT 1",
+            [$idprecio]
+        );
+    }
+
     public function selectComercialCliente(int $idcliente)
     {
         $sql = "SELECT
                 idcliente,
-                lista_precio,
+                precioid,
                 moneda,
                 forma_pago,
                 limite_credito,

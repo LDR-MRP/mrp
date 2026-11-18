@@ -18,6 +18,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let logs = [];
     let logsCargados = false;
+    let enviosCredenciales = [];
+    let consultaHistorico = null;
+    let bibliotecaExcel = null;
+    const tbodyEnvios = document.getElementById('tbodyEnviosCredenciales');
+    const botonExportar = document.getElementById('btnExportarAccesos');
+    const columnasEnvios = [
+        ['Fecha y hora', 'fecha_envio', 22], ['Contacto', 'nombre_contacto', 32],
+        ['Usuario', 'nombre_usuario', 32], ['Correo destino', 'correo_destino', 37],
+        ['Tipo de envío', 'tipo_envio', 26], ['Resultado', 'resultado', 17],
+        ['Asunto', 'asunto', 37], ['Detalle', 'detalle', 65],
+        ['ID de quien envió', 'enviado_por', 20], ['ID del envío', 'idenvio', 18],
+        ['ID de la cuenta', 'idusuario_acceso', 18]
+    ];
+    const columnasActividad = [
+        ['Fecha', 'fecha', 16], ['Hora', 'hora', 14], ['Evento', 'tipo_evento', 29],
+        ['Resultado', 'resultado', 17], ['Correo del intento', 'correo_intento', 37],
+        ['Dispositivo', 'dispositivo', 25], ['Tipo de dispositivo', 'tipo_dispositivo', 22],
+        ['Navegador', 'navegador', 25], ['Versión', 'version_navegador', 15],
+        ['Sistema operativo', 'sistema_operativo', 24], ['IP', 'ip', 21],
+        ['Ubicación', 'ubicacion', 30], ['Detalle', 'detalle', 65],
+        ['ID del evento', 'idlog', 18]
+    ];
 
     function escaparHTML(valor) {
         return String(valor ?? '')
@@ -298,8 +320,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             cargarAccesoCliente();
+            logsCargados = false;
+            if (document.getElementById('tabHistorico').classList.contains('active')) {
+                cargarHistorico();
+            }
 
         } catch (error) {
+            logsCargados = false;
             Swal.fire({
                 icon: 'error',
                 title: 'No fue posible completar la operación',
@@ -311,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function badgeResultado(resultado) {
         const tipos = {
             EXITOSO: 'success',
+            ENVIADO: 'success',
             FALLIDO: 'danger',
             BLOQUEADO: 'warning',
             INFORMATIVO: 'info'
@@ -421,11 +449,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? result.data
                 : [];
 
-            logsCargados = true;
-
-            renderLogs(logs);
+            filtrarLogs();
+            return true;
 
         } catch (error) {
+            logs = [];
             tbodyLogs.innerHTML = `
                 <tr>
                     <td colspan="9" class="text-center py-5 text-danger">
@@ -433,8 +461,112 @@ document.addEventListener('DOMContentLoaded', () => {
                     </td>
                 </tr>
             `;
+            return false;
         }
     }
+
+    async function cargarEnviosCredenciales() {
+        tbodyEnvios.innerHTML = '<tr><td colspan="9" class="text-center py-3">Consultando envíos…</td></tr>';
+
+        try {
+            const response = await fetch(
+                `${base_url}/cli_clientes/getEnviosCredenciales/${encodeURIComponent(idclientePagina)}`
+            );
+            const result = await leerJson(response);
+            if (!response.ok || !result.status) {
+                throw new Error(result.message || 'No fue posible consultar los envíos.');
+            }
+
+            enviosCredenciales = Array.isArray(result.data) ? result.data : [];
+            tbodyEnvios.innerHTML = enviosCredenciales.length
+                ? enviosCredenciales.map(envio => `<tr>${columnasEnvios.slice(0, 9).map(([, campo]) =>
+                    `<td>${campo === 'resultado' ? badgeResultado(envio[campo]) : escaparHTML(envio[campo] || '—')}</td>`
+                ).join('')}</tr>`).join('')
+                : '<tr><td colspan="9" class="text-center py-3 text-muted">No hay envíos registrados.</td></tr>';
+            return true;
+        } catch (error) {
+            enviosCredenciales = [];
+            tbodyEnvios.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-danger">${escaparHTML(error.message)}</td></tr>`;
+            return false;
+        }
+    }
+
+    function cargarHistorico() {
+        if (!consultaHistorico) {
+            logsCargados = false;
+            consultaHistorico = Promise.all([cargarLogs(), cargarEnviosCredenciales()])
+                .then(resultados => {
+                    logsCargados = resultados.every(Boolean);
+                    return logsCargados;
+                })
+                .finally(() => { consultaHistorico = null; });
+        }
+        return consultaHistorico;
+    }
+
+    function cargarBibliotecaExcel() {
+        if (window.ExcelJS) {
+            return Promise.resolve();
+        }
+        if (!bibliotecaExcel) {
+            bibliotecaExcel = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+                script.onload = resolve;
+                script.onerror = () => {
+                    script.remove();
+                    bibliotecaExcel = null;
+                    reject(new Error('No se pudo cargar la biblioteca de Excel.'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+        return bibliotecaExcel;
+    }
+
+    function agregarHojaHistorico(libro, nombre, columnas, registros) {
+        const hoja = libro.addWorksheet(nombre, { views: [{ state: 'frozen', ySplit: 3 }] });
+        hoja.getCell('A1').value = document.getElementById('lblCliente').textContent.trim();
+        hoja.getCell('A1').font = { bold: true, size: 14 };
+        hoja.columns = columnas.map(([, key, width]) => ({ key, width }));
+        hoja.getRow(3).values = columnas.map(([titulo]) => titulo);
+        hoja.getRow(3).eachCell(celda => {
+            celda.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF25374B' } };
+        });
+        hoja.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: columnas.length } };
+        hoja.addRows(registros.map(registro => columnas.map(([, campo]) => String(registro[campo] ?? ''))));
+    }
+
+    async function exportarHistorico() {
+        botonExportar.disabled = true;
+        try {
+            if (!await cargarHistorico()) {
+                throw new Error('No se pudo consultar el historial completo del distribuidor.');
+            }
+
+            await cargarBibliotecaExcel();
+            const libro = new window.ExcelJS.Workbook();
+            agregarHojaHistorico(libro, 'Envíos de credenciales', columnasEnvios, enviosCredenciales);
+            agregarHojaHistorico(libro, 'Actividad del portal', columnasActividad, logs);
+            const contenido = await libro.xlsx.writeBuffer();
+            const archivo = new Blob([contenido], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(archivo);
+            const enlace = document.createElement('a');
+            enlace.href = url;
+            enlace.download = `Accesos-distribuidor-${idclientePagina}.xlsx`;
+            enlace.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'No fue posible exportar', text: error.message });
+        } finally {
+            botonExportar.disabled = false;
+        }
+    }
+
+    botonExportar.addEventListener('click', exportarHistorico);
 
     function filtrarLogs() {
         const inicio =
@@ -476,13 +608,13 @@ document.addEventListener('DOMContentLoaded', () => {
         .getElementById('btnTabHistorico')
         .addEventListener('shown.bs.tab', () => {
             if (!logsCargados) {
-                cargarLogs();
+                cargarHistorico();
             }
         });
 
     document
         .getElementById('btnActualizarLogs')
-        .addEventListener('click', cargarLogs);
+        .addEventListener('click', cargarHistorico);
 
     [
         'filtroFechaInicio',

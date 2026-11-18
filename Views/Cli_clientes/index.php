@@ -60,12 +60,12 @@
                                 <div class="col-12 col-md-4 col-xxl-2">
                                     <label class="form-label mb-1 small text-muted">Clientes</label>
                                     <select class="form-select form-select-sm" id="filterPrioridad">
-                                        <option value="TODOS">Todos</option>
-                                        <option value="DISTRIBUIDORES">Distribuidores</option>
-                                        <option value="INTERNOS">Internos</option>
-                                        <option value="EXTERNOS">Externos</option>
-                                        <option value="GUBERNAMENTALES">Gubernamentales</option>
-
+                                        <option value="">Todos</option>
+                                        <?php foreach ($data['tipos_cliente'] as $tipo): ?>
+                                            <option value="<?= (int) $tipo['id'] ?>">
+                                                <?= htmlspecialchars($tipo['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="col-12 col-md-8 col-xxl-1 d-grid">
@@ -87,6 +87,14 @@
                     <div class="card">
                         <div class="card-body">
 
+                            <div class="d-flex gap-2 justify-content-end mb-3">
+                                <button class="btn btn-outline-success btn-sm" type="button" id="btnClientesExcel">
+                                    <i class="ri-file-excel-2-line me-1"></i> Exportar Excel
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" type="button" id="btnClientesPdf">
+                                    <i class="ri-file-pdf-line me-1"></i> Exportar PDF
+                                </button>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle table-nowrap mb-0" id="tablaListados">
                                     <thead class="table-light">
@@ -99,6 +107,7 @@
                                             <th style="width:140px;">Días de Crédito</th>
                                             <th style="width:120px;">Fecha registro</th>
                                             <th style="width:50px;">Estatus</th>
+                                            <th>Correo de acceso</th>
                                             <th style="width:260px;" class="text-end">Acciones</th>
                                         </tr>
                                     </thead>

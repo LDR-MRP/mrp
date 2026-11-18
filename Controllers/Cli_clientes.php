@@ -27,6 +27,7 @@ class Cli_clientes extends Controllers
         $data['page_tag'] = "Clientes";
         $data['page_title'] = "Clientes";
         $data['page_functions_js'] = "/clientes/index.js";
+        $data['tipos_cliente'] = $this->model->selectOptionTipoClientes();
         $this->views->getView($this, "index", $data);
     }
 
@@ -36,13 +37,34 @@ class Cli_clientes extends Controllers
     |--------------------------------------------------------------------------
     */
 
+    public function getLogoReporte()
+    {
+        $contexto = stream_context_create(['http' => ['timeout' => 5, 'follow_location' => 0]]);
+        $logo = @file_get_contents(
+            'https://viaticos.ldrhumanresources.com/viaticos/Assets/images/Logotipo_Naranja.png',
+            false,
+            $contexto,
+            0,
+            2 * 1024 * 1024
+        );
+        if ($logo === false || substr($logo, 0, 8) !== "\x89PNG\r\n\x1a\n") {
+            http_response_code(502);
+            exit;
+        }
+
+        header('Content-Type: image/png');
+        header('Cache-Control: private, max-age=3600');
+        echo $logo;
+        exit;
+    }
+
     public function getTodos()
     { 
         header('Content-Type: application/json; charset=utf-8');
 
         try {
 
-            $arrData = $this->model->selectTodos();
+            $arrData = $this->model->selectTodos(max(0, (int) ($_GET['tipo'] ?? 0)));
 
             if (!is_array($arrData)) {
                 $arrData = [];
@@ -227,6 +249,8 @@ class Cli_clientes extends Controllers
         $data['page_title'] = "Clientes";
         $data['page_name'] = "bom";
         $data['page_functions_js'] = "/clientes/create.js";
+        $data['tipos_cliente'] = $this->model->selectOptionTipoClientes();
+        $data['listas_precio'] = $this->model->selectListasPrecioActivas();
         $this->views->getView($this, "create", $data);
     }
 
@@ -265,12 +289,14 @@ class Cli_clientes extends Controllers
      */
     $data['idcliente'] = $idcliente;
     $data['cliente'] = $cliente;
+    $data['tipos_cliente'] = $this->model->selectOptionTipoClientes((int) $cliente['idtipo_cliente']);
 
     // $data['page_functions_js'] = [
     //     "/clientes/cli_clientes.js"
     // ];
 
     $data['page_functions_js'] = "/clientes/create.js";
+    $data['listas_precio'] = $this->model->selectListasPrecioActivas();
 
     $this->views->getView(
         $this,
@@ -413,6 +439,10 @@ class Cli_clientes extends Controllers
 
     public function setAccesoCliente()
     {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->json(false, 'Método no permitido.', [], 405);
+        }
+
         if (empty($_SESSION['permisosMod']['w'])) {
             $this->responseJson(
                 false,
@@ -429,10 +459,6 @@ class Cli_clientes extends Controllers
             $_POST['usuario_acceso'] ?? ''
         );
 
-        $correoAcceso = strtolower(trim(
-            $_POST['correo_acceso'] ?? ''
-        ));
-
         $passwordTemporal = trim(
             $_POST['password_temporal'] ?? ''
         );
@@ -445,48 +471,70 @@ class Cli_clientes extends Controllers
             $_POST['doble_autenticacion'] ?? 0
         );
 
-        if (
-            $idcliente <= 0
-            || empty($usuarioAcceso)
-            || empty($correoAcceso)
-            || empty($passwordTemporal)
-            || empty($ligaAcceso)
-        ) {
-            $this->responseJson(
-                false,
-                'Todos los campos son obligatorios.'
-            );
-        }
-
-        if (!filter_var($correoAcceso, FILTER_VALIDATE_EMAIL)) {
-            $this->responseJson(
-                false,
-                'El correo no tiene un formato válido.'
-            );
-        }
-
-        if (!$this->validarPasswordTemporal($passwordTemporal)) {
-            $this->responseJson(
-                false,
-                'La contraseña debe tener 15 caracteres, mayúscula, minúscula, número y símbolo.'
-            );
-        }
-
         $cliente = $this->model->selectClienteAcceso($idcliente);
-
-        if (empty($cliente)) {
-            $this->responseJson(
-                false,
-                'No se encontró el cliente.'
-            );
+        if (!$cliente) {
+            $this->responseJson(false, 'No se encontró el cliente.');
         }
 
-        /*
-         * No confíes en el correo readonly del navegador.
-         * Se vuelve a tomar desde la base de datos.
-         */
-        $correoAcceso = strtolower(trim($cliente['correo']));
+        $idcontacto = (int) ($_POST['idcontacto'] ?? 0);
+        $contacto = null;
+        $correoAcceso = strtolower(trim((string) $cliente['correo']));
 
+        if ($idcontacto > 0) {
+            if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') {
+                $this->json(false, 'Solicitud inválida.', [], 400);
+            }
+            if ((int) $cliente['idtipo_cliente'] !== 1 || (int) $cliente['estado'] !== 2) {
+                $this->responseJson(false, 'Los accesos por contacto requieren un distribuidor activo.');
+            }
+
+            $contacto = $this->model->selectContactoAcceso($idcliente, $idcontacto);
+            if (!$contacto) {
+                $this->responseJson(false, 'No se encontró un contacto vigente para el distribuidor.');
+            }
+
+            $correoAcceso = strtolower(trim((string) $contacto['correo']));
+            $acceso = $this->model->selectUsuarioContacto($idcliente, $idcontacto);
+
+            // Un contacto con el mismo correo del cliente puede vincular la cuenta general existente.
+            if (!$acceso && strcasecmp($correoAcceso, (string) $cliente['correo']) === 0) {
+                $accesoGeneral = $this->model->selectUsuarioAccesoPorCliente($idcliente);
+                if (!empty($accesoGeneral) && empty($accesoGeneral['idcontacto'])
+                    && strcasecmp($correoAcceso, (string) $accesoGeneral['correo']) === 0) {
+                    $acceso = $accesoGeneral;
+                }
+            }
+
+            $idusuarioAcceso = (int) ($acceso['idusuario_acceso'] ?? 0);
+            $usuarioAcceso = $acceso['nombre_usuario'] ?? $correoAcceso;
+            $ligaAcceso = $acceso['url_portal'] ?? base_url() . '/orders/login';
+            $dobleAutenticacion = (int) ((string) ($_POST['doble_autenticacion']
+                ?? $acceso['doble_autenticacion'] ?? '0') === '1');
+            $alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*+-_?';
+            $caracteres = str_split('Aa1!');
+            for ($i = 0; $i < 11; $i++) {
+                $caracteres[] = $alfabeto[random_int(0, strlen($alfabeto) - 1)];
+            }
+            for ($i = count($caracteres) - 1; $i > 0; $i--) {
+                $j = random_int(0, $i);
+                [$caracteres[$i], $caracteres[$j]] = [$caracteres[$j], $caracteres[$i]];
+            }
+            $passwordTemporal = implode('', $caracteres);
+        } elseif ($idusuarioAcceso > 0) {
+            $acceso = $this->model->selectUsuarioAccesoPorCliente($idcliente);
+            if ((int) ($acceso['idusuario_acceso'] ?? 0) !== $idusuarioAcceso) {
+                $this->responseJson(false, 'La cuenta general no corresponde a este cliente.');
+            }
+        }
+
+        if (!$usuarioAcceso || !$ligaAcceso || !$this->validarPasswordTemporal($passwordTemporal)) {
+            $this->responseJson(false, 'Completa el usuario, liga y contraseña temporal de 15 caracteres.');
+        }
+        if (!filter_var($correoAcceso, FILTER_VALIDATE_EMAIL) || strlen($correoAcceso) > 50) {
+            $this->responseJson(false, 'El correo registrado debe ser válido y tener hasta 50 caracteres.');
+        }
+
+        $esNuevoAcceso = $idusuarioAcceso <= 0;
         $passwordHash = password_hash(
             $passwordTemporal,
             PASSWORD_DEFAULT
@@ -496,33 +544,38 @@ class Cli_clientes extends Controllers
             $_SESSION['idUser'] ?? 0
         );
 
-        if ($idusuarioAcceso > 0) {
-            $guardado = $this->model->updateUsuarioAcceso(
-                $idusuarioAcceso,
-                $idcliente,
-                $usuarioAcceso,
-                $correoAcceso,
-                $passwordHash,
-                $ligaAcceso,
-                $dobleAutenticacion,
-                $usuarioAdmin
-            );
-        } else {
-            $guardado = $this->model->insertUsuarioAcceso(
-                $idcliente,
-                $usuarioAcceso,
-                $cliente['nombre_comercial']
-                ?: $cliente['razon_social'],
-                '',
-                $correoAcceso,
-                $passwordHash,
-                $cliente['telefono'] ?? '',
-                $ligaAcceso,
-                $dobleAutenticacion,
-                $usuarioAdmin
-            );
+        try {
+            if ($idusuarioAcceso > 0) {
+                $guardado = $this->model->updateUsuarioAcceso(
+                    $idusuarioAcceso,
+                    $idcliente,
+                    $usuarioAcceso,
+                    $correoAcceso,
+                    $passwordHash,
+                    $ligaAcceso,
+                    $dobleAutenticacion,
+                    $usuarioAdmin,
+                    $idcontacto ?: null
+                );
+            } else {
+                $guardado = $this->model->insertUsuarioAcceso(
+                    $idcliente,
+                    $usuarioAcceso,
+                    $contacto['nombre'] ?? ($cliente['nombre_comercial'] ?: $cliente['razon_social']),
+                    '',
+                    $correoAcceso,
+                    $passwordHash,
+                    $contacto['telefono'] ?? $cliente['telefono'] ?? '',
+                    $ligaAcceso,
+                    $dobleAutenticacion,
+                    $usuarioAdmin,
+                    $idcontacto ?: null
+                );
 
-            $idusuarioAcceso = intval($guardado);
+                $idusuarioAcceso = intval($guardado);
+            }
+        } catch (Throwable $error) {
+            $this->responseJson(false, 'No se pudo guardar el acceso. Verifica si el correo o usuario ya está registrado.');
         }
 
         if (!$guardado) {
@@ -531,8 +584,6 @@ class Cli_clientes extends Controllers
                 'No fue posible guardar las credenciales.'
             );
         }
-
-        $esNuevoAcceso = $idusuarioAcceso <= 0;
 
         $nombreCliente = !empty($cliente['nombre_comercial'])
             ? $cliente['nombre_comercial']
@@ -544,7 +595,7 @@ class Cli_clientes extends Controllers
              * Ajusta estas claves si sendMailLocalCron usa otros nombres.
              */
             'email' => $correoAcceso,
-            'nombre_destinatario' => $nombreCliente,
+            'nombre_destinatario' => $contacto['nombre'] ?? $nombreCliente,
             'asunto' => $esNuevoAcceso
                 ? 'Accesos al Portal de Pedidos'
                 : 'Actualización de accesos al Portal de Pedidos',
@@ -569,11 +620,12 @@ class Cli_clientes extends Controllers
 
         $cc = 'carlos.cruz@ldrsolutions.com.mx';
 
-        $correoEnviado = sendMailLocalCron(
-            $datosCorreo,
-            'email_clientes_accesos',
-            $cc
-        );
+        try {
+            $correoEnviado = sendMailLocalCron($datosCorreo, 'email_clientes_accesos', $cc);
+        } catch (Throwable $error) {
+            $correoEnviado = false;
+            error_log('Error al enviar accesos al portal para la cuenta ' . $idusuarioAcceso);
+        }
 
         $this->model->insertEnvioAcceso(
             $idusuarioAcceso,
@@ -628,7 +680,8 @@ class Cli_clientes extends Controllers
             true,
             'Las credenciales fueron guardadas y enviadas correctamente.',
             [
-                'idusuario_acceso' => $idusuarioAcceso
+                'idusuario_acceso' => $idusuarioAcceso,
+                'fecha_envio_accesos' => $this->model->selectUsuarioAccesoPorId($idusuarioAcceso)['ultimo_envio_accesos'] ?? null
             ]
         );
     }
@@ -656,6 +709,18 @@ class Cli_clientes extends Controllers
     }
 
 
+
+    public function getEnviosCredenciales($idcliente)
+    {
+        if (empty($_SESSION['permisosMod']['r']) && empty($_SESSION['permisosMod']['w'])) {
+            $this->json(false, 'No tiene permisos para consultar los envíos.', [], 403);
+        }
+
+        $idcliente = (int) $idcliente;
+        $this->validarCliente($idcliente);
+        $envios = $this->model->selectEnviosCredenciales($idcliente);
+        $this->responseJson(true, 'Envíos consultados correctamente.', $envios ?: []);
+    }
 
     public function getLogsAcceso($idcliente)
     {
@@ -1064,6 +1129,8 @@ class Cli_clientes extends Controllers
          */
         $prefijos = [
             'DISTRIBUIDOR' => 'CLI-DIS-',
+            'CLIENTE DIRECTO' => 'CLI-DIR-',
+            'CLIENTE DE INTERCAMBIO' => 'CLI-CAN-',
 
             'CLIENTE INTERNO' => 'CLI-INT-',
             'INTERNO' => 'CLI-INT-',
@@ -1358,18 +1425,33 @@ class Cli_clientes extends Controllers
             $idcliente = (int) $this->post('idcliente', '0');
             $tipoEnviado = $this->post('idtipo_cliente');
             $tipoPersona = strtoupper($this->post('tipo_persona'));
-            $razonSocial = $this->post('razon_social');
-            $nombreComercial = $this->post('nombre_comercial');
+            $razonSocial = mb_strtoupper($this->post('razon_social'), 'UTF-8');
+            $nombreComercial = mb_strtoupper($this->post('nombre_comercial'), 'UTF-8');
             $correo = strtolower($this->post('correo'));
 
-            if ($tipoEnviado === '' || !in_array($tipoPersona, ['FISICA', 'MORAL'], true) || $razonSocial === '' || $nombreComercial === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            if (!ctype_digit($tipoEnviado) || (int) $tipoEnviado <= 0 || !in_array($tipoPersona, ['FISICA', 'MORAL'], true) || $razonSocial === '' || $nombreComercial === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
                 $this->json(false, 'Completa correctamente los campos obligatorios de Información general.', [], 400);
             }
 
+            $tipoId = (int) $tipoEnviado;
+            $clienteActual = $idcliente > 0 ? $this->model->selectClienteById($idcliente) : null;
+            if ($idcliente > 0 && !$clienteActual) {
+                $this->json(false, 'No se encontró el cliente.', [], 404);
+            }
+
+            $codigo = $clienteActual['codigo_cliente'] ?? '';
+            if ((int) ($clienteActual['idtipo_cliente'] ?? 0) !== $tipoId) {
+                $generado = $this->generarCodigoCliente($tipoId);
+                if (!$generado['status']) {
+                    $this->json(false, $generado['message'], [], 400);
+                }
+                $codigo = $generado['codigo_cliente'];
+            }
+
             $data = [
-                'idtipo_cliente' => $this->post('idtipo_cliente'),
+                'idtipo_cliente' => $tipoId,
                 'tipo_persona' => $tipoPersona,
-                'codigo_cliente' => $this->post('codigo_cliente'),
+                'codigo_cliente' => $codigo,
                 'razon_social' => $razonSocial,
                 'nombre_comercial' => $nombreComercial,
                 'telefono' => $this->post('telefono'),
@@ -1377,11 +1459,13 @@ class Cli_clientes extends Controllers
                 'correo' => $correo,
                 'sitio_web' => $this->post('sitio_web'),
                 'fecha_alta' => $this->post('fecha_alta', date('Y-m-d')),
-                'estado' => (int) $this->post('estado', '1'),
-                'clave_distribuidor' => $this->post('clave_distribuidor'),
-                'zona_comercial' => $this->post('zona_comercial'),
-                'territorio' => $this->post('territorio'),
-                'responsable_comercial' => $this->post('responsable_comercial'),
+                'estado' => (int) $this->post('estado', (string) ($clienteActual['estado'] ?? 2)),
+                'clave_distribuidor' => $tipoId === 1 && $this->post('clave_distribuidor_automatica') === '1'
+                    ? $codigo
+                    : $this->post('clave_distribuidor'),
+                'zona_comercial' => mb_strtoupper($this->post('zona_comercial'), 'UTF-8'),
+                'territorio' => mb_strtoupper($this->post('territorio'), 'UTF-8'),
+                'responsable_comercial' => mb_strtoupper($this->post('responsable_comercial'), 'UTF-8'),
                 'requiere_acceso_portal' => (int) $this->post('requiere_acceso_portal', '0'),
                 'correo_acceso' => strtolower($this->post('correo_acceso')),
                 'numero_empleado' => $this->post('numero_empleado'),
@@ -1390,16 +1474,16 @@ class Cli_clientes extends Controllers
                 'jefe_inmediato' => $this->post('jefe_inmediato'),
                 'correo_corporativo' => strtolower($this->post('correo_corporativo')),
                 'origen_cliente' => $this->post('origen_cliente'),
-                'ejecutivo_asignado' => $this->post('ejecutivo_asignado'),
-                'segmento_mercado' => $this->post('segmento_mercado'),
+                'ejecutivo_asignado' => mb_strtoupper($this->post('ejecutivo_asignado'), 'UTF-8'),
+                'segmento_mercado' => mb_strtoupper($this->post('segmento_mercado'), 'UTF-8'),
                 'dependencia' => $this->post('dependencia'),
                 'unidad_administrativa' => $this->post('unidad_administrativa'),
                 'nivel_gobierno' => $this->post('nivel_gobierno'),
                 'partida_presupuestal' => $this->post('partida_presupuestal'),
                 'tipo_contratacion' => $this->post('tipo_contratacion'),
                 'usuarioid' => (int) ($_SESSION['idUser'] ?? 0)
-            ];
-
+            ]; 
+ 
             $resultado = $idcliente > 0
                 ? $this->model->updateGeneral($idcliente, $data)
                 : $this->model->insertGeneral($data);
@@ -1413,7 +1497,8 @@ class Cli_clientes extends Controllers
 
             $this->json(true, 'La información general se guardó correctamente.', [
                 'idcliente' => $idcliente,
-                'codigo_cliente' => $this->post('codigo_cliente')
+                'codigo_cliente' => $codigo,
+                'clave_distribuidor' => $data['clave_distribuidor']
             ]);
         } catch (Throwable $e) {
             error_log('setGeneral: ' . $e->getMessage());
@@ -1908,8 +1993,16 @@ public function delDireccion()
             // $this->validarPermiso('w');
             $idcliente = (int)$this->post('idcliente', '0');
             // $this->validarCliente($idcliente);
+            $precioId = $this->post('precioid', '8');
+            if (!ctype_digit($precioId) || !$this->model->existeListaPrecioActiva($precioId)) {
+                $comercialActual = $this->model->selectComercialCliente($idcliente);
+                if ($precioId === '' || $precioId !== (string) ($comercialActual['precioid'] ?? '')) {
+                    $this->json(false, 'Selecciona una lista de precios activa.', [], 400);
+                }
+            }
+
             $data = [
-                'lista_precio' => $this->post('lista_precio'),
+                'precioid' => $precioId,
                 'moneda' => $this->post('moneda', 'MXN'),
                 'forma_pago' => $this->post('forma_pago'),
                 'limite_credito' => max(0, (float)$this->post('limite_credito', '0')),
