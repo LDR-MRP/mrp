@@ -430,20 +430,41 @@
                                     </div>
 
                                     <p class="section-description mb-0">
-                                        Consulta accesos correctos, intentos fallidos, PIN y cambios de contraseña.
+                                        Consulta los envíos de credenciales y la actividad del portal.
                                     </p>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    class="btn btn-soft-secondary"
-                                    id="btnActualizarLogs">
-
-                                    <i class="ri-refresh-line me-1"></i>
-                                    Actualizar
-                                </button>
+                                <div class="d-flex align-items-start gap-2">
+                                    <button type="button" class="btn btn-soft-secondary" id="btnActualizarLogs">
+                                        <i class="ri-refresh-line me-1"></i> Actualizar
+                                    </button>
+                                    <button type="button" class="btn btn-soft-success" id="btnExportarAccesos">
+                                        <i class="ri-file-excel-2-line me-1"></i> Exportar Excel
+                                    </button>
+                                </div>
                             </div>
 
+                            <h6 class="mb-2">Envíos de credenciales</h6>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-hover table-access-logs">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha y hora</th>
+                                            <th>Contacto</th>
+                                            <th>Usuario</th>
+                                            <th>Correo destino</th>
+                                            <th>Tipo de envío</th>
+                                            <th>Resultado</th>
+                                            <th>Asunto</th>
+                                            <th>Detalle</th>
+                                            <th>ID de quien envió</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyEnviosCredenciales"></tbody>
+                                </table>
+                            </div>
+
+                            <h6 class="mb-2">Actividad del portal</h6>
                             <div class="row g-3 mb-4">
                                 <div class="col-lg-3">
                                     <input

@@ -33,27 +33,12 @@ document.addEventListener('DOMContentLoaded', function() {
     |--------------------------------------------------------------------------
     */
 
-    const TOTAL_COLUMNAS = 9;
-
-    const ENDPOINTS_CLIENTES = {
-        TODAS: `${base_url}/cli_clientes/getTodos`,
-        DISTRIBUIDORES: `${base_url}/cli_clientes/getDistribuidores`,
-        INTERNOS: `${base_url}/cli_clientes/getInternos`,
-        EXTERNOS: `${base_url}/cli_clientes/getExternos`,
-        GUBERNAMENTALES: `${base_url}/cli_clientes/getGubernamentales`
-    };
-
-    /*
-    |--------------------------------------------------------------------------
-    | ENDPOINTS
-    |--------------------------------------------------------------------------
-    */
+    const TOTAL_COLUMNAS = 10;
 
     function getListadoEndpoint(tipo) {
-        const tipoNormalizado = normalizarTextoSimple(tipo).toUpperCase();
-
-        return ENDPOINTS_CLIENTES[tipoNormalizado] ||
-            ENDPOINTS_CLIENTES.TODAS;
+        const id = Number(tipo);
+        const base = `${base_url}/cli_clientes/getTodos`;
+        return id > 0 ? `${base}?tipo=${encodeURIComponent(id)}` : base;
     }
 
     /*
@@ -433,6 +418,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 nombre_estado: obtenerNombreEstado(estado),
 
                 tipo_cliente: tipoCliente,
+                nombre_tipo_cliente: normalizarTextoSimple(row.tipo_cliente) || tipoCliente,
+                fecha_envio_accesos: normalizarTextoSimple(row.fecha_envio_accesos),
 
                 fecha_creacion: normalizarTextoSimple(
                     row.fecha_creacion
@@ -770,6 +757,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${badgeEstado(row.estado)}
                 </td>
 
+                <td class="text-nowrap">
+                    ${escapeHtml(estadoCorreoAcceso(row))}
+                    ${row.fecha_envio_accesos ? '<br><small class="text-muted">' +
+                        escapeHtml(formatearFechaHora(row.fecha_envio_accesos)) + '</small>' : ''}
+                </td>
                 <td class="text-end">
                     ${construirBotonesOpciones(row)}
                 </td>
@@ -834,7 +826,8 @@ document.addEventListener('DOMContentLoaded', function() {
             controladorCarga.abort();
         }
 
-        controladorCarga = new AbortController();
+        const solicitud = new AbortController();
+        controladorCarga = solicitud;
 
         mostrarCargando();
 
@@ -843,7 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const respuesta = await fetchJson(
                 endpoint,
-                controladorCarga.signal
+                solicitud.signal
             );
 
             listadoActual = normalizarRows(respuesta);
@@ -864,7 +857,9 @@ document.addEventListener('DOMContentLoaded', function() {
             );
 
         } finally {
-            controladorCarga = null;
+            if (controladorCarga === solicitud) {
+                controladorCarga = null;
+            }
         }
     }
 
@@ -885,6 +880,147 @@ document.addEventListener('DOMContentLoaded', function() {
             }, tiempo);
         };
     }
+
+    function estadoCorreoAcceso(row) {
+        if (row.idtipo_cliente !== 1) return 'No aplica';
+        return row.fecha_envio_accesos ? 'Enviado' : 'Pendiente';
+    }
+
+    const recursosReporte = new Map();
+
+    function cargarScriptReporte(url) {
+        if (!recursosReporte.has(url)) {
+            const promesa = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = resolve;
+                script.onerror = () => {
+                    script.remove();
+                    recursosReporte.delete(url);
+                    reject(new Error('No se pudo cargar la biblioteca de exportación.'));
+                };
+                document.head.appendChild(script);
+            });
+            recursosReporte.set(url, promesa);
+        }
+        return recursosReporte.get(url);
+    }
+
+    async function obtenerLogoReporte() {
+        const respuesta = await fetch(`${base_url}/cli_clientes/getLogoReporte`);
+        if (!respuesta.ok || !respuesta.headers.get('content-type')?.startsWith('image/png')) {
+            throw new Error('No se pudo cargar el logotipo del reporte.');
+        }
+        const imagen = await respuesta.blob();
+        return new Promise((resolve, reject) => {
+            const lector = new FileReader();
+            lector.onload = () => resolve(lector.result);
+            lector.onerror = reject;
+            lector.readAsDataURL(imagen);
+        });
+    }
+
+    async function exportarClientes(formato, boton) {
+        if (controladorCarga || boton.disabled) return;
+        const filas = aplicarFiltros(listadoActual);
+        if (!filas.length) {
+            window.alert('No hay clientes para exportar con los filtros actuales.');
+            return;
+        }
+
+        const encabezados = [
+            'Código', 'Tipo de cliente', 'Razón social', 'Nombre comercial', 'RFC', 'Correo',
+            'Teléfono', 'Celular', 'Límite de crédito', 'Días de crédito', 'Estatus',
+            'Fecha de registro', 'Correo de acceso', 'Último envío'
+        ];
+        const datos = filas.map(row => [
+            row.codigo_cliente, row.nombre_tipo_cliente, row.razon_social, row.nombre_comercial,
+            row.rfc, row.correo, row.telefono, row.celular, row.limite_credito,
+            row.dias_credito, row.nombre_estado, formatearFecha(row.fecha_creacion),
+            estadoCorreoAcceso(row), row.fecha_envio_accesos ? formatearFechaHora(row.fecha_envio_accesos) : ''
+        ]);
+
+        boton.disabled = true;
+        try {
+            const logo = await obtenerLogoReporte();
+            const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'short' }).format(new Date());
+            if (formato === 'xlsx') {
+                if (!window.ExcelJS) {
+                    await cargarScriptReporte('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js');
+                }
+                const libro = new window.ExcelJS.Workbook();
+                const hoja = libro.addWorksheet('Clientes', { views: [{ state: 'frozen', ySplit: 5 }] });
+                const idLogo = libro.addImage({ base64: logo, extension: 'png' });
+                hoja.addImage(idLogo, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 42 } });
+                hoja.getCell('C2').value = 'Reporte de clientes';
+                hoja.getCell('C2').font = { bold: true, size: 16 };
+                hoja.getCell('C3').value = `Fecha de emisión ${fecha}`;
+                hoja.getRow(5).values = encabezados;
+                hoja.getRow(5).eachCell(celda => {
+                    celda.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF25374B' } };
+                });
+                hoja.addRows(datos);
+                hoja.autoFilter = { from: 'A5', to: 'N5' };
+                hoja.getColumn(9).numFmt = '"$"#,##0.00';
+                [19, 25, 38, 30, 18, 36, 19, 19, 22, 18, 16, 20, 20, 24]
+                    .forEach((ancho, indice) => { hoja.getColumn(indice + 1).width = ancho; });
+                const archivo = await libro.xlsx.writeBuffer();
+                const url = URL.createObjectURL(new Blob([archivo], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }));
+                const enlace = document.createElement('a');
+                enlace.href = url;
+                enlace.download = 'Reporte-clientes.xlsx';
+                enlace.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else {
+                if (!window.pdfMake?.createPdf) {
+                    await cargarScriptReporte('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/pdfmake.min.js');
+                }
+                if (!window.pdfMake.vfs && !window.pdfMake.fonts?.Roboto) {
+                    await cargarScriptReporte('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/vfs_fonts.js');
+                }
+                const cuerpo = [
+                    encabezados.map(text => ({ text, bold: true, color: 'white', fillColor: '#25374B' })),
+                    ...datos.map(fila => fila.map((valor, indice) =>
+                        indice === 8 ? formatearMoneda(valor) : String(valor)))
+                ];
+                window.pdfMake.createPdf({
+                    pageSize: 'A3',
+                    pageOrientation: 'landscape',
+                    pageMargins: [28, 72, 28, 36],
+                    defaultStyle: { fontSize: 8 },
+                    header: {
+                        margin: [28, 20, 28, 0],
+                        columns: [
+                            { image: logo, fit: [112, 40] },
+                            { stack: [{ text: 'Reporte de clientes', bold: true, fontSize: 17 }, fecha],
+                                alignment: 'right' }
+                        ]
+                    },
+                    footer: (pagina, total) => ({
+                        text: `Página ${pagina} de ${total}`, alignment: 'right', margin: [28, 0]
+                    }),
+                    content: [{
+                        table: { headerRows: 1, widths: [67, 70, '*', '*', 64, '*', 53, 53, 60, 46, 45, 56, 53, 66], body: cuerpo },
+                        layout: 'lightHorizontalLines'
+                    }]
+                }).download('Reporte-clientes.pdf');
+            }
+        } catch (error) {
+            window.alert(error.message || 'No se pudo generar el reporte.');
+        } finally {
+            boton.disabled = false;
+        }
+    }
+
+    document.getElementById('btnClientesExcel')?.addEventListener('click', event => {
+        exportarClientes('xlsx', event.currentTarget);
+    });
+    document.getElementById('btnClientesPdf')?.addEventListener('click', event => {
+        exportarClientes('pdf', event.currentTarget);
+    });
 
     const ejecutarBusqueda = debounce(
         refrescarConFiltrosCliente,

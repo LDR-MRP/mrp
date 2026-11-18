@@ -297,6 +297,23 @@ function abrirPestana(destino) {
  *  TPO DE CLIENTE Y SECCIONES DINÁMICAS
  * ============================================================ */
 
+const camposGeneralesMayusculas = [
+    "razon_social", "nombre_comercial", "zona_comercial", "territorio",
+    "responsable_comercial", "ejecutivo_asignado", "segmento_mercado",
+];
+
+function sugerirClaveDistribuidor(codigo) {
+    if (document.querySelector("#idtipo_cliente")?.value !== "1") {
+        return;
+    }
+
+    const clave = document.querySelector('[name="clave_distribuidor"]');
+    if (clave && (!clave.value || clave.dataset.codigoAutomatico === clave.value)) {
+        clave.value = codigo;
+        clave.dataset.codigoAutomatico = codigo;
+    }
+}
+
 function configurarTipoCliente() {
     const selectTipoCliente = document.querySelector("#idtipo_cliente");
 
@@ -351,7 +368,19 @@ function mostrarSeccionTipoCliente() {
             });
     });
 
-    const seccionActiva = secciones[tipoSeleccionado];
+    const nombreTipo = selectTipo?.selectedOptions[0]?.textContent.trim().toUpperCase();
+    const usaCamposExternos = ["CLIENTE DIRECTO", "CLIENTE DE INTERCAMBIO"].includes(nombreTipo);
+    const tituloExterno = document.querySelector("#tituloInformacionClienteExterno");
+    if (tituloExterno) {
+        const etiqueta = usaCamposExternos
+            ? selectTipo.selectedOptions[0].textContent.trim().toLocaleLowerCase("es-MX")
+            : "cliente externo";
+        tituloExterno.textContent = `Información del ${etiqueta}`;
+    }
+
+    const seccionActiva = secciones[usaCamposExternos ? 3 : tipoSeleccionado];
+    document.querySelectorAll("#tbodyContactos tr[data-contacto-id]")
+        .forEach(actualizarAccionesAccesoContacto);
 
     if (!seccionActiva) {
         return;
@@ -408,13 +437,8 @@ async function generarCodigoCliente() {
         return false;
     }
 
-    if (estadoModuloClientes.generandoCodigo) {
-        return false;
-    }
-
-    estadoModuloClientes.generandoCodigo = true;
-
-    const valorAnterior = inputCodigo.value;
+    const solicitud = Symbol(tipoCliente);
+    estadoModuloClientes.generandoCodigo = solicitud;
 
     inputCodigo.value = "Generando...";
     inputCodigo.classList.add("text-muted");
@@ -426,6 +450,10 @@ async function generarCodigoCliente() {
         const respuesta = await peticionJson(url, {
             method: "GET",
         });
+
+        if (estadoModuloClientes.generandoCodigo !== solicitud || selectTipo.value !== tipoCliente) {
+            return false;
+        }
 
         if (!respuesta.status) {
             throw new Error(
@@ -440,6 +468,7 @@ async function generarCodigoCliente() {
         }
 
         inputCodigo.value = codigo;
+        sugerirClaveDistribuidor(codigo);
         inputCodigo.classList.remove("text-muted");
 
         estadoModuloClientes.codigoGenerado = codigo;
@@ -448,7 +477,10 @@ async function generarCodigoCliente() {
     } catch (error) {
         console.error("Error al generar código:", error);
 
-        inputCodigo.value = valorAnterior;
+        if (estadoModuloClientes.generandoCodigo !== solicitud || selectTipo.value !== tipoCliente) {
+            return false;
+        }
+        inputCodigo.value = "";
         inputCodigo.classList.remove("text-muted");
 
         mostrarError(
@@ -457,7 +489,9 @@ async function generarCodigoCliente() {
 
         return false;
     } finally {
-        estadoModuloClientes.generandoCodigo = false;
+        if (estadoModuloClientes.generandoCodigo === solicitud) {
+            estadoModuloClientes.generandoCodigo = false;
+        }
     }
 }
 
@@ -604,6 +638,11 @@ async function guardarInformacionGeneral(event) {
 
 
         formData.set("idcliente", String(obtenerIdCliente()));
+        const claveDistribuidor = seccionGeneral.querySelector('[name="clave_distribuidor"]');
+        if (selectTipo?.value === "1" && claveDistribuidor?.value
+            && claveDistribuidor.value === claveDistribuidor.dataset.codigoAutomatico) {
+            formData.set("clave_distribuidor_automatica", "1");
+        }
 
         const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarGeneral, {
             method: "POST",
@@ -625,6 +664,14 @@ async function guardarInformacionGeneral(event) {
         }
 
         establecerIdCliente(idclienteRespuesta);
+        if (inputCodigo && respuesta.data?.codigo_cliente) {
+            estadoModuloClientes.generandoCodigo = false;
+            inputCodigo.value = respuesta.data.codigo_cliente;
+            if (formData.get("clave_distribuidor_automatica") === "1" && claveDistribuidor) {
+                sugerirClaveDistribuidor(respuesta.data.clave_distribuidor);
+            }
+            inputCodigo.classList.remove("text-muted");
+        }
 
         estadoModuloClientes.clienteGuardado = true;
 
@@ -720,8 +767,9 @@ async function cargarInformacionGeneralCliente(forzar = false) {
                 return;
             }
 
-            campo.value =
-                datos[nombre] ?? "";
+            campo.value = camposGeneralesMayusculas.includes(nombre)
+                ? normalizarTextoMayusculas(datos[nombre])
+                : (datos[nombre] ?? "");
 
         });
 
@@ -934,7 +982,14 @@ function limpiarEstadoRFC() {
  * ============================================================ */
 
 function configurarTransformacionesCampos() {
-    const camposMayusculas = ["#rfc", "#curp", "#codigo_cliente"];
+    const camposMayusculas = [
+        "#rfc", "#curp", "#codigo_cliente",
+        ...camposGeneralesMayusculas.map(nombre => `[name="${nombre}"]`),
+    ];
+    const claveDistribuidor = document.querySelector('[name="clave_distribuidor"]');
+    claveDistribuidor?.addEventListener("input", () => {
+        delete claveDistribuidor.dataset.codigoAutomatico;
+    });
 
     camposMayusculas.forEach(function(selector) {
         const campo = document.querySelector(selector);
@@ -944,7 +999,18 @@ function configurarTransformacionesCampos() {
         }
 
         campo.addEventListener("input", function() {
-            campo.value = normalizarTextoMayusculas(campo.value);
+            const original = campo.value;
+            const mayusculas = normalizarTextoMayusculas(original);
+            if (original !== mayusculas) {
+                const inicio = campo.selectionStart;
+                const fin = campo.selectionEnd;
+                campo.value = mayusculas;
+                if (inicio !== null && fin !== null) {
+                    const espacios = original.length - original.trimStart().length;
+                    const posicion = indice => original.slice(espacios, indice).toLocaleUpperCase("es-MX").length;
+                    campo.setSelectionRange(posicion(inicio), posicion(fin));
+                }
+            }
         });
     });
 
@@ -1836,6 +1902,8 @@ function construirFilaContacto(contacto) {
 
     fila.dataset.contactoId = identificador;
     fila.dataset.guardado = contacto.idcontacto > 0 ? "1" : "0";
+    fila.dataset.fechaEnvioAccesos = contacto.fecha_envio_accesos || "";
+    fila.dataset.correoGuardado = contacto.correo || "";
 
     fila.innerHTML = `
         <td style="min-width: 190px;">
@@ -1947,7 +2015,18 @@ function construirFilaContacto(contacto) {
             </div>
         </td>
 
+        <td class="text-center">
+            <input class="form-check-input" type="checkbox" name="contacto_doble_autenticacion"
+                aria-label="Activar doble autenticación al enviar accesos"
+                title="Se aplica al enviar los accesos"
+                ${Number(contacto.doble_autenticacion) === 1 ? "checked" : ""}>
+        </td>
+        <td class="text-nowrap" data-estado-correo-contacto></td>
         <td class="text-end text-nowrap">
+            <button type="button" class="btn btn-sm btn-soft-primary me-1 btn-enviar-acceso-contacto d-none"
+                title="Generar contraseña temporal y enviar accesos" hidden>
+                <i class="ri-mail-send-line"></i>
+            </button>
             <button
                 type="button"
                 class="btn btn-sm btn-soft-success me-1 btn-guardar-contacto"
@@ -1973,11 +2052,65 @@ function construirFilaContacto(contacto) {
         inputTelefono.value = inputTelefono.value.replace(/[^\d+\s()-]/g, "");
     });
 
+    actualizarAccionesAccesoContacto(fila);
     return fila;
 }
 
+function actualizarAccionesAccesoContacto(fila) {
+    const distribuidor = document.querySelector("#idtipo_cliente")?.value === "1";
+    const boton = fila.querySelector(".btn-enviar-acceso-contacto");
+    const celda = fila.querySelector("[data-estado-correo-contacto]");
+    const dobleAutenticacion = fila.querySelector('[name="contacto_doble_autenticacion"]');
+    dobleAutenticacion.hidden = !distribuidor;
+    dobleAutenticacion.disabled = !distribuidor || fila.dataset.guardado !== "1"
+        || fila.dataset.enviandoAcceso === "1";
+    boton.hidden = !distribuidor || fila.dataset.guardado !== "1";
+    boton.disabled = fila.dataset.modificado === "1" || fila.dataset.enviandoAcceso === "1";
+    celda.textContent = !distribuidor ? "No aplica" : fila.dataset.fechaEnvioAccesos
+        ? `Enviado · ${fila.dataset.fechaEnvioAccesos}`
+        : "Pendiente";
+}
+
+async function enviarAccesoContacto(fila) {
+    if (fila.dataset.modificado === "1" || fila.dataset.enviandoAcceso === "1") {
+        return;
+    }
+    fila.dataset.enviandoAcceso = "1";
+    actualizarAccionesAccesoContacto(fila);
+
+    try {
+        if (!await confirmarAccion("Se generará una nueva contraseña temporal y se enviará al correo guardado del contacto.", "Enviar accesos")) {
+            return;
+        }
+        const datos = new FormData();
+        datos.set("idcliente", String(obtenerIdCliente()));
+        datos.set("idcontacto", fila.dataset.contactoId);
+        datos.set("doble_autenticacion",
+            fila.querySelector('[name="contacto_doble_autenticacion"]').checked ? "1" : "0");
+        const respuesta = await peticionJson(`${base_url}/cli_clientes/setAccesoCliente`, {
+            method: "POST",
+            body: datos,
+        });
+        if (!respuesta.status) {
+            throw new Error(respuesta.message);
+        }
+        fila.dataset.fechaEnvioAccesos = respuesta.data?.fecha_envio_accesos || "";
+        mostrarExito(respuesta.message);
+    } catch (error) {
+        mostrarError(error.message || "No fue posible enviar los accesos.");
+    } finally {
+        delete fila.dataset.enviandoAcceso;
+        actualizarAccionesAccesoContacto(fila);
+    }
+}
 
 function manejarAccionesContacto(event) {
+    const botonAcceso = event.target.closest(".btn-enviar-acceso-contacto");
+    if (botonAcceso) {
+        enviarAccesoContacto(botonAcceso.closest("tr"));
+        return;
+    }
+
     const botonGuardar = event.target.closest(".btn-guardar-contacto");
 
     if (botonGuardar) {
@@ -1999,6 +2132,9 @@ function manejarAccionesContacto(event) {
 
 
 function manejarCambioContacto(event) {
+    if (event.target.name === "contacto_doble_autenticacion") {
+        return;
+    }
     const fila = event.target.closest("tr");
 
     if (!fila) {
@@ -2006,6 +2142,7 @@ function manejarCambioContacto(event) {
     }
 
     fila.dataset.modificado = "1";
+    actualizarAccionesAccesoContacto(fila);
 
     fila.classList.add("table-warning");
 
@@ -2206,6 +2343,11 @@ async function guardarContacto(fila) {
 
         actualizarContadorContactos();
 
+        if (fila.dataset.correoGuardado !== undefined && fila.dataset.correoGuardado !== datos.correo) {
+            fila.dataset.fechaEnvioAccesos = "";
+        }
+        fila.dataset.correoGuardado = datos.correo;
+        actualizarAccionesAccesoContacto(fila);
         mostrarExito(respuesta.message || "El contacto se guardó correctamente.");
     } catch (error) {
         console.error("Error al guardar contacto:", error);
@@ -2377,7 +2519,7 @@ async function cargarContactosCliente(forzar = false) {
 
     tbody.innerHTML = `
         <tr>
-            <td colspan="7" class="text-center py-4">
+            <td colspan="9" class="text-center py-4">
                 <span
                     class="spinner-border spinner-border-sm me-2"
                     role="status">
@@ -2424,6 +2566,8 @@ async function cargarContactosCliente(forzar = false) {
                 telefono: registro.telefono || "",
 
                 tipo_contacto: registro.tipo_contacto || registro.tipo || "COMERCIAL",
+                fecha_envio_accesos: registro.fecha_envio_accesos,
+                doble_autenticacion: registro.doble_autenticacion,
 
                 notificar: String(registro.notificar ?? "1"),
 
@@ -2448,7 +2592,7 @@ async function cargarContactosCliente(forzar = false) {
         tbody.innerHTML = `
             <tr>
                 <td
-                    colspan="7"
+                    colspan="9"
                     class="text-center text-danger py-4">
 
                     <i class="ri-error-warning-line me-1"></i>
@@ -2501,7 +2645,7 @@ function actualizarEstadoVacioContactos() {
     tbody.innerHTML = `
         <tr class="fila-contactos-vacia">
             <td
-                colspan="7"
+                colspan="9"
                 class="text-center text-muted py-4">
 
                 <i class="ri-contacts-book-line fs-4 d-block mb-1"></i>
@@ -4384,8 +4528,20 @@ async function cargarInformacionComercialCliente(forzar = false) {
                 return;
             }
 
-            campo.value =
-                datos[nombre] ?? "";
+            if (nombre === "precioid") {
+                const valor = String(datos[nombre] ?? "");
+                campo.querySelector("option[data-lista-guardada]")?.remove();
+                if (valor && !Array.from(campo.options).some(opcion => opcion.value === valor)) {
+                    const opcion = new Option(`Lista guardada (${valor})`, valor);
+                    opcion.dataset.listaGuardada = "";
+                    opcion.disabled = true;
+                    campo.add(opcion);
+                }
+                campo.value = valor;
+                return;
+            }
+
+            campo.value = datos[nombre] ?? "";
 
         });
 
@@ -4565,7 +4721,7 @@ function obtenerDatosComerciales() {
 
         moneda: obtenerValor("moneda") || "MXN",
 
-        lista_precio: obtenerValor("lista_precio"),
+        precioid: obtenerValor("precioid"),
 
         porcentaje_descuento: obtenerValor("porcentaje_descuento") || "0",
 

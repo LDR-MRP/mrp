@@ -213,12 +213,11 @@
                                             <select class="form-select" id="idtipo_cliente" name="idtipo_cliente"
                                                 required>
                                                 <option value="">Selecciona un tipo</option>
-                                                <!-- <option value="CLIENTE">Cliente</option> -->
-                                                <option value="1">Distribuidor</option>
-                                                <option value="2">Cliente interno</option>
-                                                <option value="3">Cliente externo</option>
-                                                <option value="4                            ">Cliente gubernamental
-                                                </option>
+                                                <?php foreach ($data['tipos_cliente'] as $tipo): ?>
+                                                    <option value="<?= (int) $tipo['id'] ?>">
+                                                        <?= htmlspecialchars($tipo['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </option>
+                                                <?php endforeach; ?>
                                             </select>
                                         </div>
                                     </div>
@@ -258,7 +257,7 @@
                                             </span>
                                             <input type="text" class="form-control" id="razon_social"
                                                 name="razon_social"
-                                                placeholder="Ej. Comercializadora del Centro, S.A. de C.V."
+                                                placeholder="Ej. COMERCIALIZADORA DEL CENTRO"
                                                 maxlength="200" required>
                                         </div>
                                     </div>
@@ -271,7 +270,7 @@
                                                 <i class="ri-store-2-line"></i>
                                             </span>
                                             <input type="text" class="form-control" id="nombre_comercial"
-                                                name="nombre_comercial" placeholder="Ej. Autos del Centro"
+                                                name="nombre_comercial" placeholder="Ej. AUTOS DEL CENTRO"
                                                 maxlength="150" required>
                                         </div>
                                     </div>
@@ -339,7 +338,7 @@
                                             </span>
                                             <select class="form-select" id="estado_cliente" name="estado" required>
                                                 <option value="1">Inactivo</option>
-                                                <option value="2">Activo</option>
+                                                <option value="2" selected>Activo</option>
                                                 <option value="3">Suspendido</option>
                                             </select>
                                         </div>
@@ -361,7 +360,7 @@
                                                     <i class="ri-key-2-line"></i>
                                                 </span>
                                                 <input type="text" class="form-control dynamic-required"
-                                                    name="clave_distribuidor" placeholder="Ej. DIST-001">
+                                                    name="clave_distribuidor" placeholder="Ej. CLI-DIS-0001">
                                             </div>
                                         </div>
 
@@ -493,7 +492,7 @@
                                 <div class="dynamic-client-section" id="sectionExterno">
                                     <div class="section-title">
                                         <i class="ri-external-link-line me-1"></i>
-                                        Información del cliente externo
+                                        <span id="tituloInformacionClienteExterno">Información del cliente externo</span>
                                     </div>
 
                                     <div class="row g-3">
@@ -754,6 +753,8 @@
                                                 <th>Teléfono</th>
                                                 <th>Tipo</th>
                                                 <th>Notificar</th>
+                                                <th>Doble autenticación</th>
+                                                <th>Correo de acceso</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
@@ -919,13 +920,12 @@
                                             <span class="input-group-text">
                                                 <i class="ri-price-tag-3-line"></i>
                                             </span>
-                                            <select class="form-select" name="lista_precio">
-                                                <option value="">Selecciona una lista</option>
-                                                <option value="GENERAL">Precio general</option>
-                                                <option value="DISTRIBUIDOR">Precio distribuidor</option>
-                                                <option value="MAYOREO">Mayoreo</option>
-                                                <option value="GOBIERNO">Gobierno</option>
-                                                <option value="ESPECIAL">Precio especial</option>
+                                            <select class="form-select" name="precioid" required>
+                                                <?php foreach ($data['listas_precio'] as $lista): ?>
+                                                    <option value="<?= htmlspecialchars((string) $lista['idprecio'], ENT_QUOTES, 'UTF-8') ?>"<?= (string) $lista['idprecio'] === '8' ? ' selected' : '' ?>>
+                                                        <?= htmlspecialchars($lista['cve_precio'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </option>
+                                                <?php endforeach; ?>
                                             </select>
                                         </div>
                                     </div>
