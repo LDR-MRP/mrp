@@ -41,11 +41,18 @@ class Prv_proveedor  extends Controllers{
                 'page_action_type' => "Nuevo Proveedor",
                 'page_description' => "Complete la información fiscal y comercial para dar de alta al socio.",
                 'page_functions_js' => "functions_prv_proveedores_create.js",
+                'isEdit' => false,
+                'p' => []
             ]
         );
     }
 
     public function edit() {
+        $idProveedor = $_GET['id'] ?? null;
+
+        $proveedorModel = new Prv_proveedorModel();
+        $p = $proveedorModel->findById($idProveedor);
+
         $this->views->getView(
             $this,
             "../Prv_proveedor/create",
@@ -58,6 +65,8 @@ class Prv_proveedor  extends Controllers{
                 'page_action_type' => "Editar Proveedor",
                 'page_description' => "Complete la información fiscal y comercial para editar al socio.",
                 'page_functions_js' => "functions_prv_proveedores_create.js",
+                'isEdit' => true,
+                'p' => $p
             ]
         );
     }

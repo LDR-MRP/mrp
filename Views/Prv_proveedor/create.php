@@ -390,7 +390,7 @@ headerAdmin($data);
                                                 <div class="p-3 bg-light rounded-3 position-relative">
                                                     <div class="d-flex justify-content-between mb-2">
                                                         <span class="badge border shadow-sm px-3 py-2 fs-14" id="iva-label">
-                                                            <?= $isEdit ? $p['tasa_iva_default'] : '16.00' ?>%
+                                                            <?= ($isEdit ?? false) ? ($p['tasa_iva_default'] ?? '16.00') : '16.00' ?>%
                                                         </span>
                                                         <span class="text-muted fs-11 align-self-center">Desliza para ajustar</span>
                                                     </div>
