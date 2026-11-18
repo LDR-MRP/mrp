@@ -51,7 +51,7 @@ class Prv_proveedor  extends Controllers{
         $idProveedor = $_GET['id'] ?? null;
 
         $proveedorModel = new Prv_proveedorModel();
-        $p = $proveedorModel->findById($idProveedor);
+        $p = $proveedorModel->getById($idProveedor);
 
         $this->views->getView(
             $this,
