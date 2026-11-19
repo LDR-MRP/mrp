@@ -71,6 +71,7 @@ class SupplierService
             if ($this->db->inTransaction()) $this->db->rollBack();
             return \ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $e) {
+            
             if ($this->db->inTransaction()) $this->db->rollBack();
             
             // Logging detallado del error PDO

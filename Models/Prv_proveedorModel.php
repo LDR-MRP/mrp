@@ -261,7 +261,7 @@ class Prv_proveedorModel extends Mysql
                     id_regimen_fiscal,
                     origen,
                     created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 [
                     // $h['id_empresa'],
                     $h['rfc'],
