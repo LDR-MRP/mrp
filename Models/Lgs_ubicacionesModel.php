@@ -68,11 +68,21 @@ class Lgs_ubicacionesModel extends Mysql
      */
     public function getDistribuidores(): array
     {
+        $hasGrupoCol = false;
+        try {
+            $chk = $this->select("SHOW COLUMNS FROM cli_clientes LIKE 'grupo_comercial'");
+            $hasGrupoCol = !empty($chk);
+        } catch (Throwable $e) {
+            $hasGrupoCol = false;
+        }
+        $grupoSelect = $hasGrupoCol ? "MAX(COALESCE(NULLIF(TRIM(c.grupo_comercial), ''), '')) AS grupo_comercial," : "'' AS grupo_comercial,";
+
         $sql = "SELECT 
                     g.id_distribuidor, 
                     g.nombre, 
                     g.clave,
                     g.id_cliente,
+                    {$grupoSelect}
                     COUNT(DISTINCT u.id_ubicacion) AS total_sedes
                 FROM (
                     SELECT 
@@ -85,10 +95,13 @@ class Lgs_ubicacionesModel extends Mysql
                     WHERE activo = 1
                     GROUP BY UPPER(TRIM(nombre))
                 ) g
+                LEFT JOIN cli_clientes c
+                    ON c.idcliente = g.id_cliente
                 LEFT JOIN lgs_cat_distribuidores d_all 
                     ON UPPER(TRIM(d_all.nombre)) = g.nombre_norm AND d_all.activo = 1
                 LEFT JOIN {$this->table} u 
                     ON u.id_distribuidor = d_all.id_distribuidor AND u.activo = 1
+                WHERE (g.id_cliente IS NULL OR c.estado = 2)
                 GROUP BY g.id_distribuidor, g.nombre, g.clave, g.id_cliente
                 ORDER BY g.nombre ASC";
 

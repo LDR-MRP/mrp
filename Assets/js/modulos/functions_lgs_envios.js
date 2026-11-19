@@ -685,6 +685,16 @@ function buildUbicacionOptions(selectedId) {
     return html;
 }
 
+/** Formatea etiqueta visible de distribuidor agregando grupo comercial si aporta contexto */
+function formatearEtiquetaDistribuidor(d) {
+    const nombre = String((d && d.nombre) || '').trim();
+    const grupo = String((d && d.grupo_comercial) || '').trim();
+    if (grupo && !nombre.toUpperCase().includes(grupo.toUpperCase())) {
+        return `${nombre} (${grupo})`;
+    }
+    return nombre;
+}
+
 /** Construye el HTML de options para el select de distribuidores */
 function buildDistribuidorOptions(selectedDistribuidorId) {
     const distribuidores = getCatalogoDistribuidores();
@@ -692,7 +702,8 @@ function buildDistribuidorOptions(selectedDistribuidorId) {
     distribuidores.forEach(d => {
         const sel = (String(d.id_distribuidor) === String(selectedDistribuidorId)) ? 'selected' : '';
         const sedesTxt = parseInt(d.total_sedes) > 1 ? ` (${d.total_sedes} sedes)` : '';
-        html += `<option value="${d.id_distribuidor}" ${sel}>${d.nombre}${sedesTxt}</option>`;
+        const label = formatearEtiquetaDistribuidor(d) + sedesTxt;
+        html += `<option value="${escapeHtmlEnvios(String(d.id_distribuidor))}" ${sel}>${escapeHtmlEnvios(label)}</option>`;
     });
     return html;
 }

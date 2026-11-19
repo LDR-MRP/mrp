@@ -530,11 +530,14 @@ class Lgs_enviosModel extends Mysql
 
         // 6. Catálogo de Clientes maestros (`cli_clientes`) enlazados a Logística
         try {
+            $hasGrupoCol = !empty($this->select("SHOW COLUMNS FROM cli_clientes LIKE 'grupo_comercial'"));
+            $grupoColSql = $hasGrupoCol ? "COALESCE(NULLIF(TRIM(c.grupo_comercial), ''), '') AS grupo_comercial," : "'' AS grupo_comercial,";
             $clientes = $this->select_all("
                 SELECT c.idcliente AS id_cliente,
                        c.codigo_cliente,
                        c.razon_social,
                        c.nombre_comercial,
+                       {$grupoColSql}
                        COALESCE(NULLIF(TRIM(c.razon_social), ''), NULLIF(TRIM(c.nombre_comercial), ''), c.codigo_cliente) AS nombre,
                        d.id_distribuidor
                 FROM cli_clientes c

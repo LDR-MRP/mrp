@@ -28,3 +28,16 @@ Thumbs.db
 docs_desarrollo/
 docs_desarrollo_logistica/
 *.sql
+
+# Credenciales locales y respaldos de sincronización
+scripts/.env.sync
+scripts/.env.sync.*
+!scripts/.env.sync.example
+!scripts/sync_clientes_etl.sql
+backups/
+
+# Credenciales locales y respaldos de sincronización
+scripts/.env.sync
+scripts/.env.sync.*
+!scripts/.env.sync.example
+backups/

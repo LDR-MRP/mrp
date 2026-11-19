@@ -530,7 +530,12 @@ class Lgs_clientesSyncService
         $partes = [];
         $via = trim($calle . ($ext !== '' && strtoupper($ext) !== 'S/N' ? ' #' . $ext : '') . ($int !== '' ? ' Int. ' . $int : ''));
         if ($via !== '') $partes[] = $via;
-        if ($col !== '') $partes[] = 'Col. ' . $col;
+        if ($col !== '') {
+            $colLimpia = trim((string)preg_replace('/^(?:col\.?|colonia)\s+/iu', '', $col));
+            if ($colLimpia !== '') {
+                $partes[] = 'Col. ' . $colLimpia;
+            }
+        }
         if ($cp !== '' && $cp !== '00000') $partes[] = 'C.P. ' . $cp;
         if ($mun !== '') $partes[] = $mun;
         if ($edo !== '') $partes[] = $edo;

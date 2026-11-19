@@ -1328,9 +1328,12 @@ class Lgs_bandejaModel extends Mysql {
 
         $clientes = [];
         try {
+            $hasGrupoCol = !empty($this->select("SHOW COLUMNS FROM cli_clientes LIKE 'grupo_comercial'"));
+            $grupoColSql = $hasGrupoCol ? "COALESCE(NULLIF(TRIM(c.grupo_comercial), ''), '') AS grupo_comercial," : "'' AS grupo_comercial,";
             $clientes = $this->select_all("
                 SELECT c.idcliente AS id_cliente,
                        COALESCE(NULLIF(TRIM(c.razon_social), ''), NULLIF(TRIM(c.nombre_comercial), ''), c.codigo_cliente) AS nombre,
+                       {$grupoColSql}
                        d.id_distribuidor
                 FROM cli_clientes c
                 LEFT JOIN lgs_cat_distribuidores d ON d.id_cliente = c.idcliente AND d.activo = 1

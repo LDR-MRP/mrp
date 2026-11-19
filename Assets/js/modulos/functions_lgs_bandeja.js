@@ -492,7 +492,10 @@ function abrirModalSedeUnidadPT(vinUpper) {
     const hintCli = document.getElementById('sedePTClienteHint');
     let cliHtml = '<option value="">-- Seleccionar cliente --</option>';
     (clientesCatalogoPT || []).forEach(c => {
-        cliHtml += `<option value="${c.id_cliente}">${_esc(c.nombre)}</option>`;
+        const nom = String(c.nombre || '').trim();
+        const grp = String(c.grupo_comercial || '').trim();
+        const label = (grp && !nom.toUpperCase().includes(grp.toUpperCase())) ? `${nom} (${grp})` : nom;
+        cliHtml += `<option value="${c.id_cliente}">${_esc(label)}</option>`;
     });
     const idCliActual = parseInt(row.id_cliente || 0, 10);
     if (idCliActual > 0 && !(clientesCatalogoPT || []).some(c => parseInt(c.id_cliente, 10) === idCliActual)) {
