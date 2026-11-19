@@ -134,7 +134,14 @@ class Inv_trasladosModel extends Mysql
         $vigencia_licencia,
         $archivoLicencia
     ) {
+        // Transacción: si alguna unidad falla (VIN no tatuado, llave ya
+        // entregada, etc.) no queda el encabezado con unidades a medias.
+        // También lo usa la carga masiva (Inv_trascargamasiva).
+        $pdo = $this->getConexion();
+
         try {
+
+            $pdo->beginTransaction();
 
             $folio = 'TRU-' . date('YmdHis') . '-' . rand(100, 999);
 
@@ -189,13 +196,17 @@ class Inv_trasladosModel extends Mysql
 
                 $iddetalle = $this->insert(
                     "INSERT INTO wms_traslados_unidades_detalle
-                 (trasladoid, vinid, inventarioid, vin)
-                 VALUES (?,?,?,?)",
-                    [$idtraslado, $unidad['vinid'], $unidad['inventarioid'], $unidad['vin']]
+                 (trasladoid, vinid, inventarioid, vin, kit)
+                 VALUES (?,?,?,?,?)",
+                    [$idtraslado, $unidad['vinid'], $unidad['inventarioid'], $unidad['vin'], !empty($unidad['kit']) ? 1 : 0]
                 );
 
                 // Llave de esta unidad (opcional, viene del form)
                 if (!empty($unidad['entrega_llave'])) {
+
+                    if (!in_array($unidad['tipo_llave'] ?? '', ['principal', 'duplicado', 'juego'], true)) {
+                        throw new Exception("Tipo de llave inválido para el VIN " . $unidad['vin']);
+                    }
 
                     $llaveid = $this->getOrCreateLlave(
                         $unidad['vinid'],
@@ -213,8 +224,15 @@ class Inv_trasladosModel extends Mysql
                 }
             }
 
+            $pdo->commit();
+
             return true;
         } catch (Exception $e) {
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
             return ["error" => $e->getMessage()];
         }
     }
@@ -353,7 +371,9 @@ AND t.estado IN (1,2,3)
 
             i.descripcion AS modelo,
 
-            d.color
+            d.color,
+
+            d.kit
 
 
         FROM wms_traslados_unidades_detalle d
@@ -548,6 +568,8 @@ LIMIT 1
 
         i.cve_articulo,
 
+        d.kit,
+
         tl.llaves
 
     FROM wms_traslados_unidades_detalle d
@@ -631,7 +653,8 @@ LIMIT 1
                 ns.almacenid,
                 a.descripcion AS almacen,
                 CASE WHEN tl.iddetalle IS NULL THEN 0 ELSE 1 END AS entrega_llave,
-                tl.tipo_llave
+                tl.tipo_llave,
+                d.kit
             FROM wms_traslados_unidades_detalle d
             INNER JOIN wms_inventario i ON i.idinventario = d.inventarioid
             LEFT JOIN wms_numeros_series ns ON ns.id_numeros_serie = d.vinid
@@ -789,12 +812,16 @@ LIMIT 1
 
                 $iddetalle = $this->insert(
                     "INSERT INTO wms_traslados_unidades_detalle
-                     (trasladoid, vinid, inventarioid, vin)
-                     VALUES (?,?,?,?)",
-                    [$idtraslado, $unidad['vinid'], $unidad['inventarioid'], $unidad['vin']]
+                     (trasladoid, vinid, inventarioid, vin, kit)
+                     VALUES (?,?,?,?,?)",
+                    [$idtraslado, $unidad['vinid'], $unidad['inventarioid'], $unidad['vin'], !empty($unidad['kit']) ? 1 : 0]
                 );
 
                 if (!empty($unidad['entrega_llave'])) {
+
+                    if (!in_array($unidad['tipo_llave'] ?? '', ['principal', 'duplicado', 'juego'], true)) {
+                        throw new Exception("Tipo de llave inválido para el VIN " . $unidad['vin']);
+                    }
 
                     $llaveid = $this->getOrCreateLlave(
                         $unidad['vinid'],
@@ -1065,4 +1092,19 @@ public function getKpisTraslados()
 }
 
 
+
+    /** Evidencias (fotos) de salida y recepción de todo el traslado. */
+    public function selectEvidenciasTraslado($idtraslado)
+    {
+        return $this->select_all(
+            "SELECT ev.idevidencia, ev.iddetalle, ev.vin, ev.etapa, ev.archivo,
+                    ev.observaciones, ev.fecha,
+                    TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS usuario
+             FROM wms_traslados_evidencias ev
+             LEFT JOIN usuarios u ON u.idusuario = ev.usuarioid
+             WHERE ev.trasladoid = ? AND ev.estado = 1
+             ORDER BY ev.vin, ev.etapa, ev.idevidencia",
+            [intval($idtraslado)]
+        );
+    }
 }

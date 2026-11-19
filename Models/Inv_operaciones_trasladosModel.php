@@ -59,15 +59,31 @@ class Inv_operaciones_trasladosModel extends Mysql
         tl.fecha_entrega,
         tl.fecha_recepcion,
         tl.entrega_llave,
-        tl.tipo_llave
+        tl.tipo_llave,
+        (SELECT COUNT(*) FROM wms_traslados_evidencias ev
+          WHERE ev.iddetalle = d.iddetalle AND ev.etapa = 'salida' AND ev.estado = 1) AS evidencias_salida,
+        (SELECT COUNT(*) FROM wms_traslados_evidencias ev
+          WHERE ev.iddetalle = d.iddetalle AND ev.etapa = 'recepcion' AND ev.estado = 1) AS evidencias_recepcion
     FROM wms_traslados_unidades_detalle d
     INNER JOIN wms_inventario i ON i.idinventario = d.inventarioid
     LEFT JOIN wms_traslados_llaves tl ON tl.iddetalle = d.iddetalle
     WHERE d.trasladoid = $idtraslado
 ";
 
-        $traslado['unidades'] =
-            $this->select_all($sqlDetalle);
+        try {
+            $traslado['unidades'] =
+                $this->select_all($sqlDetalle);
+        } catch (PDOException $e) {
+            // Si todavía no se corre Scripts/traslados_evidencias.sql, la
+            // tabla de evidencias no existe: se busca sin los conteos de
+            // fotos para que la operación (salida/recepción) no se detenga.
+            if ($e->getCode() !== '42S02') {
+                throw $e;
+            }
+            error_log('Inv_operaciones_traslados: falta la tabla wms_traslados_evidencias (correr Scripts/traslados_evidencias.sql)');
+            $sqlSinEvidencias = preg_replace('/,\s*\(SELECT COUNT\(\*\) FROM wms_traslados_evidencias.*?AS evidencias_recepcion/s', '', $sqlDetalle);
+            $traslado['unidades'] = $this->select_all($sqlSinEvidencias);
+        }
 
         return [
             "status" => true,
@@ -404,10 +420,14 @@ FOR UPDATE
                 throw new Exception("Traslado no encontrado");
             }
 
-            if ($traslado['estado'] != 3) {
+            // 19-nov-2026: se quitó el paso de ingreso de seguridad (caseta).
+            // Una sola persona recibe y da la entrada directo desde la
+            // salida (estado 2). Se sigue aceptando el estado 3 por los
+            // traslados que ya tenían el ingreso de seguridad registrado.
+            if (!in_array((int)$traslado['estado'], [2, 3], true)) {
                 throw new Exception(
-                    $traslado['estado'] == 2
-                        ? "Falta registrar el ingreso de la unidad (caseta/seguridad) antes de la recepción interna"
+                    (int)$traslado['estado'] === 1
+                        ? "El traslado aún no registra salida"
                         : "El traslado no está pendiente de recepción"
                 );
             }
@@ -808,5 +828,79 @@ FOR UPDATE
                 "msg" => $e->getMessage()
             ];
         }
+    }
+
+    /* =====================================================
+       EVIDENCIAS (fotos) POR UNIDAD — 19-nov-2026
+       Se toman en la salida (traslado en estado 1) y en la
+       recepción (estado 2 o 3). Se guardan al momento de
+       tomarlas, para no perderlas si se cierra la pantalla.
+    ===================================================== */
+
+    /** Traslado + renglón de detalle del VIN dentro de ese traslado. */
+    public function getUnidadDeTraslado(string $folio, string $vin)
+    {
+        $traslado = $this->select(
+            "SELECT idtraslado, folio, estado FROM wms_traslados_unidades WHERE folio = ? LIMIT 1",
+            [$folio]
+        );
+
+        if (empty($traslado)) {
+            return null;
+        }
+
+        $detalle = $this->select(
+            "SELECT iddetalle, vin FROM wms_traslados_unidades_detalle
+             WHERE trasladoid = ? AND UPPER(vin) = UPPER(?) LIMIT 1",
+            [$traslado['idtraslado'], $vin]
+        );
+
+        if (empty($detalle)) {
+            return ['traslado' => $traslado, 'detalle' => null];
+        }
+
+        return ['traslado' => $traslado, 'detalle' => $detalle];
+    }
+
+    public function insertEvidencia($trasladoid, $iddetalle, $vin, $etapa, $archivo, $observaciones, $usuarioid)
+    {
+        return $this->insert(
+            "INSERT INTO wms_traslados_evidencias
+             (trasladoid, iddetalle, vin, etapa, archivo, observaciones, usuarioid)
+             VALUES (?,?,?,?,?,?,?)",
+            [$trasladoid, $iddetalle, $vin, $etapa, $archivo, $observaciones !== '' ? $observaciones : null, $usuarioid]
+        );
+    }
+
+    public function selectEvidenciasUnidad($iddetalle, $etapa)
+    {
+        return $this->select_all(
+            "SELECT idevidencia, vin, etapa, archivo, observaciones, fecha
+             FROM wms_traslados_evidencias
+             WHERE iddetalle = ? AND etapa = ? AND estado = 1
+             ORDER BY idevidencia",
+            [$iddetalle, $etapa]
+        );
+    }
+
+    public function selectEvidencia($idevidencia)
+    {
+        return $this->select(
+            "SELECT ev.idevidencia, ev.trasladoid, ev.iddetalle, ev.etapa, ev.estado AS estado_evidencia,
+                    t.estado AS estado_traslado
+             FROM wms_traslados_evidencias ev
+             INNER JOIN wms_traslados_unidades t ON t.idtraslado = ev.trasladoid
+             WHERE ev.idevidencia = ? LIMIT 1",
+            [$idevidencia]
+        );
+    }
+
+    /** Borrado lógico: el archivo se conserva en disco por trazabilidad. */
+    public function desactivarEvidencia($idevidencia)
+    {
+        return $this->update(
+            "UPDATE wms_traslados_evidencias SET estado = 0 WHERE idevidencia = ?",
+            [$idevidencia]
+        );
     }
 }

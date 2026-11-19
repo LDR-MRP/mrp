@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: "almacen_origen" },
       { data: "almacen_destino" },
 
+      /* OCULTO 19-nov-2026 (tipo de traslado / transportista)
       {
         data: "tipo_traslado",
         render: function (data) {
@@ -33,6 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
       },
 
       { data: "proveedor" },
+      */
 
       {
         data: "total_unidades",
@@ -155,16 +157,41 @@ function cargarKpisTraslados() {
    DETALLE
 ===================================================== */
 
-function verDetalle(id) {
-  fetch(base_url + "/Inv_traslados/getDetalle/" + id)
-    .then((res) => res.json())
+// Evidencias del traslado abierto en el detalle, agrupadas por VIN y etapa
+let evidenciasDetalle = {};
 
-    .then((data) => {
+function verDetalle(id) {
+  Promise.all([
+    fetch(base_url + "/Inv_traslados/getDetalle/" + id).then((res) => res.json()),
+    fetch(base_url + "/Inv_traslados/getEvidencias/" + id)
+      .then((res) => res.json())
+      .catch(() => []),
+  ])
+
+    .then(([data, evidencias]) => {
+      evidenciasDetalle = {};
+      (evidencias || []).forEach((ev) => {
+        const clave = (ev.vin || "").toUpperCase();
+        evidenciasDetalle[clave] = evidenciasDetalle[clave] || { salida: [], recepcion: [] };
+        evidenciasDetalle[clave][ev.etapa].push(ev);
+      });
+
+      const botonEvid = (vin, etapa) => {
+        const lista = (evidenciasDetalle[vin] || {})[etapa] || [];
+        return lista.length === 0
+          ? '<span class="text-muted">—</span>'
+          : `<button type="button" class="btn btn-sm btn-outline-primary"
+                 onclick="verGaleriaEvidencias('${vin}', '${etapa}')">
+               <i class="ri-image-line"></i> Ver (${lista.length})
+             </button>`;
+      };
+
       let tbody = document.querySelector("#tbodyDetalle");
 
       tbody.innerHTML = "";
 
       data.forEach((row) => {
+        const vin = (row.vin || "").toUpperCase();
         tbody.innerHTML += `
 
 <tr>
@@ -173,6 +200,11 @@ function verDetalle(id) {
 
 <td>${row.modelo}</td>
 
+<td class="text-center">${parseInt(row.kit) === 1 ? "Sí" : "No"}</td>
+
+<td class="text-center">${botonEvid(vin, "salida")}</td>
+
+<td class="text-center">${botonEvid(vin, "recepcion")}</td>
 
 </tr>
 
@@ -293,6 +325,7 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
       { text: "#", bold: true, fillColor: "#F3F3F3", fontSize: 8 },
       { text: "VIN", bold: true, fillColor: "#F3F3F3", fontSize: 8 },
       { text: "MODELO", bold: true, fillColor: "#F3F3F3", fontSize: 8 },
+      { text: "KIT", bold: true, fillColor: "#F3F3F3", fontSize: 8, alignment: "center" },
     ],
   ];
 
@@ -301,6 +334,7 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
       { text: String(idx + 1), fontSize: 8, alignment: "center" },
       { text: row.vin || "", fontSize: 8 },
       { text: row.modelo || "", fontSize: 8 },
+      { text: parseInt(row.kit) === 1 ? "SÍ" : "NO", fontSize: 8, alignment: "center" },
     ]);
   });
 
@@ -308,12 +342,13 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
     bodyUnidades.push([
       {
         text: "Sin unidades registradas",
-        colSpan: 3,
+        colSpan: 4,
         alignment: "center",
         italics: true,
         color: "#777777",
         fontSize: 8,
       },
+      {},
       {},
       {},
     ]);
@@ -360,8 +395,6 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
             [label("FOLIO"), valueBold(folio)],
             [label("ALMACÉN ORIGEN"), valueBold(origen)],
             [label("ALMACÉN DESTINO"), valueBold(destino)],
-            [label("TIPO DE TRASLADO"), valueBold(tipoTraslado)],
-            [label("PROVEEDOR / TRANSPORTISTA"), value(proveedor)],
             [label("FECHA PROGRAMADA"), value(fechaProgramada)],
             [
               labelBold("ESTADO ACTUAL"),
@@ -379,6 +412,7 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
         margin: [30, 0, 30, 8],
       },
 
+      /* OCULTO 19-nov-2026: datos del trasladista ya no se capturan
       sectionTitle("DATOS DEL TRASLADISTA"),
 
       {
@@ -394,12 +428,13 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
         layout: tableLayout(),
         margin: [30, 0, 30, 8],
       },
+      */
 
       sectionTitle("UNIDADES INCLUIDAS EN EL TRASLADO"),
 
       {
         table: {
-          widths: ["10%", "45%", "45%"],
+          widths: ["8%", "40%", "40%", "12%"],
           body: bodyUnidades,
         },
         layout: tableLayout(),
@@ -410,7 +445,7 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
 
       {
         qr: urlQr,
-        fit: 90,
+        fit: 160,
         alignment: "center",
         margin: [0, 6, 0, 4],
       },
@@ -554,9 +589,9 @@ function construirHojasPorUnidad(detalle, info) {
 
       {
         qr: vin,
-        fit: 125,
+        fit: 190,
         alignment: "center",
-        margin: [0, 0, 0, 2],
+        margin: [0, 4, 0, 4],
       },
       {
         text: "Escanear en Operaciones de traslado para validar esta unidad",
@@ -577,6 +612,7 @@ function construirHojasPorUnidad(detalle, info) {
             [label("CLAVE"), value(row.cve_articulo || "N/A")],
             [label("COLOR"), value(row.color || "N/A")],
             [label("LLAVE(S) ENTREGADA(S)"), value(llaves)],
+            [label("¿KIT?"), value(parseInt(row.kit) === 1 ? "SÍ" : "NO")],
           ],
         },
         layout: tableLayout(),
@@ -591,9 +627,6 @@ function construirHojasPorUnidad(detalle, info) {
             [label("FOLIO"), valueBold(info.folio)],
             [label("ALMACÉN ORIGEN"), value(info.origen)],
             [label("ALMACÉN DESTINO"), value(info.destino)],
-            [label("TIPO DE TRASLADO"), value(info.tipoTraslado)],
-            [label("PROVEEDOR / TRANSPORTISTA"), value(info.proveedor)],
-            [label("TRASLADISTA"), value(info.nombreTrasladista)],
             [label("FECHA PROGRAMADA"), value(info.fechaProgramada)],
           ],
         },
@@ -746,4 +779,41 @@ function tableLayout() {
     paddingTop: () => 1.5,
     paddingBottom: () => 1.5,
   };
+}
+
+/* =====================================================
+   GALERÍA DE EVIDENCIAS (salida / recepción) POR VIN
+===================================================== */
+
+function verGaleriaEvidencias(vin, etapa) {
+  const lista = ((evidenciasDetalle[vin] || {})[etapa]) || [];
+  const esc = (s) => {
+    const d = document.createElement("div");
+    d.textContent = s || "";
+    return d.innerHTML;
+  };
+
+  document.querySelector("#tituloGaleriaEvidencias").textContent =
+    `Evidencias de ${etapa === "salida" ? "salida" : "recepción"} · ${vin}`;
+
+  document.querySelector("#contenidoGaleriaEvidencias").innerHTML = lista
+    .map(
+      (ev) => `
+      <div class="col-6 col-md-4">
+        <div class="card mb-0 h-100">
+          <a href="${ev.url}" target="_blank" rel="noopener">
+            <img src="${ev.url}" class="card-img-top" style="height:160px;object-fit:cover" loading="lazy" alt="Evidencia">
+          </a>
+          <div class="card-body p-2 small">
+            ${ev.observaciones ? `<div>${esc(ev.observaciones)}</div>` : ""}
+            <div class="text-muted">${esc(ev.fecha)}${ev.usuario ? " · " + esc(ev.usuario) : ""}</div>
+          </div>
+        </div>
+      </div>`,
+    )
+    .join("");
+
+  bootstrap.Modal.getOrCreateInstance(
+    document.getElementById("modalGaleriaEvidencias"),
+  ).show();
 }

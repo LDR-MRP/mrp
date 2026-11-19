@@ -29,8 +29,13 @@ class Inv_unidadesModel extends Mysql
     private const PLANTA_NOMBRE_SQL = "COALESCE(pl.nombre_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN CONCAT('Planta ', CAST(SUBSTRING(a.cve_almacen, 3, 2) AS UNSIGNED)) ELSE 'Sin planta asignada' END)";
 
     /** Un renglon por VIN (unidad fisica). */
-    public function selectUnidades(): array
+    /**
+     * @param bool $conDisponibles true (Reporte Finanzas): agrega también los VIN Disponibles (1)
+     *        que ya tienen almacén asignado, sea facturable o no, aunque no estén tatuados.
+     */
+    public function selectUnidades(bool $conDisponibles = false): array
     {
+        $disponibles = $conDisponibles ? " OR (ns.estado = '1' AND a.idalmacen IS NOT NULL)" : '';
         $sql = "SELECT ns.id_numeros_serie,
                        ns.numero_serie,
                        NULLIF(TRIM(va.color), '') AS color,
@@ -76,9 +81,9 @@ class Inv_unidadesModel extends Mysql
                                         AND ms.signo > 0
                                         AND ms.idmovserie = (SELECT MAX(ms2.idmovserie)
                                                              FROM wms_movimientos_inventario_series ms2
-                                                             WHERE ms2.id_numeros_serie = ns.id_numeros_serie)))))
+                                                             WHERE ms2.id_numeros_serie = ns.id_numeros_serie)))){$disponibles})
                 ORDER BY i.descripcion, a.cve_almacen, ns.numero_serie";
-        return array_merge($this->select_all($sql), $this->selectUnidadesSinVin());
+        return array_merge($this->select_all($sql), $this->selectUnidadesSinVin($conDisponibles));
     }
 
     /**
@@ -94,8 +99,10 @@ class Inv_unidadesModel extends Mysql
      * renglón por unidad, con la misma forma que selectUnidades() y numero_serie
      * 'SIN VIN', para que la pantalla y el reporte ejecutivo las cuenten igual.
      */
-    public function selectUnidadesSinVin(): array
+    public function selectUnidadesSinVin(bool $conDisponibles = false): array
     {
+        // Si también se cuentan los VIN Disponibles, se descuentan para no contarlos dos veces
+        $estadosVin = $conDisponibles ? "('1','2')" : "('2')";
         $claves = "'" . implode("','", self::ALMACENES_SIN_VIN) . "'";
         $sql = "SELECT i.idinventario AS inventarioid,
                        i.cve_articulo,
@@ -118,7 +125,7 @@ class Inv_unidadesModel extends Mysql
                 INNER JOIN wms_inventario i ON i.idinventario = u.inventarioid
                 LEFT JOIN mrp_planta pl ON pl.idplanta = a.plantaid
                 LEFT JOIN (SELECT inventarioid, almacenid, COUNT(*) AS vins
-                           FROM wms_numeros_series WHERE estado = '2'
+                           FROM wms_numeros_series WHERE estado IN $estadosVin
                            GROUP BY inventarioid, almacenid) v
                        ON v.inventarioid = u.inventarioid AND v.almacenid = u.almacenid
                 " . self::SUBLINEA_JOIN . "

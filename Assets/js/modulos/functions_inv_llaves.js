@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
       {
         data: "tipo_llave",
         render: function (data) {
-          const texto = data === "principal" ? "Principal" : "Duplicado";
+          const texto = { principal: "Principal", duplicado: "Duplicado", juego: "Juego" }[data] || data;
           return `<span class="badge bg-secondary">${texto}</span>`;
         },
       },
@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
       {
         data: "tipo_llave",
         render: function (data) {
-          const texto = data === "principal" ? "Principal" : "Duplicado";
+          const texto = { principal: "Principal", duplicado: "Duplicado", juego: "Juego" }[data] || data;
           return `<span class="badge bg-secondary">${texto}</span>`;
         },
       },

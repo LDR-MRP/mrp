@@ -102,6 +102,7 @@
 
                         <div class="row">
 
+                            <?php /* OCULTO 19-nov-2026: a solicitud del equipo se deja de capturar el tipo de traslado. Para reactivarlo, quitar este if(false). */ if (false): ?>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">
                                     Tipo de traslado <span class="text-danger">*</span>
@@ -131,6 +132,7 @@
 
                                 </select>
                             </div>
+                            <?php endif; ?>
 
                             <div class="col-md-6 mb-3">
 
@@ -220,6 +222,7 @@
 
                         </div>
 
+                        <?php /* OCULTO 19-nov-2026: a solicitud del equipo se deja de capturar transportista (proveedor) ni datos del trasladista. Para reactivarlo, quitar este if(false). */ if (false): ?>
                         <!-- ============================================= -->
                         <!-- TRANSPORTISTA -->
                         <!-- ============================================= -->
@@ -329,6 +332,7 @@
                             </div>
 
                         </div>
+                        <?php endif; ?>
                         <!-- ============================================= -->
                         <!-- UNIDADES A TRASLADAR -->
                         <!-- ============================================= -->
@@ -365,6 +369,7 @@
                                                 <th>Almacén Actual</th>
                                                 <th>¿Entrega llave?</th>
                                                 <th>Tipo de llave</th>
+                                                <th>¿Kit?</th>
                                                 <th></th>
                                             </tr>
                                         </thead>

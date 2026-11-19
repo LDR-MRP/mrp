@@ -123,16 +123,19 @@ class Inv_traslados extends Controllers
             $almacen_origenid  = intval($_POST['almacen_origenid']);
             $almacen_destinoid = intval($_POST['almacen_destinoid']);
 
-            $tipo_traslado = strClean($_POST['tipo_traslado']);
+            $tipo_traslado = strClean($_POST['tipo_traslado'] ?? ''); // oculto en la vista desde 19-nov-2026
+            if ($tipo_traslado === '') $tipo_traslado = null;
 
-            $proveedorid = intval($_POST['id_proveedor']);
+            $proveedorid = intval($_POST['id_proveedor'] ?? 0); // oculto en la vista desde 19-nov-2026
+            if ($proveedorid <= 0) $proveedorid = null;
 
             $fecha_programada = strClean($_POST['fecha_programada']);
 
-            $nombre_trasladista = strClean($_POST['nombre_trasladista']);
-            $contacto_trasladista = strClean($_POST['correo_trasladista']);
-            $numero_licencia = strClean($_POST['numero_licencia']);
-            $vigencia_licencia = strClean($_POST['vigencia_licencia']);
+            $nombre_trasladista = strClean($_POST['nombre_trasladista'] ?? '');
+            $contacto_trasladista = strClean($_POST['correo_trasladista'] ?? '');
+            $numero_licencia = strClean($_POST['numero_licencia'] ?? '');
+            $vigencia_licencia = strClean($_POST['vigencia_licencia'] ?? '');
+            if ($vigencia_licencia === '') $vigencia_licencia = null; // columna DATE
 
             $observaciones = strClean($_POST['observaciones']);
 
@@ -148,11 +151,11 @@ class Inv_traslados extends Controllers
                 die();
             }
 
-            if ($almacen_origenid <= 0 || $almacen_destinoid <= 0 || $tipo_traslado === '' || $fecha_programada === '') {
+            if ($almacen_origenid <= 0 || $almacen_destinoid <= 0 || $fecha_programada === '') {
 
                 echo json_encode([
                     'status' => false,
-                    'msg' => 'Faltan datos obligatorios: almacén origen, almacén destino, tipo de traslado y fecha programada'
+                    'msg' => 'Faltan datos obligatorios: almacén origen, almacén destino y fecha programada'
                 ]);
 
                 die();
@@ -379,18 +382,21 @@ class Inv_traslados extends Controllers
             $almacen_origenid  = intval($_POST['almacen_origenid']);
             $almacen_destinoid = intval($_POST['almacen_destinoid']);
 
-            $tipo_traslado = strClean($_POST['tipo_traslado']);
+            $tipo_traslado = strClean($_POST['tipo_traslado'] ?? ''); // oculto en la vista desde 19-nov-2026
+            if ($tipo_traslado === '') $tipo_traslado = null;
 
-            $proveedorid = intval($_POST['id_proveedor']);
+            $proveedorid = intval($_POST['id_proveedor'] ?? 0); // oculto en la vista desde 19-nov-2026
+            if ($proveedorid <= 0) $proveedorid = null;
 
             $fecha_programada = strClean(
                 $_POST['fecha_programada']
             );
 
-            $nombre_trasladista = strClean($_POST['nombre_trasladista']);
-            $contacto_trasladista = strClean($_POST['correo_trasladista']);
-            $numero_licencia = strClean($_POST['numero_licencia']);
-            $vigencia_licencia = strClean($_POST['vigencia_licencia']);
+            $nombre_trasladista = strClean($_POST['nombre_trasladista'] ?? '');
+            $contacto_trasladista = strClean($_POST['correo_trasladista'] ?? '');
+            $numero_licencia = strClean($_POST['numero_licencia'] ?? '');
+            $vigencia_licencia = strClean($_POST['vigencia_licencia'] ?? '');
+            if ($vigencia_licencia === '') $vigencia_licencia = null; // columna DATE
 
             $observaciones = strClean(
                 $_POST['observaciones']
@@ -404,11 +410,11 @@ class Inv_traslados extends Controllers
             // El frontend ya marca estos campos como "required", pero esa
             // validación se puede saltar (editando el HTML, o llamando al
             // endpoint directo), así que se revalida aquí también.
-            if ($almacen_origenid <= 0 || $almacen_destinoid <= 0 || $tipo_traslado === '' || $fecha_programada === '') {
+            if ($almacen_origenid <= 0 || $almacen_destinoid <= 0 || $fecha_programada === '') {
 
                 echo json_encode([
                     'status' => false,
-                    'msg' => 'Faltan datos obligatorios: almacén origen, almacén destino, tipo de traslado y fecha programada'
+                    'msg' => 'Faltan datos obligatorios: almacén origen, almacén destino y fecha programada'
                 ]);
 
                 die();
@@ -766,4 +772,25 @@ public function getKpis()
     die();
 }
 
+
+/* =====================================================
+   EVIDENCIAS (fotos de salida y recepción) — 19-nov-2026
+===================================================== */
+public function getEvidencias($idtraslado)
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    if (empty($_SESSION['permisosMod']['r'])) {
+        echo json_encode([]);
+        die();
+    }
+
+    $lista = $this->model->selectEvidenciasTraslado(intval($idtraslado));
+    foreach ($lista as &$e) {
+        $e['url'] = base_url() . '/Assets/uploads/traslados_evidencias/' . $e['archivo'];
+    }
+
+    echo json_encode($lista, JSON_UNESCAPED_UNICODE);
+    die();
+}
 }
