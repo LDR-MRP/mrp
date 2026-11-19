@@ -192,6 +192,7 @@ $trasladista = $data['trasladista'];
                 <td><?= $traslado['almacen_destino']; ?></td>
             </tr>
 
+            <?php /* OCULTO 19-nov-2026 (tipo de traslado / transportista)
             <tr>
                 <td class="label">TIPO DE TRASLADO</td>
                 <td><?= strtoupper($traslado['tipo_traslado']); ?></td>
@@ -201,6 +202,7 @@ $trasladista = $data['trasladista'];
                 <td class="label">PROVEEDOR</td>
                 <td><?= $traslado['proveedor']; ?></td>
             </tr>
+            */ ?>
 
             <tr>
                 <td class="label">FECHA PROGRAMADA</td>
@@ -211,7 +213,8 @@ $trasladista = $data['trasladista'];
 
     </div>
 
-    <!-- TRASLADISTA -->
+    <!-- TRASLADISTA (oculto 19-nov-2026) -->
+    <?php if (false): ?>
 
     <div class="bloque">
 
@@ -245,6 +248,8 @@ $trasladista = $data['trasladista'];
 
     </div>
 
+    <?php endif; ?>
+
     <!-- UNIDADES -->
 
     <div class="bloque">
@@ -260,6 +265,7 @@ $trasladista = $data['trasladista'];
                     <th>#</th>
                     <th>VIN</th>
                     <th>MODELO</th>
+                    <th>KIT</th>
                     <th>OBSERVACIONES</th>
                 </tr>
             </thead>
@@ -277,6 +283,8 @@ $trasladista = $data['trasladista'];
                     <td><?= $row['vin']; ?></td>
 
                     <td><?= $row['modelo']; ?></td>
+
+                    <td><?= !empty($row['kit']) ? 'SÍ' : 'NO'; ?></td>
 
                     <td></td>
 

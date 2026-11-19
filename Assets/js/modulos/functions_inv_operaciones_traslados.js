@@ -111,15 +111,12 @@ function cargarTraslado(data) {
       btnSalida.classList.remove("d-none");
       break;
 
-    // Ya salió, pendiente de ingreso en patio (lo registra seguridad)
+    // Ya salió: pendiente de recepción. Desde 19-nov-2026 ya no hay
+    // ingreso de seguridad; una sola persona recibe y da la entrada.
+    // El estado 3 solo queda para traslados que ya tenían ese ingreso.
     case 2:
-      btnIngreso.classList.remove("d-none");
-      break;
-
-    // Ingreso ya registrado por seguridad, pendiente de recepción interna
     case 3:
       btnRecepcion.classList.remove("d-none");
-      avisoIngreso.classList.remove("d-none");
       break;
 
     // Recibido
@@ -133,9 +130,7 @@ function cargarTraslado(data) {
 
   if (parseInt(data.estado) === 1) {
     modoOperacion = "salida";
-  } else if (parseInt(data.estado) === 2) {
-    modoOperacion = "ingreso";
-  } else if (parseInt(data.estado) === 3) {
+  } else if (parseInt(data.estado) === 2 || parseInt(data.estado) === 3) {
     modoOperacion = "recepcion";
   } else {
     modoOperacion = null;
@@ -164,6 +159,10 @@ function cargarTraslado(data) {
 
   data.unidades.forEach((u) => {
   const tieneLlave = parseInt(u.entrega_llave) === 1;
+  const totalEvid =
+    modoOperacion === "salida"
+      ? parseInt(u.evidencias_salida) || 0
+      : parseInt(u.evidencias_recepcion) || 0;
 
   html += `
     <div class="border-bottom p-3 unidad-item"
@@ -173,6 +172,7 @@ function cargarTraslado(data) {
          data-tipo-llave="${u.tipo_llave || ''}"
          data-llave-recibida="0"
          data-observaciones-llave=""
+         data-evidencias="${totalEvid}"
          data-validado="0">
 
         <div class="d-flex justify-content-between">
@@ -185,6 +185,13 @@ function cargarTraslado(data) {
             <span class="badge bg-secondary estado-vin">Pendiente</span>
         </div>
         <div class="llave-observacion-vin mt-1"></div>
+        <div class="evid-box mt-2 d-none">
+            <button type="button" class="btn btn-sm btn-outline-primary btnEvidenciasUnidad"
+                    data-vin="${u.vin}">
+                <i class="ri-camera-line me-1"></i>
+                Evidencias (<span class="evid-count">${totalEvid}</span>)
+            </button>
+        </div>
     </div>
   `;
 });
@@ -195,8 +202,8 @@ function cargarTraslado(data) {
 function obtenerEstado(estado) {
   let estados = {
     1: '<span class="badge bg-warning">Solicitud</span>',
-    2: '<span class="badge bg-primary">En tránsito (pendiente ingreso)</span>',
-    3: '<span class="badge bg-info">En patio (pendiente recepción interna)</span>',
+    2: '<span class="badge bg-primary">En tránsito (pendiente recepción)</span>',
+    3: '<span class="badge bg-info">En patio (pendiente recepción)</span>',
     4: '<span class="badge bg-success">Recibido</span>',
     5: '<span class="badge bg-danger">Cancelado</span>',
   };
@@ -624,6 +631,11 @@ function iniciarScannerVin() {
 }
 
 function onScanVinSuccess(decodedText) {
+  // Mientras se contesta una pregunta (llave / evidencias) o se toman
+  // fotos, se ignoran las lecturas de la cámara para no validar
+  // unidades "por accidente" en segundo plano.
+  if (modalEvidenciasAbierto || (window.Swal && Swal.isVisible())) return;
+
   const vin = extraerVin(decodedText);
   const ahora = Date.now();
 
@@ -690,15 +702,22 @@ function procesarVinEscaneado(vin) {
 }
 
 function confirmarUnidadValidada(unidad) {
+  // Primero lo que ya se hacía (badge + pregunta de la llave) y al
+  // final, ya resuelto todo eso, la pregunta de evidencias.
+  return Promise.resolve(confirmarUnidadValidadaBase(unidad)).then(() =>
+    preguntarEvidencias(unidad),
+  );
+}
+
+function confirmarUnidadValidadaBase(unidad) {
   const badge = unidad.querySelector(".estado-vin");
   badge.classList.remove("bg-secondary");
   badge.classList.add("bg-success");
   badge.innerHTML = "Validado";
   unidad.setAttribute("data-validado", "1");
 
-  // La pregunta de la llave solo aplica en la recepción interna
-  // (estado 3). En el ingreso de seguridad (estado 2) solo se
-  // confirma que la unidad llegó, sin decidir nada sobre la llave.
+  // La pregunta de la llave solo aplica en la recepción (estados 2 y 3;
+  // el ingreso de seguridad se quitó el 19-nov-2026).
   if (modoOperacion === "recepcion" && unidad.getAttribute("data-tiene-llave") === "1") {
     const tipoLlave = unidad.getAttribute("data-tipo-llave");
 
@@ -923,3 +942,271 @@ function reproducirSonidoAlerta() {
     // Silencioso si el navegador bloquea audio
   }
 }
+
+
+/* =====================================================
+   EVIDENCIAS (fotos) POR UNIDAD — 19-nov-2026
+   Se pueden tomar en la salida y en la recepción, después
+   de validar la unidad. Cada foto se comprime en el
+   navegador y se sube en ese momento (si se cierra la
+   pantalla, lo ya subido no se pierde).
+===================================================== */
+
+let modalEvidenciasAbierto = false;
+let evidUnidadActual = null; // .unidad-item de la unidad en el modal
+let evidModalInstance = null;
+let evidResolverCierre = null;
+
+function etapaEvidencias() {
+  return modoOperacion === "salida" ? "salida" : "recepcion";
+}
+
+function preguntarEvidencias(unidad) {
+  if (modoOperacion !== "salida" && modoOperacion !== "recepcion") {
+    return Promise.resolve();
+  }
+
+  const box = unidad.querySelector(".evid-box");
+  if (box) box.classList.remove("d-none");
+
+  return Swal.fire({
+    title: "¿Tomar evidencias?",
+    text: `¿Deseas tomar fotos de la unidad ${unidad.getAttribute("data-vin")}?`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: '<i class="ri-camera-line"></i> Sí, tomar fotos',
+    cancelButtonText: "No, continuar",
+    allowOutsideClick: false,
+  }).then((r) => (r.isConfirmed ? abrirModalEvidencias(unidad) : null));
+}
+
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".btnEvidenciasUnidad");
+  if (!btn) return;
+  const unidad = btn.closest(".unidad-item");
+  if (unidad) abrirModalEvidencias(unidad);
+});
+
+function abrirModalEvidencias(unidad) {
+  evidUnidadActual = unidad;
+  const vin = unidad.getAttribute("data-vin");
+  const etapa = etapaEvidencias();
+
+  document.querySelector("#evidVin").textContent = vin;
+  document.querySelector("#evidEtapa").textContent =
+    etapa === "salida" ? "Salida" : "Recepción";
+  document.querySelector("#evidObservaciones").value = "";
+  document.querySelector("#evidGaleria").innerHTML =
+    '<div class="text-muted small">Cargando...</div>';
+
+  const modalEl = document.querySelector("#modalEvidenciasUnidad");
+  evidModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modalEvidenciasAbierto = true;
+  evidModalInstance.show();
+
+  cargarEvidenciasUnidad();
+
+  // Se resuelve al cerrar el modal, para que el flujo de validación
+  // (aviso "Unidad validada", escáner) continúe hasta entonces.
+  return new Promise((resolve) => {
+    evidResolverCierre = resolve;
+  });
+}
+
+function cargarEvidenciasUnidad() {
+  if (!evidUnidadActual) return;
+
+  const params = new URLSearchParams({
+    folio: document.querySelector("#lblFolio").textContent.trim(),
+    vin: evidUnidadActual.getAttribute("data-vin"),
+    etapa: etapaEvidencias(),
+  });
+
+  fetch(base_url + "/Inv_operaciones_traslados/getEvidencias?" + params)
+    .then((r) => r.json())
+    .then((resp) => pintarGaleriaEvidencias(resp.status ? resp.evidencias : []))
+    .catch(() => pintarGaleriaEvidencias([]));
+}
+
+function pintarGaleriaEvidencias(lista) {
+  const cont = document.querySelector("#evidGaleria");
+  lista = lista || [];
+
+  if (evidUnidadActual) {
+    evidUnidadActual.setAttribute("data-evidencias", lista.length);
+    const cnt = evidUnidadActual.querySelector(".evid-count");
+    if (cnt) cnt.textContent = lista.length;
+  }
+
+  if (lista.length === 0) {
+    cont.innerHTML =
+      '<div class="text-muted small">Aún no hay fotos de esta unidad.</div>';
+    return;
+  }
+
+  cont.innerHTML = lista
+    .map(
+      (ev) => `
+      <div class="evid-thumb">
+        <a href="${ev.url}" target="_blank" rel="noopener">
+          <img src="${ev.url}" alt="Evidencia" loading="lazy">
+        </a>
+        <button type="button" class="btn btn-danger btn-sm evid-borrar"
+                data-id="${ev.idevidencia}" title="Eliminar foto">
+          <i class="ri-delete-bin-line"></i>
+        </button>
+        ${ev.observaciones ? `<div class="evid-obs">${escapeHtmlEvid(ev.observaciones)}</div>` : ""}
+      </div>`,
+    )
+    .join("");
+}
+
+function escapeHtmlEvid(s) {
+  const d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
+
+/** Reduce la foto (lado mayor 1600 px, JPG 80%) antes de subirla. */
+function comprimirImagen(file, maxLado = 1600, calidad = 0.8) {
+  return new Promise((resolve) => {
+    if (!file.type || !file.type.startsWith("image/")) return resolve(file);
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      let { width, height } = img;
+      const escala = Math.min(1, maxLado / Math.max(width, height));
+      width = Math.round(width * escala);
+      height = Math.round(height * escala);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file);
+          const nombre = (file.name || "foto").replace(/\.[^.]+$/, "") + ".jpg";
+          resolve(new File([blob], nombre, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        calidad,
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // si no se puede leer, se manda tal cual
+    };
+
+    img.src = url;
+  });
+}
+
+async function subirEvidenciasSeleccionadas(input) {
+  const archivos = Array.from(input.files || []);
+  input.value = "";
+  if (archivos.length === 0 || !evidUnidadActual) return;
+
+  const progreso = document.querySelector("#evidProgreso");
+  progreso.classList.remove("d-none");
+  document
+    .querySelectorAll("#modalEvidenciasUnidad .evid-accion")
+    .forEach((b) => (b.disabled = true));
+
+  try {
+    const formData = new FormData();
+    formData.append("folio", document.querySelector("#lblFolio").textContent.trim());
+    formData.append("vin", evidUnidadActual.getAttribute("data-vin"));
+    formData.append("etapa", etapaEvidencias());
+    formData.append("observaciones", document.querySelector("#evidObservaciones").value.trim());
+
+    for (const f of archivos.slice(0, 10)) {
+      formData.append("fotos[]", await comprimirImagen(f));
+    }
+
+    const resp = await fetch(base_url + "/Inv_operaciones_traslados/subirEvidencia", {
+      method: "POST",
+      body: formData,
+    }).then((r) => r.json());
+
+    if (resp.evidencias) pintarGaleriaEvidencias(resp.evidencias);
+
+    if (resp.status) {
+      document.querySelector("#evidObservaciones").value = "";
+      mostrarFlashEscaneo("success", resp.msg);
+    } else {
+      Swal.fire("Atención", resp.msg || "No se pudieron guardar las fotos", "warning");
+    }
+  } catch (err) {
+    console.error(err);
+    Swal.fire("Error", "No se pudieron subir las fotos. Revisa tu conexión.", "error");
+  } finally {
+    progreso.classList.add("d-none");
+    document
+      .querySelectorAll("#modalEvidenciasUnidad .evid-accion")
+      .forEach((b) => (b.disabled = false));
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const modalEl = document.querySelector("#modalEvidenciasUnidad");
+  if (!modalEl) return;
+
+  const inputCamara = document.querySelector("#evidInputCamara");
+  const inputGaleria = document.querySelector("#evidInputGaleria");
+
+  document
+    .querySelector("#evidBtnCamara")
+    .addEventListener("click", () => inputCamara.click());
+  document
+    .querySelector("#evidBtnGaleria")
+    .addEventListener("click", () => inputGaleria.click());
+
+  inputCamara.addEventListener("change", () => subirEvidenciasSeleccionadas(inputCamara));
+  inputGaleria.addEventListener("change", () => subirEvidenciasSeleccionadas(inputGaleria));
+
+  document.querySelector("#evidGaleria").addEventListener("click", function (e) {
+    const btn = e.target.closest(".evid-borrar");
+    if (!btn) return;
+
+    Swal.fire({
+      title: "¿Eliminar esta foto?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    }).then((r) => {
+      if (!r.isConfirmed) return;
+
+      fetch(base_url + "/Inv_operaciones_traslados/eliminarEvidencia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idevidencia: btn.dataset.id }),
+      })
+        .then((res) => res.json())
+        .then((resp) => {
+          if (!resp.status) {
+            Swal.fire("Atención", resp.msg, "warning");
+            return;
+          }
+          pintarGaleriaEvidencias(resp.evidencias);
+        })
+        .catch(() => Swal.fire("Error", "No se pudo eliminar la foto", "error"));
+    });
+  });
+
+  modalEl.addEventListener("hidden.bs.modal", function () {
+    modalEvidenciasAbierto = false;
+    evidUnidadActual = null;
+    if (evidResolverCierre) {
+      const r = evidResolverCierre;
+      evidResolverCierre = null;
+      r();
+    }
+  });
+});

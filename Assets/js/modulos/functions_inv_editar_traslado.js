@@ -29,11 +29,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let selectProveedor = document.querySelector("#id_proveedor");
 
-      selectProveedor.innerHTML = `<option value="">
+      if (selectProveedor) selectProveedor.innerHTML = `<option value="">
         Seleccione proveedor
         </option>`;
 
-      (proveedores || []).forEach((p) => {
+      (selectProveedor ? proveedores || [] : []).forEach((p) => {
         selectProveedor.innerHTML += `
 
             <option value="${p.id_proveedor}">
@@ -105,9 +105,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (guardandoCambios) return;
 
-      let nombreTrasladista = form
-        .querySelector('[name="nombre_trasladista"]')
-        .value.trim();
+      // 19-nov-2026: los datos del trasladista se ocultaron del formulario,
+      // así que ya no se exige el nombre para entregar llaves.
 
       let unidades = [];
       let faltaTipoLlave = false;
@@ -132,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
           almacenid: tr.querySelector(".almacenid").value,
           entrega_llave: entrega ? 1 : 0,
           tipo_llave: tipoLlave,
+          kit: tr.querySelector(".kit").value === "1" ? 1 : 0,
         });
       });
 
@@ -149,6 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      /* OCULTO 19-nov-2026 (trasladista ya no se captura)
       if (algunaConLlave && !nombreTrasladista) {
         Swal.fire(
           "Atención",
@@ -157,6 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
         );
         return;
       }
+      */
 
       let formData = new FormData(form);
       formData.append("unidades", JSON.stringify(unidades));
@@ -226,7 +228,7 @@ function cargarTraslado(data) {
 
   document.querySelector("#lblFolio").textContent = traslado.folio || "—";
 
-  document.querySelector("#tipo_traslado").value = traslado.tipo_traslado || "";
+  setValorSiExiste("#tipo_traslado", traslado.tipo_traslado);
   document.querySelector("#fecha_programada").value =
     traslado.fecha_programada || "";
   document.querySelector("#observaciones").value = traslado.observaciones || "";
@@ -234,7 +236,7 @@ function cargarTraslado(data) {
   document.querySelector("#almacen_origenid").value = traslado.almacen_origenid;
   document.querySelector("#almacen_destinoid").value =
     traslado.almacen_destinoid;
-  document.querySelector("#id_proveedor").value = traslado.proveedorid || "";
+  setValorSiExiste("#id_proveedor", traslado.proveedorid);
 
   // Catálogo de unidades disponibles del almacén de origen actual, para
   // que el buscador de "Agregar Unidad" funcione igual que en Nueva
@@ -244,16 +246,14 @@ function cargarTraslado(data) {
 
   const trasladista = data.trasladista || {};
 
-  document.querySelector("#nombre_trasladista").value =
-    trasladista.nombre || "";
-  document.querySelector("#numero_licencia").value =
-    trasladista.numero_licencia || "";
-  document.querySelector("#correo_trasladista").value =
-    trasladista.contacto || "";
-  document.querySelector("#vigencia_licencia").value =
-    trasladista.vigencia_licencia || "";
+  // Tipo de traslado / transportista / trasladista están ocultos en la
+  // vista desde 19-nov-2026; estos campos solo se llenan si existen.
+  setValorSiExiste("#nombre_trasladista", trasladista.nombre);
+  setValorSiExiste("#numero_licencia", trasladista.numero_licencia);
+  setValorSiExiste("#correo_trasladista", trasladista.contacto);
+  setValorSiExiste("#vigencia_licencia", trasladista.vigencia_licencia);
 
-  if (trasladista.archivo_licencia) {
+  if (trasladista.archivo_licencia && document.querySelector("#lblArchivoActual")) {
     document.querySelector("#lblArchivoActual").textContent =
       "Archivo actual: " +
       trasladista.archivo_licencia +
@@ -270,6 +270,11 @@ function cargarTraslado(data) {
   if ((data.detalle || []).length === 0) {
     tbody.innerHTML = `<tr id="rowSinUnidades"></tr>`;
   }
+}
+
+function setValorSiExiste(selector, valor) {
+  const el = document.querySelector(selector);
+  if (el) el.value = valor || "";
 }
 
 function cargarUnidadesDelOrigen() {
@@ -322,6 +327,14 @@ function agregarFilaUnidad(prefill) {
     <option value="">--</option>
     <option value="principal">Principal</option>
     <option value="duplicado">Duplicado</option>
+    <option value="juego">Juego</option>
+  </select>
+</td>
+
+<td>
+  <select class="form-select kit">
+    <option value="0">No</option>
+    <option value="1">Sí</option>
   </select>
 </td>
 
@@ -352,6 +365,8 @@ function agregarFilaUnidad(prefill) {
       selectTipo.disabled = false;
       selectTipo.value = prefill.tipo_llave || "";
     }
+
+    tr.querySelector(".kit").value = parseInt(prefill.kit) === 1 ? "1" : "0";
   }
 }
 

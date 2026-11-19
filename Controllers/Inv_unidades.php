@@ -330,8 +330,11 @@ class Inv_unidades extends Controllers
             return $k;
         };
 
+        // Reporte Finanzas: todas las unidades (también VIN Disponibles con almacén, facturable o no)
+        // y desglose por almacén agrupado por planta. Dirección: columnas agrupadas (Planta/Montenegro).
+        $desglose = empty($f['solo_vin']);
         $alms = [];
-        foreach ($this->model->selectUnidades() as $r) {
+        foreach ($this->model->selectUnidades($desglose) as $r) {
             if ($f['planta'] !== '' && $r['planta'] === $f['planta']) $nomPlanta = $r['planta_nombre'] ?? $r['planta'];
             if ($f['almacen'] > 0 && (int) $r['almacenid'] === $f['almacen']) $cveAlmF = $r['cve_almacen'];
             if (!empty($f['solo_vin']) && !empty($r['sin_vin'])) {
@@ -345,7 +348,13 @@ class Inv_unidades extends Controllers
             // Solo existencias: todos los almacenes se agrupan en "Planta", excepto los
             // que se muestran por separado (ALMACENES_APARTE: XIAN y VELCEN).
             $cveAlm = strtoupper(trim((string) $r['cve_almacen']));
-            if (isset(self::ALMACENES_APARTE[$cveAlm])) {
+            if ($desglose) {
+                $aid = 'A:' . (int) $r['almacenid'];
+                $pl = (string) $r['planta'];
+                $alms[$aid] = ['cve' => $r['cve_almacen'], 'desc' => $r['almacen'], 'planta' => $pl,
+                               'planta_nombre' => $r['planta_nombre'] ?? $pl,
+                               'orden' => $pl === 'TRANSITO' ? 1 : (in_array($pl, ['SIN', 'OTROS'], true) ? 2 : 0)];
+            } elseif (isset(self::ALMACENES_APARTE[$cveAlm])) {
                 $aid = 'ALM:' . $cveAlm;
                 $alms[$aid] = ['cve' => self::ALMACENES_APARTE[$cveAlm], 'orden' => 1];
             } else {
@@ -371,7 +380,7 @@ class Inv_unidades extends Controllers
         $meses = array_keys($meses);
         sort($meses);
 
-        uasort($alms, fn($a, $b) => [$a['orden'], $a['cve']] <=> [$b['orden'], $b['cve']]);
+        uasort($alms, fn($a, $b) => [$a['orden'], $a['planta'] ?? '', $a['cve']] <=> [$b['orden'], $b['planta'] ?? '', $b['cve']]);
         uasort($rows, fn($a, $b) => [self::ordenSublinea($a['sub']), $a['sub'], mb_strtoupper($a['modelo']), $a['cve'], mb_strtoupper($a['color'])]
                                 <=> [self::ordenSublinea($b['sub']), $b['sub'], mb_strtoupper($b['modelo']), $b['cve'], mb_strtoupper($b['color'])]);
 
@@ -418,8 +427,20 @@ class Inv_unidades extends Controllers
         if ($q !== '') {
             $filtros[] = 'Búsqueda: "' . $q . '"';
         }
+        // Plantas con sus almacenes y subtotal (desglose del Reporte Finanzas)
+        $plantas = [];
+        if ($desglose) {
+            foreach ($alms as $aid => $a) {
+                $p = &$plantas[$a['planta']];
+                $p['nombre'] = $a['planta_nombre'];
+                $p['alms'][] = $aid;
+                $p['total'] = ($p['total'] ?? 0) + ($tot['alm'][$aid] ?? 0);
+                unset($p);
+            }
+        }
         $soloVin = !empty($f['solo_vin']);
         return ['rows' => $rows, 'alms' => $alms, 'meses' => $meses, 'con_transito' => $conTransito,
+                'desglose' => $desglose, 'plantas' => $plantas,
                 'titulo' => $soloVin ? 'Reporte para Dirección · Unidades con VIN' : 'Reporte para Finanzas · Inventario y tránsito de unidades',
                 'archivo' => $soloVin ? 'reporte_direccion_unidades_' : 'reporte_finanzas_unidades_',
                 'segs' => $segs, 'tot' => $tot, 'filtros' => $filtros, 'fecha' => date('d/m/Y H:i')];
@@ -593,6 +614,41 @@ class Inv_unidades extends Controllers
             }
         }
 
+        // Existencias por planta y almacén (Reporte Finanzas)
+        if (!empty($d['desglose']) && $d['plantas']) {
+            $r += 2;
+            $cP = $conTra ? 'D' : 'E';   // columna de % (D se oculta cuando no hay tránsito)
+            $iniD = $r + 1;
+            $sh->setCellValue("B{$r}", 'Existencias por planta y almacén');
+            $sh->setCellValue("C{$r}", 'Unidades');
+            $sh->setCellValue("{$cP}{$r}", '% inventario');
+            $estilo($sh, "B{$r}:{$cP}{$r}", ['bg' => self::C_INV, 'color' => 'FFFFFF', 'bold' => true, 'borde' => true]);
+            foreach ($d['plantas'] as $p) {
+                $r++;
+                $sh->setCellValue("B{$r}", $p['nombre']);
+                $sh->setCellValue("C{$r}", $p['total']);
+                $sh->setCellValue("{$cP}{$r}", $t['inv'] ? $p['total'] / $t['inv'] : 0);
+                $estilo($sh, "B{$r}:{$cP}{$r}", ['bg' => self::C_INV_SUAVE, 'bold' => true, 'borde' => true]);
+                foreach ($p['alms'] as $aid) {
+                    $r++;
+                    $a = $d['alms'][$aid];
+                    $n = $t['alm'][$aid] ?? 0;
+                    $sh->setCellValue("B{$r}", '    ' . $a['cve'] . ($a['desc'] && $a['desc'] !== $a['cve'] ? ' · ' . $a['desc'] : ''));
+                    $sh->setCellValue("C{$r}", $n);
+                    $sh->setCellValue("{$cP}{$r}", $t['inv'] ? $n / $t['inv'] : 0);
+                    $estilo($sh, "B{$r}:{$cP}{$r}", ['borde' => true]);
+                }
+            }
+            $r++;
+            $sh->setCellValue("B{$r}", 'TOTAL INVENTARIO');
+            $sh->setCellValue("C{$r}", $t['inv']);
+            $sh->setCellValue("{$cP}{$r}", $t['inv'] ? 1 : 0);
+            $estilo($sh, "B{$r}:{$cP}{$r}", ['bg' => self::C_OSCURO, 'color' => 'FFFFFF', 'bold' => true, 'borde' => true]);
+            $sh->getStyle("C{$iniD}:C{$r}")->getNumberFormat()->setFormatCode($NUM);
+            $sh->getStyle("{$cP}{$iniD}:{$cP}{$r}")->getNumberFormat()->setFormatCode('0.0%');
+            $estilo($sh, "C{$iniD}:{$cP}{$r}", ['h' => 'right']);
+        }
+
         /* ===== Hoja 2: Detalle ===== */
         $sh = $ss->createSheet();
         $sh->setTitle('Detalle');
@@ -630,9 +686,23 @@ class Inv_unidades extends Controllers
         $sh->mergeCells($L($cTot) . $r1 . ':' . $L($cTot) . $r3);
         $sh->setCellValue($L($cTot) . $r1, 'TOTAL');
         $c = $cInv0;
-        foreach ($alms as $a) {
-            $sh->mergeCells($L($c) . $r2 . ':' . $L($c) . $r3);
-            $sh->setCellValue($L($c++) . $r2, $a['cve']);
+        if (!empty($d['desglose'])) {
+            // Fila 6: planta (abarca sus almacenes); fila 7: almacén
+            foreach ($d['plantas'] as $p) {
+                $n = count($p['alms']);
+                if ($n > 1) {
+                    $sh->mergeCells($L($c) . $r2 . ':' . $L($c + $n - 1) . $r2);
+                }
+                $sh->setCellValue($L($c) . $r2, $p['nombre']);
+                foreach ($p['alms'] as $aid) {
+                    $sh->setCellValue($L($c++) . $r3, $alms[$aid]['cve']);
+                }
+            }
+        } else {
+            foreach ($alms as $a) {
+                $sh->mergeCells($L($c) . $r2 . ':' . $L($c) . $r3);
+                $sh->setCellValue($L($c++) . $r2, $a['cve']);
+            }
         }
         $sh->setCellValue("A{$r3}", 'Segmento');
         $sh->setCellValue("B{$r3}", 'Modelo');
@@ -879,6 +949,34 @@ class Inv_unidades extends Controllers
             $pdf->SetY($y + 16);
         }
 
+        // Existencias por planta y almacén (Reporte Finanzas)
+        if (!empty($d['desglose']) && $d['plantas']) {
+            $pdf->Ln(1);
+            $pdf->SetFont('helvetica', 'B', 10);
+            $pdf->SetTextColor(...$rgb(self::C_OSCURO));
+            $pdf->Cell(0, 6, 'Existencias por planta y almacén', 0, 1);
+            $pdf->SetTextColor(0, 0, 0);
+            $pdf->SetFont('helvetica', '', 8);
+            $sI = 'style="background-color:#' . self::C_INV . ';color:#ffffff;font-weight:bold;"';
+            $dh = '<table cellpadding="2.5" style="font-size:8pt;"><thead><tr ' . $sI . '><td width="60%">Planta / almacén</td>'
+                . '<td width="20%" align="right">Unidades</td><td width="20%" align="right">% inventario</td></tr></thead>';
+            $pct = fn($n) => $t['inv'] ? number_format($n / $t['inv'] * 100, 1) . '%' : '';
+            foreach ($d['plantas'] as $p) {
+                $dh .= '<tr nobr="true" style="background-color:#' . self::C_INV_SUAVE . ';font-weight:bold;"><td width="60%">' . $h($p['nombre']) . '</td>'
+                    . '<td width="20%" align="right">' . number_format($p['total']) . '</td><td width="20%" align="right">' . $pct($p['total']) . '</td></tr>';
+                foreach ($p['alms'] as $aid) {
+                    $a = $d['alms'][$aid];
+                    $n = $t['alm'][$aid] ?? 0;
+                    $dh .= '<tr nobr="true"><td width="60%">&nbsp;&nbsp;&nbsp;&nbsp;' . $h($a['cve'])
+                        . ($a['desc'] && $a['desc'] !== $a['cve'] ? ' <font color="#6B7280">· ' . $h($a['desc']) . '</font>' : '') . '</td>'
+                        . '<td width="20%" align="right">' . number_format($n) . '</td><td width="20%" align="right">' . $pct($n) . '</td></tr>';
+                }
+            }
+            $dh .= '<tr style="background-color:#' . self::C_OSCURO . ';color:#ffffff;font-weight:bold;"><td width="60%">TOTAL INVENTARIO</td>'
+                . '<td width="20%" align="right">' . number_format($t['inv']) . '</td><td width="20%" align="right">' . ($t['inv'] ? '100%' : '') . '</td></tr></table>';
+            $pdf->writeHTML($dh, true, false, true, false, '');
+        }
+
         /* ===== Páginas siguientes: detalle por modelo ===== */
         $alms = $d['alms'];                          // columnas de inventario: Planta / En tránsito / Otras
         $meses = $d['meses'];
@@ -887,7 +985,8 @@ class Inv_unidades extends Controllers
         $wColor = 8;
         $wTot = 7;
         $nDin = $nAlm + $nMes;
-        $wDin = $nDin ? min(9, floor((100 - 40 - $wColor - $wTot) / $nDin * 10) / 10) : 0;
+        $wModMin = !empty($d['desglose']) ? 26 : 40;   // con desglose por almacén hay más columnas
+        $wDin = $nDin ? min(9, floor((100 - $wModMin - $wColor - $wTot) / $nDin * 10) / 10) : 0;
         $wMod = 100 - $wColor - $wTot - $wDin * $nDin;
         $td = fn($w, $txt, $extra = '') => '<td width="' . $w . '%"' . $extra . '>' . $txt . '</td>';
         $sInv = 'background-color:#' . self::C_INV . ';color:#ffffff;font-weight:bold;';
@@ -900,14 +999,23 @@ class Inv_unidades extends Controllers
             . ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . '">EN TRÁNSITO</td>' : '')
             . $td($wTot, '', ' style="' . $sOsc . '"') . '</tr><tr>'
             . '<td width="' . ($wMod + $wColor) . '%" colspan="2" style="' . $sOsc . '"></td>';
-        foreach ($alms as $a) {
-            $thead .= $td($wDin, str_replace('/', '/<br>', $h($a['cve'])), ' align="center" style="' . $sInv . '"');
+        if (!empty($d['desglose'])) {
+            // Fila 2: planta (abarca sus almacenes)
+            foreach ($d['plantas'] as $p) {
+                $n = count($p['alms']);
+                $thead .= '<td width="' . ($wDin * $n) . '%" colspan="' . $n . '" align="center" style="' . $sInv . 'font-size:6pt;">' . $h($p['nombre']) . '</td>';
+            }
+        } else {
+            foreach ($alms as $a) {
+                $thead .= $td($wDin, str_replace('/', '/<br>', $h($a['cve'])), ' align="center" style="' . $sInv . '"');
+            }
         }
         $thead .= ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . 'font-size:6.5pt;">ALM-TRANSITO · mes de carga</td>' : '')
             . $td($wTot, 'TOTAL', ' align="center" style="' . $sOsc . '"') . '</tr><tr>'
             . $td($wMod, 'Modelo', ' style="' . $sOsc . '"') . $td($wColor, 'Color', ' style="' . $sOsc . '"');
         foreach ($alms as $a) {
-            $thead .= $td($wDin, '', ' style="' . $sInv . '"');
+            // Fila 3: clave del almacén en el desglose; vacía en el reporte agrupado
+            $thead .= $td($wDin, !empty($d['desglose']) ? str_replace('-', '-<br>', $h($a['cve'])) : '', ' align="center" style="' . $sInv . 'font-size:5.2pt;"');
         }
         foreach ($meses as $m) {
             $thead .= $td($wDin, $h($this->mesCorto($m)), ' align="center" style="' . $sTra . '"');

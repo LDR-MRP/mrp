@@ -52,6 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     .then((data) => {
       let select = document.querySelector("#id_proveedor");
+      if (!select) return; // transportista oculto (19-nov-2026)
 
       select.innerHTML = `<option value="">
         Seleccione proveedor
@@ -117,9 +118,8 @@ document.addEventListener("DOMContentLoaded", function () {
     form.addEventListener("submit", function (e) {
       e.preventDefault();
 
-      let nombreTrasladista = form
-        .querySelector('[name="nombre_trasladista"]')
-        .value.trim();
+      // 19-nov-2026: los datos del trasladista se ocultaron del formulario,
+      // así que ya no se exige el nombre para entregar llaves.
 
       let unidades = [];
       let faltaTipoLlave = false;
@@ -144,6 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
           almacenid: tr.querySelector(".almacenid").value,
           entrega_llave: entrega ? 1 : 0,
           tipo_llave: tipoLlave,
+          kit: tr.querySelector(".kit").value === "1" ? 1 : 0,
         });
       });
 
@@ -161,6 +162,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      /* OCULTO 19-nov-2026 (trasladista ya no se captura)
       if (algunaConLlave && !nombreTrasladista) {
         Swal.fire(
           "Atención",
@@ -169,6 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
         );
         return;
       }
+      */
 
       let formData = new FormData(form);
       formData.append("unidades", JSON.stringify(unidades));
@@ -180,9 +183,10 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((res) => res.json())
         .then((data) => {
           if (data.status) {
-            Swal.fire("Correcto", data.msg, "success");
-            form.reset();
-            document.querySelector("#tableUnidades tbody").innerHTML = "";
+            // Al registrar, regresa a la administración de traslados
+            Swal.fire("Correcto", data.msg, "success").then(() => {
+              window.location.href = base_url + "/inv_traslados";
+            });
           } else {
             Swal.fire("Error", data.msg, "error");
           }
@@ -402,6 +406,14 @@ function agregarFilaUnidad() {
     <option value="">--</option>
     <option value="principal">Principal</option>
     <option value="duplicado">Duplicado</option>
+    <option value="juego">Juego</option>
+  </select>
+</td>
+
+<td>
+  <select class="form-select kit">
+    <option value="0">No</option>
+    <option value="1">Sí</option>
   </select>
 </td>
 

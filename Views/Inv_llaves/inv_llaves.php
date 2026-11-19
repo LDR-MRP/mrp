@@ -442,6 +442,10 @@
                                     Duplicado
                                 </option>
 
+                                <option value="juego">
+                                    Juego
+                                </option>
+
                             </select>
 
                         </div>

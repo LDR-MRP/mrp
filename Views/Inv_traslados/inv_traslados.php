@@ -76,6 +76,17 @@
 
                 <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
 
+                    <?php if (!empty($_SESSION['permisosMod']['w'])) { ?>
+                    <a href="<?= base_url(); ?>/Inv_trascargamasiva"
+                        class="btn btn-success btn-lg me-2">
+
+                        <i class="ri-file-excel-2-line me-1"></i>
+
+                        Carga masiva
+
+                    </a>
+                    <?php } ?>
+
                     <a href="<?= base_url(); ?>/Inv_traslados/nuevo_traslado"
                         class="btn btn-primary btn-lg">
 
@@ -294,8 +305,10 @@
                                     <th>FOLIO</th>
                                     <th>ORIGEN</th>
                                     <th>DESTINO</th>
+                                    <?php /* OCULTO 19-nov-2026 (tipo de traslado / transportista)
                                     <th>TIPO</th>
                                     <th>PROVEEDOR</th>
+                                    */ ?>
                                     <th>UNIDADES</th>
                                     <th>FECHA PROGRAMADA</th>
                                     <th>ESTATUS</th>
@@ -359,6 +372,9 @@
                                 <tr>
                                     <th>VIN</th>
                                     <th>MODELO</th>
+                                    <th class="text-center">KIT</th>
+                                    <th class="text-center">EVIDENCIAS SALIDA</th>
+                                    <th class="text-center">EVIDENCIAS RECEPCIÓN</th>
                                 </tr>
                             </thead>
 
@@ -378,6 +394,21 @@
 
 
 
+
+    <!-- Galería de evidencias (fotos) por VIN — 19-nov-2026 -->
+    <div class="modal fade" id="modalGaleriaEvidencias" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloGaleriaEvidencias">Evidencias</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="contenidoGaleriaEvidencias" class="row g-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <footer class="footer">
 

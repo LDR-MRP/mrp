@@ -362,7 +362,7 @@
 
                                 <i class="ri-checkbox-circle-line me-1"></i>
 
-                                Registrar Recepción Interna
+                                Registrar Recepción
 
                             </button>
 
@@ -391,6 +391,101 @@
     </div>
 
 </div>
+
+<!-- ============================================= -->
+<!-- EVIDENCIAS (fotos) POR UNIDAD — 19-nov-2026 -->
+<!-- ============================================= -->
+
+<div class="modal fade" id="modalEvidenciasUnidad" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="ri-camera-line me-1"></i>
+                    Evidencias de <span id="evidEtapa"></span> ·
+                    <span id="evidVin" class="fw-bold"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+                    <label class="form-label" for="evidObservaciones">Comentario (opcional, se guarda con las fotos que subas)</label>
+                    <input type="text" class="form-control" id="evidObservaciones" maxlength="255"
+                        placeholder="Ej. rayón en puerta trasera">
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary evid-accion" id="evidBtnCamara">
+                        <i class="ri-camera-fill me-1"></i> Tomar foto
+                    </button>
+                    <button type="button" class="btn btn-outline-primary evid-accion" id="evidBtnGaleria">
+                        <i class="ri-image-add-line me-1"></i> Elegir de galería
+                    </button>
+
+                    <input type="file" id="evidInputCamara" accept="image/*" capture="environment" class="d-none">
+                    <input type="file" id="evidInputGaleria" accept="image/*" multiple class="d-none">
+                </div>
+
+                <div id="evidProgreso" class="alert alert-info py-2 d-none">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Subiendo fotos...
+                </div>
+
+                <div id="evidGaleria" class="evid-galeria"></div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">
+                    <i class="ri-check-line me-1"></i> Listo
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .evid-galeria {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+    }
+
+    .evid-thumb {
+        position: relative;
+        border: 1px solid #e9ebec;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #f8f9fa;
+    }
+
+    .evid-thumb img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .evid-thumb .evid-borrar {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        padding: 2px 6px;
+    }
+
+    .evid-thumb .evid-obs {
+        font-size: 11px;
+        padding: 3px 5px;
+        color: #555;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
 
 <script>
     var FOLIO_INICIAL = "<?= isset($data['folio_inicial']) ? addslashes($data['folio_inicial']) : ''; ?>";
