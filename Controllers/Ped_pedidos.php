@@ -1236,6 +1236,7 @@ class Ped_pedidos extends Controllers
                 case 'crear': $result=$svc->crear($clave,$usuario);break;
                 case 'guardar': $result=$svc->guardar($clave,$usuario,$input['lineas']??[],(string)($input['observaciones']??''));break;
                 case 'enviar': $result=$svc->enviar($clave,$usuario);break;
+                case 'backorder_directo': $result=$svc->generarBackorderDirecto($clave,$usuario);break;
                 default: throw new RuntimeException('Acción no reconocida.');
             }
             if ($accion === 'enviar') {

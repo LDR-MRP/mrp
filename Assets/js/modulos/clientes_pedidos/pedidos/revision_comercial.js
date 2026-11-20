@@ -47,6 +47,19 @@ document.getElementById('btnEnviarRevisionComercial')?.addEventListener('click',
  const r=window.Swal?await Swal.fire({title:'¿Enviar propuesta al distribuidor?',text:'Incluso si no modificaste las condiciones, se solicitará la aceptación formal para auditoría.',icon:'question',showCancelButton:true,confirmButtonText:'Sí, enviar',cancelButtonText:'Cancelar'}):{isConfirmed:false};if(!r.isConfirmed)return;
  try{await api({accion:'guardar',lineas:recoger(),observaciones:document.getElementById('rcObservaciones')?.value||''});await api({accion:'enviar'});Swal.close();await alerta('Propuesta enviada','La versión quedó congelada y publicada en el portal.','success');abrirRevision()}catch(e){Swal.close();alerta('No se pudo enviar',e.message,'error')}
 });
+document.getElementById('btnBackorderDirectoComercial')?.addEventListener('click',async()=>{
+ const r=window.Swal?await Swal.fire({title:'¿Generar Backorders directamente?',html:'Se guardará la revisión actual y se generarán los Backorders de <strong>todas las unidades autorizadas</strong>, sin enviar la propuesta para aceptación del distribuidor.<br><br>La autorización quedará registrada a nombre del usuario de Comercial y no podrá repetirse.',icon:'warning',showCancelButton:true,confirmButtonText:'Sí, generar Backorders',cancelButtonText:'Cancelar',confirmButtonColor:'#0f766e'}):{isConfirmed:false};
+ if(!r.isConfirmed)return;
+ const boton=document.getElementById('btnBackorderDirectoComercial');if(boton)boton.disabled=true;
+ try{
+  const lineas=recoger();
+  if(!lineas.some(x=>x.cantidad_propuesta>0))throw Error('Autoriza al menos una unidad.');
+  await api({accion:'guardar',lineas,observaciones:document.getElementById('rcObservaciones')?.value||''});
+  const result=await api({accion:'backorder_directo'});
+  if(window.Swal)Swal.close();await alerta('Backorders generados',`Se registraron ${result.data?.unidades??''} unidades autorizadas sin requerir aceptación del distribuidor.`,'success');
+  abrirRevision();
+ }catch(e){if(window.Swal)Swal.close();await alerta('No se pudieron generar',e.message,'error');if(boton)boton.disabled=false;}
+});
 document.querySelectorAll('.rc-descuento-tipo').forEach(el=>{el.dataset.previous=el.value;el.addEventListener('change',()=>{const tr=el.closest('tr'),valor=tr.querySelector('.rc-descuento'),q=num(tr.querySelector('.rc-cantidad').value),p=num(tr.querySelector('.rc-precio').value),sub=q*p,old=num(valor.value);if(Number.isFinite(sub)&&Number.isFinite(old)&&sub>0){const convertido=el.value==='PORCENTAJE'?old/sub*100:sub*old/100;valor.value=Math.min(el.value==='PORCENTAJE'?100:sub,convertido).toFixed(2)}el.dataset.previous=el.value;recalcular()})});
 document.querySelectorAll('.revision-linea input.rc-moneda').forEach(el=>{const n=num(el.value);if(Number.isFinite(n))el.value=n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})});
 document.querySelectorAll('.revision-linea input,.revision-linea select').forEach(el=>{el.addEventListener('input',recalcular);el.addEventListener('change',recalcular);if(el.classList.contains('rc-moneda')||el.classList.contains('rc-descuento')){el.addEventListener('focus',()=>{el.value=el.value.replace(/,/g,'')});el.addEventListener('blur',()=>{const n=num(el.value);if(Number.isFinite(n))el.value=n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});recalcular()})}});
