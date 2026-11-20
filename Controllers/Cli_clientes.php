@@ -58,6 +58,125 @@ class Cli_clientes extends Controllers
         exit;
     }
 
+    public function getFichaCliente()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            $this->json(false, 'No tiene permisos para consultar la ficha del cliente.', [], 403);
+        }
+
+        $codigo = trim((string) ($_GET['codigo'] ?? ''));
+        if ($codigo === '' || strlen($codigo) > 50) {
+            $this->json(false, 'Código de cliente inválido.', [], 400);
+        }
+
+        header('Cache-Control: no-store');
+        try {
+            $general = $this->model->selectGeneralClientePorCodigo($codigo);
+            if (!$general) {
+                $this->json(false, 'No se encontró el cliente.', [], 404);
+            }
+
+            $idcliente = (int) $general['idcliente'];
+            $fiscal = $this->model->selectFiscalCliente($idcliente);
+            $comercial = $this->model->selectComercialCliente($idcliente);
+            if ($comercial && !empty($comercial['precioid'])) {
+                $comercial['lista_precio_nombre'] = $this->model->selectNombreListaPrecio((string) $comercial['precioid'])
+                    ?? $comercial['precioid'];
+            }
+
+            $domicilio = [
+                'calle' => 'Calle', 'numero_exterior' => 'Número exterior', 'numero_interior' => 'Número interior',
+                'colonia' => 'Colonia', 'codigo_postal' => 'Código postal', 'municipio' => 'Municipio',
+                'estado_republica' => 'Estado', 'pais' => 'País'
+            ];
+            $fechas = ['estado' => 'Estatus', 'fecha_creacion' => 'Fecha de registro', 'fecha_actualizacion' => 'Última actualización'];
+            $secciones = [
+                ['Información general', [$general], [
+                    'codigo_cliente' => 'Código', 'nombre_tipo_cliente' => 'Tipo de cliente', 'tipo_persona' => 'Tipo de persona',
+                    'razon_social' => 'Razón social', 'nombre_comercial' => 'Nombre comercial', 'correo' => 'Correo',
+                    'telefono' => 'Teléfono', 'celular' => 'Celular', 'sitio_web' => 'Sitio web', 'fecha_alta' => 'Fecha de alta',
+                    'clave_distribuidor' => 'Clave del distribuidor', 'zona_comercial' => 'Zona comercial', 'territorio' => 'Territorio',
+                    'responsable_comercial' => 'Responsable comercial', 'requiere_acceso_portal' => 'Requiere acceso al portal',
+                    'correo_acceso' => 'Correo de acceso', 'numero_empleado' => 'Número de empleado', 'departamento' => 'Departamento',
+                    'centro_costos' => 'Centro de costos', 'jefe_inmediato' => 'Jefe inmediato', 'correo_corporativo' => 'Correo corporativo',
+                    'origen_cliente' => 'Origen del cliente', 'ejecutivo_asignado' => 'Ejecutivo asignado', 'segmento_mercado' => 'Segmento de mercado',
+                    'dependencia' => 'Dependencia', 'unidad_administrativa' => 'Unidad administrativa', 'nivel_gobierno' => 'Nivel de gobierno',
+                    'partida_presupuestal' => 'Partida presupuestal', 'tipo_contratacion' => 'Tipo de contratación'
+                ] + $fechas],
+                ['Información fiscal', $fiscal ? [$fiscal] : [], [
+                    'rfc' => 'RFC', 'curp' => 'CURP', 'regimen_fiscal' => 'Régimen fiscal', 'uso_cfdi' => 'Uso de CFDI',
+                    'codigo_postal_fiscal' => 'Código postal fiscal', 'correo_facturacion' => 'Correo de facturación',
+                    'requiere_factura' => 'Requiere factura'
+                ] + $fechas],
+                ['Contactos', $this->model->selectContactosCliente($idcliente), [
+                    'nombre' => 'Nombre', 'puesto' => 'Puesto', 'tipo' => 'Tipo de contacto', 'correo' => 'Correo',
+                    'telefono' => 'Teléfono', 'notificar' => 'Recibe notificaciones',
+                    'doble_autenticacion' => 'Doble autenticación', 'fecha_envio_accesos' => 'Último envío de accesos'
+                ] + $fechas],
+                ['Sucursales', $this->model->selectSucursalesCliente($idcliente), [
+                    'nombre_sucursal' => 'Sucursal', 'responsable' => 'Responsable', 'correo' => 'Correo', 'telefono' => 'Teléfono'
+                ] + $domicilio + $fechas],
+                ['Direcciones', $this->model->selectDireccionesCliente($idcliente), [
+                    'tipo_direccion' => 'Tipo de dirección'
+                ] + $domicilio + ['referencias' => 'Referencias'] + $fechas],
+                ['Información comercial', $comercial ? [$comercial] : [], [
+                    'lista_precio_nombre' => 'Lista de precios', 'moneda' => 'Moneda', 'forma_pago' => 'Forma de pago',
+                    'limite_credito' => 'Límite de crédito', 'dias_credito' => 'Días de crédito',
+                    'descuento_autorizado' => 'Descuento autorizado', 'ejecutivo_cuenta' => 'Ejecutivo de cuenta',
+                    'canal_venta' => 'Canal de venta', 'clasificacion_comercial' => 'Clasificación',
+                    'observaciones_comerciales' => 'Observaciones'
+                ]],
+                ['Bancos', $this->model->selectBancosCliente($idcliente), [
+                    'banco' => 'Banco', 'titular_cuenta' => 'Titular de la cuenta', 'numero_cuenta' => 'Número de cuenta',
+                    'clabe' => 'CLABE', 'moneda_cuenta' => 'Moneda', 'referencia_bancaria' => 'Referencia bancaria'
+                ] + $fechas]
+            ];
+
+            $ficha = [];
+            foreach ($secciones as [$titulo, $registros, $campos]) {
+                $ficha[] = [
+                    'titulo' => $titulo,
+                    'registros' => array_map(
+                        fn (array $registro) => $this->camposFichaCliente($registro, $campos),
+                        $registros ?: []
+                    )
+                ];
+            }
+
+            $this->json(true, 'Ficha consultada.', [
+                'codigo' => $general['codigo_cliente'],
+                'nombre' => $general['razon_social'],
+                'secciones' => $ficha
+            ]);
+        } catch (Throwable $error) {
+            error_log('getFichaCliente: ' . $error->getMessage());
+            $this->json(false, 'No fue posible consultar la ficha del cliente.', [], 500);
+        }
+    }
+
+    private function camposFichaCliente(array $registro, array $campos): array
+    {
+        $resultado = [];
+        $booleanos = ['requiere_acceso_portal', 'requiere_factura', 'notificar', 'doble_autenticacion'];
+        foreach ($campos as $campo => $etiqueta) {
+            $valor = trim((string) ($registro[$campo] ?? ''));
+            if ($valor === '') {
+                continue;
+            }
+            if (in_array($campo, $booleanos, true)) {
+                $valor = $valor === '1' ? 'Sí' : 'No';
+            } elseif ($campo === 'estado') {
+                $valor = [1 => 'Inactivo', 2 => 'Activo', 3 => 'Suspendido'][(int) $valor] ?? $valor;
+            } elseif ($campo === 'limite_credito') {
+                $valor = number_format((float) $valor, 2, '.', ',') . ' ' . ($registro['moneda'] ?? '');
+            } elseif ($campo === 'descuento_autorizado') {
+                $valor .= ' %';
+            }
+            $resultado[] = [$etiqueta, $valor];
+        }
+        return $resultado;
+    }
+
     public function getTodos()
     { 
         header('Content-Type: application/json; charset=utf-8');
@@ -1168,7 +1287,6 @@ class Cli_clientes extends Controllers
          * el modelo deberá devolver 15.
          */
         $ultimoConsecutivo = $this->model->selectUltimoConsecutivoCliente(
-            $idtipoCliente,
             $prefijo
         );
 
@@ -1439,6 +1557,7 @@ class Cli_clientes extends Controllers
                 $this->json(false, 'No se encontró el cliente.', [], 404);
             }
 
+            // El formulario no es fuente del código, aunque se altere la petición.
             $codigo = $clienteActual['codigo_cliente'] ?? '';
             if ((int) ($clienteActual['idtipo_cliente'] ?? 0) !== $tipoId) {
                 $generado = $this->generarCodigoCliente($tipoId);

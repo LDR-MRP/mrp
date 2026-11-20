@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Aunque actualmente se llama filterPrioridad,
     // aquí se utilizará como filtro de tipo de cliente.
     const filterTipoCliente = document.getElementById('filterPrioridad');
+    const filterEstado = document.getElementById('filterEstado');
+    const filterCorreo = document.getElementById('filterCorreoAcceso');
+    const porPagina = document.getElementById('clientesPorPagina');
+    const anterior = document.getElementById('clientesAnterior');
+    const siguiente = document.getElementById('clientesSiguiente');
+    const rango = document.getElementById('clientesRango');
+    const paginaTexto = document.getElementById('clientesPagina');
 
     const btnRefrescarListado = document.getElementById('btnRefrescarListado');
 
@@ -24,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     */
 
     let listadoActual = [];
-    let tipoClienteActual = 'TODAS';
+    let paginaActual = 1;
     let controladorCarga = null;
 
     /*
@@ -34,12 +41,6 @@ document.addEventListener('DOMContentLoaded', function() {
     */
 
     const TOTAL_COLUMNAS = 10;
-
-    function getListadoEndpoint(tipo) {
-        const id = Number(tipo);
-        const base = `${base_url}/cli_clientes/getTodos`;
-        return id > 0 ? `${base}?tipo=${encodeURIComponent(id)}` : base;
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -166,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return 'ELIMINADO';
         }
 
-        return 'SIN ESTADO';
+        return estadoNumero === 3 ? 'SUSPENDIDO' : 'SIN ESTADO';
     }
 
     function badgeEstado(estado) {
@@ -202,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return `
             <span class="badge bg-light text-dark border">
                 <i class="ri-question-line me-1"></i>
-                Sin estado
+                ${estadoNumero === 3 ? "Suspendido" : "Sin estado"}
             </span>
         `;
     }
@@ -449,13 +450,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const fechaDesde = filterDesde ?.value || '';
         const fechaHasta = filterHasta ?.value || '';
+        const tipo = filterTipoCliente.value;
+        const estado = filterEstado.value;
+        const correo = filterCorreo.value;
 
         return rows.filter(row => {
+            if ((tipo && String(row.idtipo_cliente) !== tipo)
+                || (estado && String(row.estado) !== estado)
+                || (correo && estadoCorreoAcceso(row) !== correo)) {
+                return false;
+            }
+
             const camposBusqueda = [
                 row.codigo_cliente,
                 row.razon_social,
                 row.nombre_comercial,
-                row.rfc
+                row.rfc, row.correo, row.telefono, row.celular
             ];
 
             const coincideBusqueda = camposBusqueda.some(campo => {
@@ -469,16 +479,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (
                 fechaDesde &&
-                row.fecha_filtro &&
-                row.fecha_filtro < fechaDesde
+                (!row.fecha_filtro || row.fecha_filtro < fechaDesde)
             ) {
                 return false;
             }
 
             if (
                 fechaHasta &&
-                row.fecha_filtro &&
-                row.fecha_filtro > fechaHasta
+                (!row.fecha_filtro || row.fecha_filtro > fechaHasta)
             ) {
                 return false;
             }
@@ -495,13 +503,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function construirBotonesOpciones(row) {
         const idcliente = convertirNumero(row.idcliente);
+        const botonFicha = row.codigo_cliente ? `
+            <button type="button" class="btn btn-sm btn-soft-danger" data-ficha-cliente=${idcliente}
+                title="Descargar ficha PDF" aria-label="Descargar ficha PDF">
+                <i class="ri-file-pdf-line" aria-hidden="true"></i>
+            </button>` : '';
 
         return `
             <div class="d-flex justify-content-end align-items-center gap-1 flex-nowrap">
+                ${botonFicha}
 
                 <button
                     type="button"
-                    class="btn btn-sm btn-soft-info"
+                    class="btn btn-sm btn-soft-info d-none"
                     title="Ver información del cliente"
                     aria-label="Ver información del cliente"
                     onclick="fntViewCliente(${idcliente})"
@@ -809,19 +823,35 @@ document.addEventListener('DOMContentLoaded', function() {
     |--------------------------------------------------------------------------
     */
 
-    function refrescarConFiltrosCliente() {
-        const filasFiltradas = aplicarFiltros(listadoActual);
-        pintarTabla(filasFiltradas);
+    function actualizarIndicadores(totalFiltrado) {
+        document.getElementById('clientesTotal').textContent = listadoActual.length;
+        document.getElementById('clientesActivos').textContent = listadoActual.filter(row => row.estado === 2).length;
+        document.getElementById('clientesDistribuidores').textContent = listadoActual.filter(row => row.idtipo_cliente === 1).length;
+        document.getElementById('clientesFiltrados').textContent = totalFiltrado;
     }
 
-    async function renderListado(tipo = 'TODAS') {
-        if (!tbodyListados) {
-            return;
-        }
+    function refrescarConFiltrosCliente() {
+        const filas = aplicarFiltros(listadoActual);
+        const tamanio = Number(porPagina.value);
+        const paginas = Math.max(1, Math.ceil(filas.length / tamanio));
+        paginaActual = Math.max(1, Math.min(paginaActual, paginas));
+        const desde = (paginaActual - 1) * tamanio;
+        const hasta = Math.min(desde + tamanio, filas.length);
 
-        tipoClienteActual = normalizarTextoSimple(tipo).toUpperCase() ||
-            'TODAS';
+        anterior.disabled = paginaActual === 1;
+        siguiente.disabled = paginaActual >= paginas;
+        paginaTexto.textContent = filas.length ? `Página ${paginaActual} de ${paginas}` : '';
+        rango.textContent = filas.length ? `${desde + 1}–${hasta} de ${filas.length} registros` : '0 registros';
+        actualizarIndicadores(filas.length);
+        pintarTabla(filas.slice(desde, hasta));
+    }
 
+    function reiniciarPagina() {
+        paginaActual = 1;
+        if (!controladorCarga) refrescarConFiltrosCliente();
+    }
+
+    async function renderListado() {
         if (controladorCarga) {
             controladorCarga.abort();
         }
@@ -830,9 +860,12 @@ document.addEventListener('DOMContentLoaded', function() {
         controladorCarga = solicitud;
 
         mostrarCargando();
+        anterior.disabled = siguiente.disabled = true;
+        rango.textContent = '';
+        paginaTexto.textContent = '';
 
         try {
-            const endpoint = getListadoEndpoint(tipoClienteActual);
+            const endpoint = `${base_url}/cli_clientes/getTodos`;
 
             const respuesta = await fetchJson(
                 endpoint,
@@ -851,6 +884,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error al cargar clientes:', error);
 
             listadoActual = [];
+            actualizarIndicadores(0);
 
             mostrarError(
                 error.message || 'Ocurrió un error inesperado.'
@@ -920,6 +954,90 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    async function cargarPdfMake() {
+        if (!window.pdfMake?.createPdf) {
+            await cargarScriptReporte('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/pdfmake.min.js');
+        }
+        if (!window.pdfMake.vfs && !window.pdfMake.fonts?.Roboto) {
+            await cargarScriptReporte('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/vfs_fonts.js');
+        }
+    }
+
+    async function descargarFichaCliente(cliente, boton) {
+        boton.disabled = true;
+        try {
+            const url = `${base_url}/cli_clientes/getFichaCliente?codigo=${encodeURIComponent(cliente.codigo_cliente)}`;
+            const respuesta = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } });
+            const ficha = await respuesta.json();
+            if (!respuesta.ok || !ficha.status) {
+                throw new Error(ficha.message || 'No fue posible consultar la ficha.');
+            }
+
+            const [logo] = await Promise.all([obtenerLogoReporte().catch(() => null), cargarPdfMake()]);
+            const { codigo, nombre, secciones } = ficha.data;
+            const contenido = [
+                { text: 'Ficha del cliente', style: 'titulo' },
+                { text: nombre, style: 'nombre' },
+                { text: codigo, color: '#475569', margin: [0, 2, 0, 12] }
+            ];
+            for (const { titulo, registros } of secciones) {
+                const filas = [[{ text: titulo, colSpan: 2, style: 'seccion' }, {}]];
+                if (!registros.some(campos => campos.length)) {
+                    filas.push([{ text: 'Sin información registrada', colSpan: 2, color: '#64748b' }, {}]);
+                }
+                registros.forEach((campos, indice) => {
+                    if (registros.length > 1) {
+                        filas.push([{ text: `Registro ${indice + 1}`, colSpan: 2, bold: true, fillColor: '#eef2f7' }, {}]);
+                    }
+                    for (const [etiqueta, valor] of campos) {
+                        filas.push([{ text: etiqueta, color: '#334155', bold: true }, { text: valor }]);
+                    }
+                });
+                contenido.push({
+                    margin: [0, 0, 0, 12],
+                    table: { headerRows: 1, keepWithHeaderRows: 1, widths: [136, '*'], body: filas },
+                    layout: {
+                        hLineWidth: () => 0.5, hLineColor: () => '#dbe4ee', vLineWidth: () => 0,
+                        paddingLeft: () => 9, paddingRight: () => 9, paddingTop: () => 5, paddingBottom: () => 5
+                    }
+                });
+            }
+
+            const fecha = new Intl.DateTimeFormat('es-MX', {
+                dateStyle: 'medium', timeZone: 'America/Mexico_City'
+            }).format(new Date());
+            const archivo = window.pdfMake.createPdf({
+                info: { title: `Ficha del cliente ${codigo}` },
+                pageSize: 'A4',
+                pageMargins: [40, 76, 40, 47],
+                defaultStyle: { fontSize: 9, color: '#0f172a' },
+                header: {
+                    margin: [40, 24, 40, 0],
+                    columns: [
+                        logo ? { image: logo, fit: [115, 36] } : { text: 'MRP', bold: true, fontSize: 14 },
+                        { stack: [{ text: 'Ficha del cliente', bold: true }, fecha],
+                            alignment: 'right', color: '#475569', fontSize: 9 }
+                    ]
+                },
+                footer: (pagina, total) => ({
+                    margin: [40, 12, 40, 0], color: '#475569', fontSize: 8,
+                    columns: [{ text: `${codigo}  ·  Uso interno` }, { text: `Página ${pagina} de ${total}`, alignment: 'right' }]
+                }),
+                styles: {
+                    titulo: { fontSize: 25, bold: true, color: '#172c44' },
+                    nombre: { fontSize: 13, bold: true, margin: [0, 5, 0, 0] },
+                    seccion: { fontSize: 10, bold: true, color: 'white', fillColor: '#25374b' }
+                },
+                content: contenido
+            });
+            await new Promise(resolve => archivo.download(`Ficha-${codigo.replace(/[^a-z0-9_-]/gi, '-')}.pdf`, resolve));
+        } catch (error) {
+            window.alert(error.message || 'No fue posible generar el PDF del cliente.');
+        } finally {
+            boton.disabled = false;
+        }
+    }
+
     async function exportarClientes(formato, boton) {
         if (controladorCarga || boton.disabled) return;
         const filas = aplicarFiltros(listadoActual);
@@ -975,12 +1093,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 enlace.click();
                 setTimeout(() => URL.revokeObjectURL(url), 1000);
             } else {
-                if (!window.pdfMake?.createPdf) {
-                    await cargarScriptReporte('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/pdfmake.min.js');
-                }
-                if (!window.pdfMake.vfs && !window.pdfMake.fonts?.Roboto) {
-                    await cargarScriptReporte('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/vfs_fonts.js');
-                }
+                await cargarPdfMake();
                 const cuerpo = [
                     encabezados.map(text => ({ text, bold: true, color: 'white', fillColor: '#25374B' })),
                     ...datos.map(fila => fila.map((valor, indice) =>
@@ -1022,58 +1135,32 @@ document.addEventListener('DOMContentLoaded', function() {
         exportarClientes('pdf', event.currentTarget);
     });
 
-    const ejecutarBusqueda = debounce(
-        refrescarConFiltrosCliente,
-        250
-    );
+    filterSearch.addEventListener('input', debounce(reiniciarPagina, 250));
+    [filterTipoCliente, filterDesde, filterHasta, filterEstado, filterCorreo, porPagina]
+        .forEach(campo => campo.addEventListener('change', reiniciarPagina));
+    btnRefrescarListado.addEventListener('click', renderListado);
+    document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
+        [filterSearch, filterTipoCliente, filterDesde, filterHasta, filterEstado, filterCorreo]
+            .forEach(campo => { campo.value = ''; });
+        reiniciarPagina();
+    });
+    anterior.addEventListener('click', () => {
+        paginaActual--;
+        refrescarConFiltrosCliente();
+    });
+    siguiente.addEventListener('click', () => {
+        paginaActual++;
+        refrescarConFiltrosCliente();
+    });
+    tbodyListados.addEventListener('click', event => {
+        const boton = event.target.closest('[data-ficha-cliente]');
+        if (boton) {
+            const cliente = listadoActual.find(row => String(row.idcliente) === boton.dataset.fichaCliente);
+            if (cliente) descargarFichaCliente(cliente, boton);
+        }
+    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | EVENTOS
-    |--------------------------------------------------------------------------
-    */
-
-    if (filterTipoCliente) {
-        filterTipoCliente.addEventListener('change', function() {
-            const tipoSeleccionado = this.value || 'TODAS';
-
-            renderListado(tipoSeleccionado);
-        });
-    }
-
-    if (btnRefrescarListado) {
-        btnRefrescarListado.addEventListener('click', function() {
-            renderListado(tipoClienteActual);
-        });
-    }
-
-    if (filterSearch) {
-        filterSearch.addEventListener('input', ejecutarBusqueda);
-    }
-
-    if (filterDesde) {
-        filterDesde.addEventListener(
-            'change',
-            refrescarConFiltrosCliente
-        );
-    }
-
-    if (filterHasta) {
-        filterHasta.addEventListener(
-            'change',
-            refrescarConFiltrosCliente
-        );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | CARGA INICIAL
-    |--------------------------------------------------------------------------
-    */
-
-    const tipoInicial = filterTipoCliente ?.value || 'TODAS';
-
-    renderListado(tipoInicial);
+    renderListado();
 });
 
 

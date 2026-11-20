@@ -324,7 +324,12 @@ function configurarTipoCliente() {
     selectTipoCliente.addEventListener("change", async function() {
         mostrarSeccionTipoCliente();
 
-        if (selectTipoCliente.value) {
+        const codigoCliente = document.getElementById("codigo_cliente");
+        if (codigoCliente?.dataset.tipoGuardado === selectTipoCliente.value) {
+            estadoModuloClientes.generandoCodigo = false;
+            codigoCliente.value = codigoCliente.dataset.codigoGuardado;
+            codigoCliente.classList.remove("text-muted");
+        } else if (selectTipoCliente.value) {
             await generarCodigoCliente();
         } else {
             limpiarCodigoCliente();
@@ -667,6 +672,8 @@ async function guardarInformacionGeneral(event) {
         if (inputCodigo && respuesta.data?.codigo_cliente) {
             estadoModuloClientes.generandoCodigo = false;
             inputCodigo.value = respuesta.data.codigo_cliente;
+            inputCodigo.dataset.tipoGuardado = formData.get("idtipo_cliente");
+            inputCodigo.dataset.codigoGuardado = respuesta.data.codigo_cliente;
             if (formData.get("clave_distribuidor_automatica") === "1" && claveDistribuidor) {
                 sugerirClaveDistribuidor(respuesta.data.clave_distribuidor);
             }
@@ -747,13 +754,17 @@ async function cargarInformacionGeneralCliente(forzar = false) {
         }
 
         const datos = respuesta.data || {};
+        const codigoCliente = document.getElementById("codigo_cliente");
+        if (codigoCliente) {
+            codigoCliente.dataset.tipoGuardado = String(datos.idtipo_cliente ?? "");
+            codigoCliente.dataset.codigoGuardado = datos.codigo_cliente ?? "";
+        }
 
         Object.keys(datos).forEach(function(nombre) {
 
-            const campo =
-                document.querySelector(
-                    `[name="${nombre}"]`
-                );
+            const campo = nombre === "codigo_cliente"
+                ? document.getElementById("codigo_cliente")
+                : document.querySelector(`[name="${nombre}"]`);
 
             if (!campo) {
                 return;

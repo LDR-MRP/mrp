@@ -243,8 +243,8 @@
                                                 <i class="ri-barcode-line"></i>
                                             </span>
                                             <input type="text" class="form-control" id="codigo_cliente"
-                                                name="codigo_cliente" placeholder="Ej. CLI-000001" maxlength="30"
-                                                readonly>
+                                                placeholder="Se genera al elegir el tipo de cliente"
+                                                disabled>
                                         </div>
                                         <small class="text-muted">Código generado automáticamente.</small>
                                     </div>

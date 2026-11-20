@@ -1351,12 +1351,10 @@ public function selectGubernamentales()
      * Si el último código registrado es CLI-DIS-0015,
      * esta consulta devuelve 15.
      *
-     * @param int    $idtipoCliente ID del tipo de cliente.
      * @param string $prefijo       Prefijo correspondiente al tipo.
      * @return int Último consecutivo encontrado.
      */
     public function selectUltimoConsecutivoCliente(
-        int $idtipoCliente,
         string $prefijo
     ): int {
         /*
@@ -1381,15 +1379,14 @@ public function selectGubernamentales()
                     0
                 ) AS ultimo_consecutivo
             FROM cli_clientes
-            WHERE idtipo_cliente = ?
-              AND codigo_cliente LIKE CONCAT(?, '%')
-              AND estado != 0";
+            WHERE codigo_cliente LIKE CONCAT(?, '%')
+              AND SUBSTRING(codigo_cliente, LENGTH(?) + 1) REGEXP '^[0-9]{4,18}$'";
 
         $resultado = $this->select(
             $sql,
             [
                 $prefijo,
-                $idtipoCliente,
+                $prefijo,
                 $prefijo
             ]
         );
@@ -2788,6 +2785,18 @@ public function selectGubernamentales()
 
 
 
+    public function selectGeneralClientePorCodigo(string $codigo)
+    {
+        return $this->select(
+            "SELECT c.*, t.nombre AS nombre_tipo_cliente
+             FROM cli_clientes c
+             LEFT JOIN cli_tipos_cliente t ON t.id = c.idtipo_cliente
+             WHERE c.codigo_cliente = ? AND c.estado <> 0
+             LIMIT 1",
+            [$codigo]
+        );
+    }
+
     public function selectGeneralCliente(int $idcliente)
     {
         $sql = "SELECT *
@@ -2918,6 +2927,12 @@ public function selectGubernamentales()
                 iddireccion DESC";
 
         return $this->select_all($sql);
+    }
+
+    public function selectNombreListaPrecio(string $idPrecio): ?string
+    {
+        $lista = $this->select("SELECT cve_precio FROM wms_precios WHERE idprecio = ?", [$idPrecio]);
+        return $lista['cve_precio'] ?? null;
     }
 
     public function selectListasPrecioActivas()
