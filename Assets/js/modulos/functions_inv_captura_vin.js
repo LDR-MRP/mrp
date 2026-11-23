@@ -144,10 +144,12 @@ function abrirHistorialModelo(id, modelo) {
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById("formVinModelo");
   let vinAnterior = "";
+  let vinGuardado = ""; // vin_base guardado del registro que se edita
   let ingDatos = null; // datos de Ingeniería del producto seleccionado
 
-  // Campos que se pueden llenar desde Ingeniería
-  const CAMPOS_ING = ["peso_bruto_kg", "potencia_hp"];
+  // Campos que se llenan desde Ingeniería. Si Ingeniería trae el dato, el
+  // campo queda bloqueado (solo lectura); si no lo trae, se captura a mano.
+  const CAMPOS_ING = ["peso_bruto_kg", "potencia_hp", "id_tipo_motor", "distancia_ejes"];
 
   cargarCatalogos();
   cargarTabla();
@@ -160,16 +162,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (e.isTrusted) cargarDatosIngenieria(this.value);
   });
 
-  // Si el usuario modifica un dato que vino de Ingeniería, deja de marcarse
-  CAMPOS_ING.forEach((id) => {
-    const el = document.getElementById(id);
-    const quitar = (e) => { if (e.isTrusted) marcarIngenieria(id, false); };
-    el.addEventListener("input", quitar);
-    el.addEventListener("change", quitar);
+  // La clasificación de distancia sale del tipo de vehículo; si cambia, la
+  // distancia/longitud de Ingeniería se vuelve a tomar en la unidad que toca
+  document.getElementById("id_tipo_vehiculo").addEventListener("change", function () {
+    aplicarClasificacionDistancia();
+    if (ingDatos) ponerDistanciaIngenieria();
+    actualizarPreview();
   });
-
-  // La clasificación de distancia sale del tipo de vehículo
-  document.getElementById("id_tipo_vehiculo").addEventListener("change", aplicarClasificacionDistancia);
 
   form.querySelectorAll("select, input").forEach((el) => {
     el.addEventListener("change", actualizarPreview);
@@ -257,6 +256,18 @@ document.addEventListener("DOMContentLoaded", function () {
   /* -------------------- datos desde Ingeniería --------------------- */
 
   function marcarIngenieria(id, si) {
+    // Bloqueo: input en solo lectura; select sin interacción (un select
+    // deshabilitado no se envía en el formulario, por eso no se usa disabled)
+    const el = document.getElementById(id);
+    if (el) {
+      if (el.tagName === "SELECT") {
+        el.classList.toggle("ing-lock", si);
+        el.tabIndex = si ? -1 : 0;
+      } else {
+        el.readOnly = si;
+        el.classList.toggle("ing-lock", si);
+      }
+    }
     const label = document.querySelector(`label[for="${id}"]`);
     const cont = label ? label.closest(".niv-field-label") : null;
     if (!cont) return;
@@ -264,7 +275,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (si && !tag) {
       tag = document.createElement("span");
       tag.className = "ing-tag badge bg-primary-subtle text-primary ms-auto me-1";
-      tag.title = "Dato tomado de Ingeniería";
+      tag.title = "Dato tomado de Ingeniería (no editable aquí: se corrige en Ingeniería)";
       tag.innerHTML = '<i class="ri-flask-line align-bottom"></i> Ingeniería';
       label.after(tag);
     } else if (!si && tag) {
@@ -278,6 +289,31 @@ document.addEventListener("DOMContentLoaded", function () {
     const box = document.getElementById("ingResumen");
     box.className = "d-none";
     box.innerHTML = "";
+  }
+
+  // Automóvil: distancia entre ejes en mm · Camión/autobús: longitud total en m
+  function ponerDistanciaIngenieria() {
+    const clasif = document.getElementById("tipo_distancia").value;
+    const input = document.getElementById("distancia_ejes");
+    if (!ingDatos || !clasif) {
+      marcarIngenieria("distancia_ejes", false);
+      return { ok: false, etiqueta: "" };
+    }
+    let valor = null;
+    let etiqueta = "distancia entre ejes";
+    if (clasif === "AUTO") {
+      valor = ingDatos.distancia_ejes_mm;
+    } else {
+      etiqueta = "longitud total";
+      valor = ingDatos.largo_total_mm ? Math.round(ingDatos.largo_total_mm / 10) / 100 : null;
+    }
+    if (valor === null || valor === undefined || valor === "") {
+      marcarIngenieria("distancia_ejes", false);
+      return { ok: false, etiqueta };
+    }
+    input.value = valor;
+    marcarIngenieria("distancia_ejes", true);
+    return { ok: true, etiqueta };
   }
 
   function cargarDatosIngenieria(idInventario) {
@@ -315,9 +351,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         poner("peso_bruto_kg", d.peso_bruto_kg, "peso bruto");
         poner("potencia_hp", d.potencia_hp, "potencia");
-        // Tipo de motor: por ahora NO se llena; el combustible solo se muestra en el panel
-
-        // Distancia / longitud: se captura manualmente (no se toma de Ingeniería)
+        // Tipo de motor según el combustible (los híbridos no traen uno: se eligen a mano)
+        poner("id_tipo_motor", d.id_tipo_motor, "tipo de motor");
+        // Distancia entre ejes (automóvil, mm) o longitud total (camión/autobús, m)
+        const dist = ponerDistanciaIngenieria();
+        if (dist.ok) llenados.push(dist.etiqueta);
+        else if (dist.etiqueta) faltan.push(dist.etiqueta);
 
         actualizarPreview();
 
@@ -480,6 +519,35 @@ document.addEventListener("DOMContentLoaded", function () {
   form.addEventListener("submit", function (e) {
     e.preventDefault();
 
+    // Al editar, si el VIN base que se va a guardar no es el que ya tiene el
+    // registro, se confirma: los VIN ya generados se quedan con el anterior.
+    const vinNuevo = document.getElementById("vin_base").value;
+    if (document.getElementById("id").value && vinGuardado && vinNuevo !== vinGuardado) {
+      Swal.fire({
+        icon: "warning",
+        title: "Los datos arman otro VIN base",
+        html: `Guardado (el que usa el generador): <b>${escapeHtml(vinGuardado)}</b><br>` +
+              `Con los datos actuales: <b>${escapeHtml(vinNuevo)}</b><br><br>` +
+              `Si lo conserva, los próximos VIN siguen saliendo con <b>${escapeHtml(vinGuardado)}</b>.`,
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: "Conservar VIN base guardado",
+        denyButtonText: "Cambiar al nuevo",
+        cancelButtonText: "Cancelar",
+      }).then((r) => {
+        if (r.isConfirmed) {
+          document.getElementById("vin_base").value = vinGuardado;
+          guardar();
+        } else if (r.isDenied) {
+          guardar();
+        }
+      });
+      return;
+    }
+    guardar();
+  });
+
+  function guardar() {
     const btn = document.getElementById("btnGuardar");
     const textoBtn = btn.innerHTML;
     btn.disabled = true;
@@ -504,7 +572,7 @@ document.addEventListener("DOMContentLoaded", function () {
         btn.innerHTML = textoBtn;
         actualizarPreview();
       });
-  });
+  }
 
   /* ------------------------- modo edición -------------------------- */
 
@@ -527,6 +595,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function limpiarFormulario() {
+    vinGuardado = "";
     form.reset();
     // los hidden no se limpian con reset()
     ["id", "modelo", "vin_base", "tipo_distancia"].forEach((id) => (document.getElementById(id).value = ""));
@@ -548,6 +617,7 @@ document.addEventListener("DOMContentLoaded", function () {
     limpiarIngenieria();
 
     document.getElementById("id").value = item.id_cat_modelo_vin;
+    vinGuardado = item.vin_base || "";
     document.getElementById("id_inventario").value = item.id_inventario ?? "";
     document.getElementById("modelo").value = item.modelo;
     document.getElementById("estado").value = item.estado;
@@ -564,6 +634,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     actualizarPreview();
     marcarFilaEditando(item.id_cat_modelo_vin);
+
+    // Los datos técnicos se toman siempre de Ingeniería
+    if (item.id_inventario) cargarDatosIngenieria(item.id_inventario);
 
     if (!item.id_inventario) {
       Swal.fire({
@@ -621,7 +694,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const filas = modelosNivCache
       .map((item) => ({ item, vin: vinDeItem(item) }))
       .filter(({ item, vin }) =>
-        !f || [item.modelo, vin, item.anio, item.planta].some((v) => String(v ?? "").toLowerCase().includes(f)),
+        !f || [item.modelo, item.vin_base, vin, item.anio, item.planta].some((v) => String(v ?? "").toLowerCase().includes(f)),
       );
 
     if (filas.length === 0) {
@@ -635,16 +708,25 @@ document.addEventListener("DOMContentLoaded", function () {
     tbody.innerHTML = filas
       .map(({ item, vin }) => {
         const activo = item.estado == 2;
+        // El chip muestra el VIN base GUARDADO (es el que usa "Generar VIN").
+        // Si los datos capturados no arman ese mismo VIN base, se avisa.
+        const guardadoOk = /^[A-Z0-9]{8}-[A-Z0-9]{2}$/.test(item.vin_base || "");
+        const vinMostrar = guardadoOk ? item.vin_base : vin;
+        const avisoDatos = !guardadoOk || vin === item.vin_base
+          ? ""
+          : /^[A-Z0-9]{8}-[A-Z0-9]{2}$/.test(vin)
+            ? `<span class="badge bg-warning-subtle text-warning ms-1" title="Con los datos capturados se arma ${escapeHtml(vin)}">Datos no coinciden</span>`
+            : `<span class="badge bg-warning-subtle text-warning ms-1" title="Faltan datos para armar el VIN base (${escapeHtml(vin)})">Datos incompletos</span>`;
         const sinProducto = !item.id_inventario
           ? '<span class="badge bg-danger-subtle text-danger ms-1" title="Sin producto de inventario ligado">Sin producto</span>'
           : "";
 
         return `<tr data-id="${item.id_cat_modelo_vin}" class="${String(item.id_cat_modelo_vin) === idEditando ? "is-editing" : ""}">
             <td class="ps-3">
-              <div class="fw-medium">${escapeHtml(item.modelo)}${sinProducto}</div>
+              <div class="fw-medium">${escapeHtml(item.modelo)}${sinProducto}${avisoDatos}</div>
               <div class="text-muted fs-12">${escapeHtml(item.fabricante)} · ${escapeHtml(item.tipo_vehiculo)} · ${escapeHtml(item.motor)}</div>
             </td>
-            <td>${chipVin(vin)}</td>
+            <td>${chipVin(vinMostrar)}</td>
             <td>${escapeHtml(item.anio)} <span class="text-muted fs-12">(${escapeHtml(item.codigo_anio)})</span></td>
             <td>${escapeHtml(item.planta)} <span class="text-muted fs-12">(${escapeHtml(item.caracter_planta)})</span></td>
             <td>${

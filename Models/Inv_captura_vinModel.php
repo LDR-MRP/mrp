@@ -131,19 +131,19 @@ WHERE id_cat_modelo_vin = ?";
 
             FROM cat_modelos_vin m
 
-            INNER JOIN cat_vin_fabricantes f
+            LEFT JOIN cat_vin_fabricantes f
                 ON f.id_fabricante = m.id_fabricante
 
-            INNER JOIN cat_vin_tipo_vehiculo tv
+            LEFT JOIN cat_vin_tipo_vehiculo tv
                 ON tv.id_tipo_vehiculo = m.id_tipo_vehiculo
 
-            INNER JOIN cat_vin_tipo_motor tm
+            LEFT JOIN cat_vin_tipo_motor tm
                 ON tm.id_tipo_motor = m.id_tipo_motor
 
-            INNER JOIN cat_anio_vin a
+            LEFT JOIN cat_anio_vin a
                 ON a.id_cat_anio_vin = m.id_cat_anio_vin
 
-            INNER JOIN cat_vin_plantas p
+            LEFT JOIN cat_vin_plantas p
                 ON p.id_planta = m.id_planta
 
             ORDER BY m.id_cat_modelo_vin DESC";
