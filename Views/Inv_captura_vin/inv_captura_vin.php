@@ -35,6 +35,9 @@
     }
 
     /* chip de posición en cada etiqueta */
+    /* Dato tomado de Ingeniería: no editable aquí */
+    .ing-lock { pointer-events: none; background-color: var(--vz-light, #f3f6f9) !important; }
+
     .niv-field-label {
         display: flex;
         align-items: center;
