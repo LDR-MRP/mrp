@@ -113,6 +113,8 @@ WHERE id_cat_modelo_vin = ?";
 
                 m.*,
 
+                inv.cve_articulo,
+
                 f.fabricante,
                 f.wmi,
 
@@ -145,6 +147,9 @@ WHERE id_cat_modelo_vin = ?";
 
             LEFT JOIN cat_vin_plantas p
                 ON p.id_planta = m.id_planta
+
+            LEFT JOIN wms_inventario inv
+                ON inv.idinventario = m.id_inventario
 
             ORDER BY m.id_cat_modelo_vin DESC";
 
