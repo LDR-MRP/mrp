@@ -34,10 +34,24 @@
         margin-top: .25rem;
     }
 
-    /* chip de posición en cada etiqueta */
+    /* SKU del producto en el listado de Modelos NIV */
+    .sku-chip {
+        display: inline-block;
+        font-family: var(--vz-font-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: .3px;
+        color: var(--vz-primary, #405189);
+        background-color: rgba(64, 81, 137, .10);
+        border: 1px solid rgba(64, 81, 137, .35);
+        border-radius: 4px;
+        padding: 2px 8px;
+    }
+
     /* Dato tomado de Ingeniería: no editable aquí */
     .ing-lock { pointer-events: none; background-color: var(--vz-light, #f3f6f9) !important; }
 
+    /* chip de posición en cada etiqueta */
     .niv-field-label {
         display: flex;
         align-items: center;
@@ -468,7 +482,7 @@
                                 <span class="badge bg-primary-subtle text-primary ms-1 align-middle" id="totalModelos">0</span>
                             </h5>
                             <div class="search-box" style="min-width:260px">
-                                <input type="text" class="form-control form-control-sm" id="buscarModelo" placeholder="Buscar modelo, NIV, año o planta...">
+                                <input type="text" class="form-control form-control-sm" id="buscarModelo" placeholder="Buscar modelo, SKU, NIV, año o planta...">
                                 <i class="ri-search-line search-icon"></i>
                             </div>
                         </div>

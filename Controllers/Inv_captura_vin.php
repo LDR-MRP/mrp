@@ -11,6 +11,9 @@ class Inv_captura_vin extends Controllers
 			die();
 		}
 		getPermisos(MICAPTURAVIN);
+		// Se libera el candado de la sesión: este módulo solo LEE $_SESSION.
+		// Sin esto, las llamadas AJAX de la pantalla se atienden una por una.
+		session_write_close();
 
 		$this->service = new Inv_captura_vinService();
 		$this->service->model = $this->model; //  importante
@@ -51,6 +54,29 @@ class Inv_captura_vin extends Controllers
 	{
 		$arrData = $this->model->selectAniosVin();
 		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	// Todo lo que la pantalla necesita al abrir, en UNA sola llamada
+	// (antes eran 7: 6 catálogos + el listado de modelos NIV)
+	public function getInicial()
+	{
+		if (empty($_SESSION['permisosMod']['r'])) {
+			echo json_encode(["success" => false, "data" => null]);
+			die();
+		}
+		echo json_encode([
+			"success" => true,
+			"data" => [
+				"modelos" => $this->model->getModelosVin(),
+				"productos" => $this->model->selectModelosInventario(),
+				"fabricantes" => $this->model->selectFabricantes(),
+				"tipos_vehiculo" => $this->model->selectTiposVehiculo(),
+				"tipos_motor" => $this->model->selectTiposMotor(),
+				"plantas" => $this->model->selectPlantas(),
+				"anios" => $this->model->selectAniosVin(),
+			],
+		], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 

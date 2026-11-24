@@ -151,8 +151,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // campo queda bloqueado (solo lectura); si no lo trae, se captura a mano.
   const CAMPOS_ING = ["peso_bruto_kg", "potencia_hp", "id_tipo_motor", "distancia_ejes"];
 
-  cargarCatalogos();
-  cargarTabla();
+  cargarInicial();
   actualizarPreview();
 
   // Modelo: reflejar su descripción en el campo oculto "modelo"
@@ -197,56 +196,72 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ------------------------- catálogos ------------------------------ */
 
-  function llenarSelect(id, url, mapear) {
-    return fetch(base_url + url)
+  function llenarSelect(id, data, mapear) {
+    const select = document.getElementById(id);
+    // Defensa contra doble carga: deja solo "Seleccionar"
+    select.length = 1;
+    (data || []).forEach((item) => {
+      const o = mapear(item);
+      const option = document.createElement("option");
+      option.value = o.value;
+      option.textContent = o.text;
+      Object.entries(o.data || {}).forEach(([k, v]) => (option.dataset[k] = v ?? ""));
+      select.appendChild(option);
+    });
+  }
+
+  // Catálogos + listado en una sola llamada al abrir la pantalla
+  function cargarInicial() {
+    mostrarCargandoTabla();
+    fetch(base_url + "/Inv_captura_vin/getInicial")
       .then((res) => res.json())
-      .then((data) => {
-        const select = document.getElementById(id);
-        // Defensa contra doble carga: deja solo "Seleccionar"
-        select.length = 1;
-        data.forEach((item) => {
-          const o = mapear(item);
-          const option = document.createElement("option");
-          option.value = o.value;
-          option.textContent = o.text;
-          Object.entries(o.data || {}).forEach(([k, v]) => (option.dataset[k] = v ?? ""));
-          select.appendChild(option);
-        });
+      .then((res) => {
+        const d = res.success ? res.data : {};
+        llenarCatalogos(d);
+        modelosNivCache = d.modelos || [];
+        document.getElementById("totalModelos").textContent = modelosNivCache.length;
+        renderTabla(document.getElementById("buscarModelo").value);
+        actualizarPreview();
+      })
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("tablaVin").innerHTML =
+          '<tr><td colspan="6" class="text-center text-danger py-4">No se pudo cargar la información.</td></tr>';
       });
   }
 
-  function cargarCatalogos() {
-    llenarSelect("id_inventario", "/Inv_captura_vin/getModelosInventario", (i) => ({
+  function llenarCatalogos(d) {
+    llenarSelect("id_inventario", d.productos, (i) => ({
       value: i.idinventario,
       text: `${i.descripcion} (${i.cve_articulo})`,
       data: { descripcion: i.descripcion },
     }));
 
-    llenarSelect("id_fabricante", "/Inv_captura_vin/getFabricantes", (i) => ({
+    llenarSelect("id_fabricante", d.fabricantes, (i) => ({
       value: i.id_fabricante,
       text: `${i.fabricante} (${i.wmi})`,
       data: { codigo: i.wmi, nombre: i.fabricante },
     }));
 
-    llenarSelect("id_tipo_vehiculo", "/Inv_captura_vin/getTiposVehiculo", (i) => ({
+    llenarSelect("id_tipo_vehiculo", d.tipos_vehiculo, (i) => ({
       value: i.id_tipo_vehiculo,
       text: i.descripcion,
       data: { codigo: i.caracter, categoria: i.categoria },
     }));
 
-    llenarSelect("id_tipo_motor", "/Inv_captura_vin/getTiposMotor", (i) => ({
+    llenarSelect("id_tipo_motor", d.tipos_motor, (i) => ({
       value: i.id_tipo_motor,
       text: i.descripcion,
       data: { codigo: i.caracter },
     }));
 
-    llenarSelect("id_planta", "/Inv_captura_vin/getPlantas", (i) => ({
+    llenarSelect("id_planta", d.plantas, (i) => ({
       value: i.id_planta,
       text: i.planta,
       data: { codigo: i.caracter },
     }));
 
-    llenarSelect("anio", "/Inv_captura_vin/getAniosVin", (a) => ({
+    llenarSelect("anio", d.anios, (a) => ({
       value: a.id_cat_anio_vin,
       text: `${a.anio} (${a.codigo})`,
       data: { codigo: a.codigo },
@@ -651,10 +666,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ----------------------------- tabla ----------------------------- */
 
-  function cargarTabla() {
-    const tbody = document.getElementById("tablaVin");
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">
+  function mostrarCargandoTabla() {
+    document.getElementById("tablaVin").innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">
         <span class="spinner-border spinner-border-sm me-1"></span> Cargando...</td></tr>`;
+  }
+
+  // Recarga solo el listado (después de guardar)
+  function cargarTabla() {
+    mostrarCargandoTabla();
 
     fetch(base_url + "/Inv_captura_vin/getModelosVin")
       .then((res) => res.json())
@@ -694,7 +713,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const filas = modelosNivCache
       .map((item) => ({ item, vin: vinDeItem(item) }))
       .filter(({ item, vin }) =>
-        !f || [item.modelo, item.vin_base, vin, item.anio, item.planta].some((v) => String(v ?? "").toLowerCase().includes(f)),
+        !f || [item.modelo, item.cve_articulo, item.vin_base, vin, item.anio, item.planta].some((v) => String(v ?? "").toLowerCase().includes(f)),
       );
 
     if (filas.length === 0) {
@@ -724,6 +743,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return `<tr data-id="${item.id_cat_modelo_vin}" class="${String(item.id_cat_modelo_vin) === idEditando ? "is-editing" : ""}">
             <td class="ps-3">
               <div class="fw-medium">${escapeHtml(item.modelo)}${sinProducto}${avisoDatos}</div>
+              ${item.cve_articulo ? `<div class="mt-1"><span class="sku-chip" title="SKU del producto"><i class="ri-barcode-line align-bottom me-1"></i>${escapeHtml(item.cve_articulo)}</span></div>` : ""}
               <div class="text-muted fs-12">${escapeHtml(item.fabricante)} · ${escapeHtml(item.tipo_vehiculo)} · ${escapeHtml(item.motor)}</div>
             </td>
             <td>${chipVin(vinMostrar)}</td>
