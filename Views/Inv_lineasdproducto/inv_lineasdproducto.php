@@ -208,66 +208,100 @@
 
 
 <div class="modal fade" id="modalEstructuraLinea" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow">
 
-            <div class="modal-header">
-                <h5 class="modal-title">Estructura de línea</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary-subtle p-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-3 flex-shrink-0">
+                        <span class="avatar-title rounded bg-primary text-white fs-5">
+                            <i class="ri-node-tree"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0">Estructura de línea</h5>
+                        <small class="text-muted" id="lblLineaEstructura"></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <input type="hidden" id="idLineaEstructura">
 
-                <div id="formSublineaContainer" class="card mb-3 d-none">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="mb-0 text-uppercase fw-semibold">
+                            Sublíneas
+                            <span class="badge bg-primary-subtle text-primary ms-1" id="countSublineas">0</span>
+                        </h6>
+                        <small class="text-muted">Clasificación de productos dentro de la línea</small>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="nuevoSublinea()">
+                        <i class="ri-add-line me-1"></i> Nueva sublínea
+                    </button>
+                </div>
+
+                <div id="formSublineaContainer" class="card border border-primary-subtle bg-light mb-3 d-none">
                     <div class="card-body">
+                        <h6 class="fs-13 text-uppercase text-muted fw-semibold mb-3">
+                            <i class="ri-add-circle-line me-1"></i> Nueva sublínea
+                        </h6>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-2">
+                                <label class="form-label fw-medium">Clave <span class="text-danger">*</span></label>
+                                <input type="text" id="sub_cve" class="form-control" placeholder="Ej. LDT">
+                            </div>
 
-                        <div class="row">
                             <div class="col-md-4">
-                                <label>Clave</label>
-                                <input type="text" id="sub_cve" class="form-control">
+                                <label class="form-label fw-medium">Descripción <span class="text-danger">*</span></label>
+                                <input type="text" id="sub_desc" class="form-control" placeholder="Ej. LIGHT DUTY TRUCK">
                             </div>
 
-                            <div class="col-md-6">
-                                <label>Descripción</label>
-                                <input type="text" id="sub_desc" class="form-control">
+                            <div class="col-md-3">
+                                <label class="form-label fw-medium mb-0">Fondo publicidad</label>
+                                <small class="text-muted d-block mb-1">Precio sin IVA</small>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" id="sub_fondo" class="form-control text-end" step="0.01" min="0" placeholder="0.00">
+                                </div>
                             </div>
 
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button class="btn btn-success w-100" onclick="guardarSublinea()">Guardar</button>
+                            <div class="col-md-3 d-flex gap-2">
+                                <button type="button" class="btn btn-success flex-fill" onclick="guardarSublinea()">
+                                    <i class="ri-save-line me-1"></i> Guardar
+                                </button>
+                                <button type="button" class="btn btn-light flex-fill" onclick="cancelarSublinea()">
+                                    Cancelar
+                                </button>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
-                <ul class="nav nav-tabs mb-3">
-                    <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" href="#tabSublineas">Sublíneas</a>
-                    </li>
-                </ul>
-
-                <div class="tab-content">
-
-                    <div class="tab-pane fade show active" id="tabSublineas">
-
-                        <button class="btn btn-success mb-2" onclick="nuevoSublinea()">+ Nueva sublínea</button>
-
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Clave</th>
-                                    <th>Descripción</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbodySublineas"></tbody>
-                        </table>
-
-                    </div>
-
+                <div class="table-responsive border rounded">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="text-uppercase fs-12 text-muted">
+                                <th style="width:15%">Clave</th>
+                                <th>Descripción</th>
+                                <th class="text-end" style="width:20%">
+                                    Fondo publicidad
+                                    <small class="d-block fw-normal" style="text-transform:none;">Precio sin IVA</small>
+                                </th>
+                                <th class="text-center" style="width:12%">Estado</th>
+                                <th class="text-center" style="width:12%">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodySublineas"></tbody>
+                    </table>
                 </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                    <i class="ri-close-line me-1"></i> Cerrar
+                </button>
             </div>
 
         </div>

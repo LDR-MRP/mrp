@@ -121,7 +121,7 @@ class Inv_lineasdproductoModel extends Mysql
         return $this->select_all($sql);
     }
 
-    public function insertSublinea($linea, $cve, $desc, $fecha, $estado)
+    public function insertSublinea($linea, $cve, $desc, $fecha, $estado, $fondo = 0)
     {
 
         $sql = "SELECT * FROM wms_sublinea_producto 
@@ -132,23 +132,23 @@ class Inv_lineasdproductoModel extends Mysql
 
         if (empty($exist)) {
             $query = "INSERT INTO wms_sublinea_producto
-        (lineaproductoid,cve_sublinea_producto,descripcion,fecha_creacion,estado)
-        VALUES (?,?,?,?,?)";
+        (lineaproductoid,cve_sublinea_producto,descripcion,fondo_publicidad,fecha_creacion,estado)
+        VALUES (?,?,?,?,?,?)";
 
-            return $this->insert($query, [$linea, $cve, $desc, $fecha, $estado]);
+            return $this->insert($query, [$linea, $cve, $desc, $fondo, $fecha, $estado]);
         } else {
             return "exist";
         }
     }
 
-    public function updateSublinea($id, $cve, $desc, $estado)
+    public function updateSublinea($id, $cve, $desc, $estado, $fondo = 0)
     {
 
         $sql = "UPDATE wms_sublinea_producto 
-            SET cve_sublinea_producto = ?, descripcion = ?, estado = ?
+            SET cve_sublinea_producto = ?, descripcion = ?, fondo_publicidad = ?, estado = ?
             WHERE idsublineaproducto = $id";
 
-        return $this->update($sql, [$cve, $desc, $estado]);
+        return $this->update($sql, [$cve, $desc, $fondo, $estado]);
     }
 
     public function deleteSublinea($id)

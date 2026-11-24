@@ -185,9 +185,10 @@ class Inv_lineasdproducto extends Controllers
             $linea = intval($_POST['lineaproductoid']);
             $cve = strClean($_POST['cve']);
             $desc = strClean($_POST['descripcion']);
+            $fondo = isset($_POST['fondo_publicidad']) && $_POST['fondo_publicidad'] !== '' ? round(floatval($_POST['fondo_publicidad']), 2) : 0;
             $fecha = date('Y-m-d H:i:s');
 
-            $request = $this->model->insertSublinea($linea, $cve, $desc, $fecha, 2);
+            $request = $this->model->insertSublinea($linea, $cve, $desc, $fecha, 2, $fondo);
 
             if ($request > 0) {
                 $arrResponse = ['status' => true, 'msg' => 'Sublínea creada'];
@@ -208,8 +209,9 @@ class Inv_lineasdproducto extends Controllers
             $id = intval($_POST['idsublinea']);
             $cve = strClean($_POST['cve']);
             $desc = strClean($_POST['descripcion']);
+            $fondo = isset($_POST['fondo_publicidad']) && $_POST['fondo_publicidad'] !== '' ? round(floatval($_POST['fondo_publicidad']), 2) : 0;
 
-            $request = $this->model->updateSublinea($id, $cve, $desc, 2);
+            $request = $this->model->updateSublinea($id, $cve, $desc, 2, $fondo);
 
             if ($request) {
                 $arrResponse = ['status' => true, 'msg' => 'Actualizado correctamente'];
