@@ -197,32 +197,69 @@ function fntDelInfo(idlineaproducto) {
 // ------------------------------------------------------------------------
 function fntEstructuraLinea(idLinea) {
   document.querySelector("#idLineaEstructura").value = idLinea;
+  document.querySelector("#formSublineaContainer").classList.add("d-none");
+
+  // Nombre de la línea en el encabezado del modal
+  let lbl = "";
+  try {
+    let tr = event && event.target ? $(event.target).closest("tr") : null;
+    if (tr && tr.hasClass("child")) tr = tr.prev();
+    let row = tr ? tableLineasProducto.api().row(tr).data() : null;
+    if (row) lbl = "Línea: " + row.cve_linea_producto + (row.descripcion ? " — " + row.descripcion : "");
+  } catch (e) {}
+  document.querySelector("#lblLineaEstructura").textContent = lbl;
+
   $("#modalEstructuraLinea").modal("show");
   cargarSublineas(idLinea);
 }
 
+function badgeEstadoSublinea(estado) {
+  return estado == 2
+    ? '<span class="badge bg-success-subtle text-success text-uppercase">Activo</span>'
+    : '<span class="badge bg-secondary-subtle text-secondary text-uppercase">Inactivo</span>';
+}
+
 function cargarSublineas(idLinea) {
+  const tbody = document.querySelector("#tbodySublineas");
+  tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+      <span class="spinner-border spinner-border-sm me-2"></span>Cargando...</td></tr>`;
+
   fetch(base_url + "/Inv_lineasdproducto/getSublineas/" + idLinea)
     .then((res) => res.json())
     .then((data) => {
-      let html = "";
+      document.querySelector("#countSublineas").textContent = data.length;
 
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-5">
+            <i class="ri-inbox-line fs-2 d-block mb-1"></i>
+            Esta línea aún no tiene sublíneas registradas</td></tr>`;
+        return;
+      }
+
+      let html = "";
       data.forEach((s) => {
         html += `
-          <tr>
-            <td>${s.cve_sublinea_producto}</td>
+          <tr data-fondo="${s.fondo_publicidad ?? 0}">
+            <td class="fw-semibold">${s.cve_sublinea_producto}</td>
             <td>${s.descripcion}</td>
-            <td>${s.estado == 2 ? "Activo" : "Inactivo"}</td>
-            <td>
-              <button class="btn btn-sm btn-warning" onclick="editarSublinea(${s.idsublineaproducto})">✏</button>
-              <button class="btn btn-sm btn-danger" onclick="eliminarSublinea(${s.idsublineaproducto})">🗑</button>
+            <td class="text-end">${formatFondoPublicidad(s.fondo_publicidad)}</td>
+            <td class="text-center">${badgeEstadoSublinea(s.estado)}</td>
+            <td class="text-center">
+              <button type="button" class="btn btn-sm btn-soft-warning" title="Editar" onclick="editarSublinea(${s.idsublineaproducto})"><i class="ri-pencil-line"></i></button>
+              <button type="button" class="btn btn-sm btn-soft-danger" title="Eliminar" onclick="eliminarSublinea(${s.idsublineaproducto})"><i class="ri-delete-bin-line"></i></button>
             </td>
           </tr>
         `;
       });
 
-      document.querySelector("#tbodySublineas").innerHTML = html;
+      tbody.innerHTML = html;
     });
+}
+
+function formatFondoPublicidad(valor) {
+  let n = parseFloat(valor);
+  if (isNaN(n)) n = 0;
+  return "$" + n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function nuevoSublinea() {
@@ -230,15 +267,26 @@ function nuevoSublinea() {
 
   document.querySelector("#sub_cve").value = "";
   document.querySelector("#sub_desc").value = "";
+  document.querySelector("#sub_fondo").value = "";
+  document.querySelector("#sub_cve").focus();
+}
+
+function cancelarSublinea() {
+  document.querySelector("#formSublineaContainer").classList.add("d-none");
 }
 
 function guardarSublinea() {
   let cve = document.querySelector("#sub_cve").value.trim();
   let desc = document.querySelector("#sub_desc").value.trim();
+  let fondo = document.querySelector("#sub_fondo").value.trim();
   let idLinea = document.querySelector("#idLineaEstructura").value;
 
   if (cve === "" || desc === "") {
-    Swal.fire("Atención", "Todos los campos son obligatorios", "warning");
+    Swal.fire("Atención", "Clave y descripción son obligatorias", "warning");
+    return;
+  }
+  if (fondo !== "" && (isNaN(fondo) || parseFloat(fondo) < 0)) {
+    Swal.fire("Atención", "El fondo de publicidad debe ser un número mayor o igual a 0", "warning");
     return;
   }
 
@@ -248,6 +296,7 @@ function guardarSublinea() {
       lineaproductoid: idLinea,
       cve: cve,
       descripcion: desc,
+      fondo_publicidad: fondo === "" ? 0 : fondo,
     }),
   })
     .then((res) => res.json())
@@ -273,14 +322,23 @@ function editarSublinea(id) {
 
   let cve = fila.children[0].innerText;
   let desc = fila.children[1].innerText;
+  let fondo = parseFloat(fila.dataset.fondo);
+  if (isNaN(fondo)) fondo = 0;
 
+  fila.classList.add("table-warning");
   fila.innerHTML = `
     <td><input class="form-control form-control-sm" id="edit_cve_${id}" value="${cve}"></td>
     <td><input class="form-control form-control-sm" id="edit_desc_${id}" value="${desc}"></td>
-    <td>EDITANDO</td>
     <td>
-      <button class="btn btn-sm btn-success" onclick="actualizarSublinea(${id})">💾</button>
-      <button class="btn btn-sm btn-secondary" onclick="recargarSublineas()">❌</button>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">$</span>
+        <input type="number" step="0.01" min="0" class="form-control text-end" id="edit_fondo_${id}" value="${fondo.toFixed(2)}">
+      </div>
+    </td>
+    <td class="text-center"><span class="badge bg-warning-subtle text-warning text-uppercase">Editando</span></td>
+    <td class="text-center">
+      <button type="button" class="btn btn-sm btn-success" title="Guardar" onclick="actualizarSublinea(${id})"><i class="ri-save-line"></i></button>
+      <button type="button" class="btn btn-sm btn-light" title="Cancelar" onclick="recargarSublineas()"><i class="ri-close-line"></i></button>
     </td>
   `;
 }
@@ -288,10 +346,15 @@ function editarSublinea(id) {
 function actualizarSublinea(id) {
   let cve = document.querySelector(`#edit_cve_${id}`).value.trim();
   let desc = document.querySelector(`#edit_desc_${id}`).value.trim();
+  let fondo = document.querySelector(`#edit_fondo_${id}`).value.trim();
   let idLinea = document.querySelector("#idLineaEstructura").value;
 
   if (cve === "" || desc === "") {
-    Swal.fire("Atención", "Campos obligatorios", "warning");
+    Swal.fire("Atención", "Clave y descripción son obligatorias", "warning");
+    return;
+  }
+  if (fondo !== "" && (isNaN(fondo) || parseFloat(fondo) < 0)) {
+    Swal.fire("Atención", "El fondo de publicidad debe ser un número mayor o igual a 0", "warning");
     return;
   }
 
@@ -301,6 +364,7 @@ function actualizarSublinea(id) {
       idsublinea: id,
       cve: cve,
       descripcion: desc,
+      fondo_publicidad: fondo === "" ? 0 : fondo,
     }),
   })
     .then((res) => res.json())
