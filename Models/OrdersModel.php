@@ -1603,6 +1603,8 @@ public function validarPedidoEditable(string $clave,int $idcliente) {
             clave,
             estatus,
             version,
+            fecha_requerida,
+            mes_facturacion_deseado,
             estado
         FROM ped_pedidos
         WHERE clave = '{$clave}'

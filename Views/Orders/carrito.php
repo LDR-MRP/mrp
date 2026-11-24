@@ -136,6 +136,7 @@ $idusuarioAccesoPortal = (int) (
                     <input
                         type="date"
                         id="orderRequiredDate"
+                            min="<?= (new DateTimeImmutable('now', new DateTimeZone('America/Mexico_City')))->format('Y-m-d') ?>"
                         class="form-control"
                     >
 
@@ -153,6 +154,7 @@ $idusuarioAccesoPortal = (int) (
                     <input
                         type="month"
                         id="orderMonth"
+                            min="<?= (new DateTimeImmutable('now', new DateTimeZone('America/Mexico_City')))->format('Y-m') ?>"
                         class="form-control"
                     >
                 </div>

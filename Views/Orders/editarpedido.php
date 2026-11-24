@@ -604,6 +604,7 @@ $importeEstimado =
                         <input
                             type="date"
                             id="editRequiredDate"
+                            min="<?= (new DateTimeImmutable('now', new DateTimeZone('America/Mexico_City')))->format('Y-m-d') ?>"
                             value="<?= htmlspecialchars(
                                 substr(
                                     $pedido[
@@ -629,6 +630,7 @@ $importeEstimado =
                         <input
                             type="month"
                             id="editBillingMonth"
+                            min="<?= (new DateTimeImmutable('now', new DateTimeZone('America/Mexico_City')))->format('Y-m') ?>"
                             value="<?= htmlspecialchars(
                                 substr(
                                     $pedido[

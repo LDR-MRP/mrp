@@ -1593,6 +1593,35 @@ class Orders extends Controllers
         );
     }
 
+    /** No admitir fechas anteriores a hoy (zona comercial MX). En edición se tolera el dato histórico SIN cambios. */
+    private function validarFechasComercialesVigentes($fecha, $mes, ?array $original = null): void
+    {
+        $zona = new DateTimeZone('America/Mexico_City');
+        $hoy = new DateTimeImmutable('today', $zona);
+        $fecha = trim((string)$fecha);
+        $mes = trim((string)$mes);
+        if ($fecha !== '') {
+            $obj = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha, $zona);
+            if (!$obj || $obj->format('Y-m-d') !== $fecha) {
+                throw new InvalidArgumentException('La fecha requerida no tiene un formato válido.');
+            }
+            $anterior = substr((string)($original['fecha_requerida'] ?? ''), 0, 10);
+            if ($obj < $hoy && $fecha !== $anterior) {
+                throw new InvalidArgumentException('La fecha requerida no puede ser anterior a hoy.');
+            }
+        }
+        if ($mes !== '') {
+            $obj = DateTimeImmutable::createFromFormat('!Y-m-d', $mes.'-01', $zona);
+            if (!$obj || $obj->format('Y-m') !== $mes) {
+                throw new InvalidArgumentException('El mes de facturación no es válido.');
+            }
+            $anterior = substr((string)($original['mes_facturacion_deseado'] ?? ''), 0, 7);
+            if ($obj->format('Y-m') < $hoy->format('Y-m') && $mes !== $anterior) {
+                throw new InvalidArgumentException('El mes de facturación no puede ser anterior al mes actual.');
+            }
+        }
+    }
+
     public function validarFechaPedido(mixed $valor)
     {
 
@@ -1817,6 +1846,7 @@ class Orders extends Controllers
                 );
             }
 
+            $this->validarFechasComercialesVigentes($entrada['fecha_requerida'] ?? '', $entrada['mes_facturacion_deseado'] ?? '');
             $fechaRequerida = $this->validarFechaPedido($entrada['fecha_requerida'] ?? null);
             $mesFacturacion = $this->convertirMesFacturacion($entrada['mes_facturacion_deseado'] ?? null);
             $prioridad = strtoupper($this->limpiarTexto($entrada['prioridad'] ?? 'NORMAL', 20));
@@ -3051,6 +3081,7 @@ class Orders extends Controllers
                 $this->responseJson(false, 'El pedido ya no puede modificarse porque se encuentra en revisión o cambió de estatus.');
             }
 
+            $this->validarFechasComercialesVigentes($fechaRequerida, $request['mes_facturacion_deseado'] ?? '', $pedido);
             $idpedido = intval($pedido['idpedido']);
             $versionAnterior = intval($pedido['version'] ?? 1);
 

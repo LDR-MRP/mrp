@@ -1,3 +1,20 @@
+/** Fechas mínimas del portal (Ciudad de México). Los valores históricos no se sobrescriben. */
+function configurarFechasMinimasPortal(prefijo) {
+  const hoy = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const fecha = document.getElementById(prefijo === 'edit' ? 'editRequiredDate' : 'orderRequiredDate');
+  const mes = document.getElementById(prefijo === 'edit' ? 'editBillingMonth' : 'orderMonth');
+  if (fecha) fecha.min = hoy;
+  if (mes) mes.min = hoy.slice(0, 7);
+}
+function verificarFechasVigentesPortal(fecha, mes, editar = false) {
+  const hoy = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const fechaOriginal = editar ? (document.getElementById('editRequiredDate')?.defaultValue || '') : '';
+  const mesOriginal = editar ? (document.getElementById('editBillingMonth')?.defaultValue || '') : '';
+  if (fecha && fecha < hoy && fecha !== fechaOriginal) return 'La fecha requerida no puede ser anterior a hoy.';
+  if (mes && mes < hoy.slice(0,7) && mes !== mesOriginal) return 'El mes de facturación no puede ser anterior al mes actual.';
+  return '';
+}
+
 "use strict";
 
 /* ============================================================
@@ -1150,6 +1167,12 @@ async function generateRequest() {
       "orderNotes"
     )?.value?.trim() || "";
 
+  const errorFechas = verificarFechasVigentesPortal(requiredDate, month);
+  if (errorFechas) {
+    showCartMessage('warning', 'Fecha no permitida', errorFechas);
+    return;
+  }
+
   const confirmation =
     await confirmRequest();
 
@@ -1560,3 +1583,5 @@ document.addEventListener(
 );
 // Identidad del renglón: modelo y color; evita fusionar unidades de distinto color.
 function cartItemKey(item) { return String(Number(item.idunidad||item.id||0))+':'+String(Number(item.idunidad_color||0)); }
+
+document.addEventListener('DOMContentLoaded', () => configurarFechasMinimasPortal('cart'));

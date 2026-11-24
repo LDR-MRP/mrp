@@ -1,3 +1,20 @@
+/** Fechas mínimas del portal (Ciudad de México). Los valores históricos no se sobrescriben. */
+function configurarFechasMinimasPortal(prefijo) {
+  const hoy = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const fecha = document.getElementById(prefijo === 'edit' ? 'editRequiredDate' : 'orderRequiredDate');
+  const mes = document.getElementById(prefijo === 'edit' ? 'editBillingMonth' : 'orderMonth');
+  if (fecha) fecha.min = hoy;
+  if (mes) mes.min = hoy.slice(0, 7);
+}
+function verificarFechasVigentesPortal(fecha, mes, editar = false) {
+  const hoy = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const fechaOriginal = editar ? (document.getElementById('editRequiredDate')?.defaultValue || '') : '';
+  const mesOriginal = editar ? (document.getElementById('editBillingMonth')?.defaultValue || '') : '';
+  if (fecha && fecha < hoy && fecha !== fechaOriginal) return 'La fecha requerida no puede ser anterior a hoy.';
+  if (mes && mes < hoy.slice(0,7) && mes !== mesOriginal) return 'El mes de facturación no puede ser anterior al mes actual.';
+  return '';
+}
+
 'use strict';
 
 
@@ -1022,6 +1039,12 @@ async function guardarCambiosPedido() {
     productos:obtenerProductosEditar()
   };
 
+  const errorFechas = verificarFechasVigentesPortal(payload.fecha_requerida, payload.mes_facturacion_deseado, true);
+  if (errorFechas) {
+    if (typeof Swal !== 'undefined') Swal.fire('Fecha no permitida', errorFechas, 'warning'); else alert(errorFechas);
+    return;
+  }
+
   if (!validarPedidoEditar(payload)) {
     return;
   }
@@ -1223,3 +1246,5 @@ function sincronizarColoresEdicion() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', sincronizarColoresEdicion);
 } else { sincronizarColoresEdicion(); }
+
+document.addEventListener('DOMContentLoaded', () => configurarFechasMinimasPortal('edit'));
