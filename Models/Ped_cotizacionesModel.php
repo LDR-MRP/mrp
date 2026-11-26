@@ -1225,7 +1225,7 @@ class Ped_cotizacionesModel extends Mysql
 
                 u.anio,
 
-                u.marca,
+                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = u.marca) AS marca,
 
                 u.motor,
 
@@ -1355,7 +1355,7 @@ class Ped_cotizacionesModel extends Mysql
 
                 anio,
 
-                marca,
+                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = web_unidades.marca) AS marca,
 
                 motor,
 
@@ -1417,7 +1417,7 @@ class Ped_cotizacionesModel extends Mysql
 
                 anio,
 
-                marca,
+                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = web_unidades.marca) AS marca,
 
                 motor,
 

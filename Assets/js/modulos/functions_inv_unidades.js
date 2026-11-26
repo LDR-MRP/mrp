@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const estado = { vista: "unidad", q: "", subs: new Set(), anios: new Set(), color: "", planta: "", almacen: "", porColor: false };
   try {
     const v = localStorage.getItem("iu_vista");
-    if (["unidad", "almacen", "listado", "transito"].includes(v)) estado.vista = v;
+    if (["unidad", "almacen", "listado", "transito", "salidas"].includes(v)) estado.vista = v;
     estado.porColor = localStorage.getItem("iu_porColor") === "1";
   } catch (e) {}
 
@@ -669,8 +669,162 @@ document.addEventListener("DOMContentLoaded", function () {
     pintarTransito(transitoFiltrado());
   });
 
+  /* ---------------- Vista: salidas (vendidas, a proveedor, bajas) ---------------- */
+  // Se carga la primera vez que se abre la vista (getSalidas) y con «Actualizar».
+  let salidas = null;
+  let salidasCargando = false;
+  let dtSalidas = null;
+  const salFiltro = { situacion: "", tipo: "" };
+  const SITUACIONES = {
+    SALIO: { txt: "Ya salió", cls: "salio", ico: "ri-logout-box-r-line", tip: "Su último movimiento de inventario es una salida" },
+    EN_ALMACEN: { txt: "Facturada, en almacén", cls: "almacen", ico: "ri-store-2-line", tip: "Vendida, pero su último movimiento es una entrada: sigue físicamente en el almacén" },
+    PENDIENTE: { txt: "Facturada, sin movimiento", cls: "pendiente", ico: "ri-time-line", tip: "Tiene factura pero ningún movimiento de inventario" },
+  };
+  const destinatarioDe = (s) => s.destinatario || "";
+  const fechaSalida = (s) => s.fecha_salida || s.fecha_factura || "";
+
+  function pasaSalida(s, ignorar) {
+    if (estado.subs.size && !estado.subs.has(s.sublinea)) return false;
+    if (estado.anios.size && !estado.anios.has(anioDe(s))) return false;
+    if (ignorar !== "situacion" && salFiltro.situacion && s.situacion !== salFiltro.situacion) return false;
+    if (ignorar !== "tipo" && salFiltro.tipo && s.tipo_salida !== salFiltro.tipo) return false;
+    if (estado.q) {
+      const t = [s.numero_serie, s.cve_articulo, s.descripcion, s.sublinea, s.factura, s.destinatario, s.tipo_salida, s.numero_movimiento]
+        .join(" ")
+        .toLowerCase();
+      if (!t.includes(estado.q)) return false;
+    }
+    return true;
+  }
+  const salidasFiltradas = () => (salidas || []).filter((s) => pasaSalida(s));
+
+  function cargarSalidas() {
+    if (salidasCargando) return Promise.resolve();
+    salidasCargando = true;
+    byId("salCargando").classList.remove("d-none");
+    return fetch(base_url + "/Inv_unidades/getSalidas")
+      .then((r) => r.json())
+      .then((d) => {
+        salidas = d.salidas || [];
+      })
+      .catch(() => {
+        salidas = salidas || [];
+        aviso("No se pudieron cargar las salidas");
+      })
+      .finally(() => {
+        salidasCargando = false;
+        byId("salCargando").classList.add("d-none");
+        render();
+      });
+  }
+
+  function pintarFiltrosSalidas() {
+    const base = salidas || [];
+    const cSit = contarPor(base.filter((s) => pasaSalida(s, "situacion")), (s) => s.situacion);
+    byId("fSalSituacion").innerHTML = Object.entries(SITUACIONES)
+      .map(([k, v]) => {
+        const n = cSit.get(k) || 0;
+        const on = salFiltro.situacion === k;
+        return `<button type="button" class="iu-toggle ${on ? "on" : ""} ${n ? "" : "vacio"}" data-salsit="${k}" aria-pressed="${on}" title="${esc(v.tip)}"><i class="${v.ico}"></i> ${esc(v.txt)}<span class="n">${fmt(n)}</span></button>`;
+      })
+      .join("");
+    const cTipo = contarPor(base.filter((s) => pasaSalida(s, "tipo")), (s) => s.tipo_salida);
+    byId("fSalTipo").innerHTML = [...new Set(base.map((s) => s.tipo_salida))]
+      .sort()
+      .map((t) => {
+        const n = cTipo.get(t) || 0;
+        const on = salFiltro.tipo === t;
+        return `<button type="button" class="iu-toggle ${on ? "on" : ""} ${n ? "" : "vacio"}" data-saltipo="${esc(t)}" aria-pressed="${on}">${esc(t)}<span class="n">${fmt(n)}</span></button>`;
+      })
+      .join("");
+  }
+
+  function pintarSalidas() {
+    if (salidas === null) {
+      cargarSalidas();
+      return;
+    }
+    pintarFiltrosSalidas();
+    const lista = salidasFiltradas();
+    if (!dtSalidas) {
+      dtSalidas = $("#tSalidas").DataTable({
+        data: lista,
+        columns: [
+          { data: "numero_serie", render: (d, t) => (t === "display" ? `<span class="iu-vin">${esc(d)}</span> ${btnCopiar(d)}` : d) },
+          { data: "descripcion", render: (d, t) => (t === "display" ? `<span class="fw-medium">${esc(d)}</span>` : d) },
+          { data: "cve_articulo", render: (d, t) => (t === "display" ? `<span class="text-muted">${esc(d)}</span>` : d) },
+          { data: anioDe, render: (d, t) => (t === "display" ? `<span class="iu-anio ms-0">${esc(d)}</span>` : d) },
+          { data: "tipo_salida", defaultContent: "" },
+          {
+            data: "situacion",
+            render: (d, t) => {
+              const s = SITUACIONES[d] || { txt: d, cls: "pendiente", ico: "ri-question-line", tip: "" };
+              return t === "display" ? `<span class="iu-sit ${s.cls}" title="${esc(s.tip)}"><i class="${s.ico}"></i>${esc(s.txt)}</span>` : s.txt;
+            },
+          },
+          {
+            data: destinatarioDe,
+            render: (d, t, s) =>
+              t === "display"
+                ? d
+                  ? `${esc(d)}${s.tipo_destinatario === "Proveedor" ? ' <span class="badge bg-info-subtle text-info">Proveedor</span>' : ""}`
+                  : '<span class="text-muted" title="El distribuidor no se capturó (o se cargó como fórmula de Excel)">Sin dato</span>'
+                : d,
+          },
+          { data: "factura", defaultContent: "", render: (d, t) => (t === "display" ? (d ? esc(d) : '<span class="text-muted">—</span>') : d || "") },
+          { data: fechaSalida, render: (d, t) => (t === "display" ? fechaTxt(d) : d) },
+          { data: "almacen_salida", defaultContent: "", render: (d, t) => (t === "display" ? (d ? esc(d) : '<span class="text-muted">—</span>') : d || "") },
+        ],
+        order: [[8, "desc"], [0, "asc"]],
+        pageLength: 25,
+        lengthMenu: [25, 50, 100, 500],
+        dom: "<'table-responsive't><'d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3'<'d-flex align-items-center gap-3'li>p>",
+        language: {
+          lengthMenu: "Mostrar _MENU_",
+          info: "_START_–_END_ de _TOTAL_ unidades",
+          infoEmpty: "Sin unidades",
+          zeroRecords: "No hay salidas con esos filtros",
+          paginate: { previous: "‹", next: "›" },
+        },
+      });
+    } else {
+      dtSalidas.clear().rows.add(lista).draw();
+    }
+    dtSalidas.columns.adjust();
+  }
+
+  byId("panelSalidas").addEventListener("click", (e) => {
+    const c = e.target.closest("[data-copiar]");
+    if (c) return copiar(c.dataset.copiar, "VIN copiado");
+    const sit = e.target.closest("[data-salsit]");
+    if (sit) {
+      salFiltro.situacion = salFiltro.situacion === sit.dataset.salsit ? "" : sit.dataset.salsit;
+      return render();
+    }
+    const tipo = e.target.closest("[data-saltipo]");
+    if (tipo) {
+      salFiltro.tipo = salFiltro.tipo === tipo.dataset.saltipo ? "" : tipo.dataset.saltipo;
+      return render();
+    }
+  });
+
+  byId("btnSalidasXLSX").addEventListener("click", () => {
+    const filas = salidasFiltradas();
+    if (!filas.length) return aviso("No hay salidas para exportar");
+    exportarXlsx(
+      "Unidades que salieron",
+      "Salidas_unidades_" + new Date().toISOString().slice(0, 10),
+      ["VIN", "Modelo", "SKU", "Sublínea", "Año", "Color", "Tipo de salida", "Situación", "Distribuidor / proveedor", "Factura", "Fecha factura", "Fecha salida", "Salió de", "Almacén actual", "Movimiento"],
+      filas.map((s) => [
+        s.numero_serie, s.descripcion, s.cve_articulo, s.sublinea, anioDe(s), colorDe(s), s.tipo_salida,
+        (SITUACIONES[s.situacion] || {}).txt || s.situacion, destinatarioDe(s) || "Sin dato", s.factura || "",
+        s.fecha_factura || "", s.fecha_salida || "", s.almacen_salida || "", s.almacen_actual || "", s.numero_movimiento || "",
+      ]),
+    );
+  });
+
   /* ---------------- Render general ---------------- */
-  const PANELES = { unidad: "panelUnidad", almacen: "panelAlmacen", listado: "panelListado", transito: "panelTransito" };
+  const PANELES = { unidad: "panelUnidad", almacen: "panelAlmacen", listado: "panelListado", transito: "panelTransito", salidas: "panelSalidas" };
   let vistaPintada = null;
   function render() {
     const lista = filtrados();
@@ -684,6 +838,7 @@ document.addEventListener("DOMContentLoaded", function () {
     byId("nVListado").textContent = fmt(lista.length);
     const listaTr = transitoFiltrado();
     byId("nVTransito").textContent = fmt(listaTr.reduce((s, t) => s + Number(t.qty || 0), 0));
+    byId("nVSalidas").textContent = salidas === null ? "–" : fmt(salidasFiltradas().length);
     byId("iuResumen").innerHTML =
       lista.length === datos.length
         ? `<b>${fmt(datos.length)}</b> unidades en total`
@@ -710,6 +865,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (estado.vista === "unidad") pintarMatriz(lista);
     else if (estado.vista === "almacen") pintarAlmacenes(lista);
     else if (estado.vista === "transito") pintarTransito(listaTr);
+    else if (estado.vista === "salidas") pintarSalidas();
     else pintarListado(lista);
   }
 
@@ -899,6 +1055,14 @@ document.addEventListener("DOMContentLoaded", function () {
         ico.classList.remove("iu-spin");
       });
   }
-  byId("btnRefrescar").addEventListener("click", () => cargar().then(() => datos.length && aviso("Existencia actualizada")));
+  byId("btnRefrescar").addEventListener("click", () =>
+    cargar().then(() => {
+      if (salidas !== null) {
+        salidas = null;
+        if (estado.vista === "salidas") render();
+      }
+      if (datos.length) aviso("Existencia actualizada");
+    }),
+  );
   cargar();
 });

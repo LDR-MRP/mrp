@@ -1111,6 +1111,7 @@ class Inv_inventario extends Controllers
 				];
 			} elseif (is_numeric($request) && $request > 0) {
 
+				$this->model->sincronizarMarcaWebUnidad($inventarioid);
 				$arrResponse = [
 					'status' => true,
 					'msg' => 'Línea asignada correctamente'
@@ -1142,6 +1143,10 @@ class Inv_inventario extends Controllers
 			);
 
 			if ($request) {
+				$invLinea = $this->model->getInventarioIdPorLinea($id_inv_linea);
+				if ($invLinea > 0) {
+					$this->model->sincronizarMarcaWebUnidad($invLinea);
+				}
 				$arrResponse = [
 					'status' => true,
 					'msg' => 'Línea actualizada correctamente'
@@ -1753,6 +1758,37 @@ class Inv_inventario extends Controllers
 		return null;
 	}
 
+	// idsublineaproducto de la línea asignada al producto (web_unidades.marca), o null.
+	private function marcaSublineaId(int $inventarioid)
+	{
+		$sub = $this->model->getSublineaAutoPorLinea($inventarioid);
+		return $sub ? (int) $sub['idsublineaproducto'] : null;
+	}
+
+	// Lo que le falta a un producto para poder publicarse en el portal de
+	// distribuidores. Arreglo vacío = puede publicarse.
+	private function requisitosPublicarPortal(string $modo, int $inventarioid, float $precioPortal): array
+	{
+		$faltantes = [];
+
+		if (round($precioPortal, 2) <= 0) {
+			$faltantes[] = 'Precio: asigna un precio en la pestaña Precio y selecciónalo en Portal Web.';
+		}
+
+		if ($modo === 'unidad') {
+			$sub = $this->model->getSublineaAutoPorLinea($inventarioid);
+			if (!$sub) {
+				$faltantes[] = 'Línea y sublínea: asígnalas en la pestaña Línea.';
+			} elseif ((int) $sub['sublinea_estado'] !== 2 || empty($sub['idlineaproducto']) || (int) $sub['linea_estado'] !== 2) {
+				$faltantes[] = 'Línea y sublínea: la asignada (' . $sub['cve_sublinea_producto'] . ') está inactiva; asigna una activa en la pestaña Línea.';
+			} elseif (round((float) $sub['fondo_publicidad'], 2) <= 0) {
+				$faltantes[] = 'Fondo de publicidad: la sublínea ' . $sub['cve_sublinea_producto'] . ' no tiene fondo de publicidad; captúralo en Líneas de producto.';
+			}
+		}
+
+		return $faltantes;
+	}
+
 	// Si un Producto aún no tiene registro en web_unidades y se suben fotos
 	// (p. ej. Marketing desde "Fotos portal"), se crea uno NO publicado
 	// (estado 0) con los datos sugeridos del producto. Quien administra Portal
@@ -1774,7 +1810,7 @@ class Inv_inventario extends Controllers
 			'version' => $ing['version'],
 			'descripcion' => '',
 			'anio' => (int) date('Y'),
-			'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
+			'marca' => $this->marcaSublineaId($inventarioid),
 			'motor' => $ing['motor'],
 			'stock' => $this->model->getStockTotalAuto($inventarioid),
 			'precio_estimado' => (float) $this->model->getPrecioPublicoAuto($inventarioid),
@@ -2066,6 +2102,11 @@ class Inv_inventario extends Controllers
 				'nombre' => '',
 				'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
 			];
+			// Texto que se muestra (solo lectura): clave - descripción de la sublínea
+			$subPw = $this->model->getSublineaAutoPorLinea($inventarioid);
+			$sugerencias['marca_texto'] = $subPw
+				? $subPw['cve_sublinea_producto'] . ' - ' . $subPw['sublinea_descripcion']
+				: '';
 
 			// Nombre, versión y motor que se publican vienen de Ingeniería
 			$ing = $this->datosIngenieriaPortal($inventarioid);
@@ -2195,14 +2236,20 @@ class Inv_inventario extends Controllers
 			$publicar = !empty($_POST['web_distribuidores']);
 			$estatusRadio = $_POST['estatus'] ?? '2';
 
-			// No se permite publicar en el portal de distribuidores sin un
-			// precio mayor a 0 (antes se publicaban unidades en 0.00).
-			if ($publicar && round($precioPortal, 2) <= 0) {
-				echo json_encode([
-					'status' => false,
-					'msg' => 'No se puede publicar en el portal sin precio. Asigna un precio en la pestaña Precio y selecciónalo en Portal Web.',
-				]);
-				die();
+			// Requisitos para publicar en el portal de distribuidores:
+			//  - Precio mayor a 0 (antes se publicaban unidades en 0.00).
+			//  - Unidades: línea y sublínea activas asignadas (pestaña Línea) y
+			//    la sublínea con fondo de publicidad mayor a 0.
+			if ($publicar) {
+				$faltantes = $this->requisitosPublicarPortal($modo, $inventarioid, $precioPortal);
+				if (!empty($faltantes)) {
+					echo json_encode([
+						'status' => false,
+						'msg' => 'No se puede publicar en el portal. Falta: ' . implode(' ', $faltantes),
+						'faltantes' => $faltantes,
+					], JSON_UNESCAPED_UNICODE);
+					die();
+				}
 			}
 
 			if (!$publicar) {
@@ -2233,6 +2280,9 @@ class Inv_inventario extends Controllers
 			// Version, motor y año solo aplican a Producto (unidad ensamblada);
 			// Refaccion no los usa.
 			if ($modo === 'unidad') {
+				// web_unidades.marca es FK a la sublínea asignada en la pestaña
+				// Línea; no se toma lo que venga del formulario.
+				$data['marca'] = $this->marcaSublineaId($inventarioid);
 				$data['version'] = ($ing && $ing['version'] !== '') ? $ing['version'] : strClean($_POST['version'] ?? '');
 				$data['motor'] = ($ing && $ing['motor'] !== '') ? $ing['motor'] : strClean($_POST['motor'] ?? '');
 				$data['anio'] = $anio;

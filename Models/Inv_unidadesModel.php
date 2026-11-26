@@ -239,4 +239,81 @@ class Inv_unidadesModel extends Mysql
         }
         return $out;
     }
+
+    /**
+     * Unidades que ya salieron: un renglón por VIN con factura activa
+     * (wms_vin_facturacion, estatus 1/2) o con una salida en el kárdex (Ventas,
+     * Salida a fábrica, Devol. compras, Pérdidas, Mermas, Baja depuración...).
+     * No cuentan como salida los traspasos (58) ni los ajustes (6).
+     * El kárdex del VIN junta los movimientos ligados por wms_movimientos_inventario_series
+     * y los que solo traen el VIN en la referencia (cargas anteriores).
+     * situacion: SALIO (su último movimiento es una salida), EN_ALMACEN (su último
+     * movimiento es una entrada: sigue físicamente aunque esté vendido) o PENDIENTE
+     * (facturado sin ningún movimiento de inventario).
+     * El distribuidor capturado como fórmula de Excel (=...) se trata como vacío.
+     */
+    public function selectSalidas(): array
+    {
+        $sql = "SELECT ns.id_numeros_serie,
+                       ns.numero_serie,
+                       i.cve_articulo,
+                       i.descripcion,
+                       an.anio,
+                       NULLIF(TRIM(va.color), '') AS color,
+                       COALESCE(sl.cve_sublinea_producto, 'SIN SUBLINEA') AS sublinea,
+                       COALESCE(cs.descripcion, CASE WHEN f.idfacturacion IS NOT NULL THEN 'Ventas' END) AS tipo_salida,
+                       COALESCE(CASE WHEN TRIM(f.distribuidor) LIKE '=%' THEN NULL ELSE NULLIF(TRIM(f.distribuidor), '') END,
+                                CASE WHEN TRIM(ms.distribuidor) LIKE '=%' THEN NULL ELSE NULLIF(TRIM(ms.distribuidor), '') END,
+                                pv.razon_social, cl.razon_social) AS destinatario,
+                       CASE WHEN pv.id_proveedor IS NOT NULL THEN 'Proveedor'
+                            WHEN f.idfacturacion IS NOT NULL OR cl.idcliente IS NOT NULL THEN 'Cliente' END AS tipo_destinatario,
+                       f.factura,
+                       DATE_FORMAT(f.fecha_factura, '%Y-%m-%d') AS fecha_factura,
+                       DATE_FORMAT(COALESCE(ms.fecha_movimiento, f.fecha_salida), '%Y-%m-%d') AS fecha_salida,
+                       COALESCE(asal.cve_almacen, af.cve_almacen) AS almacen_salida,
+                       ms.numero_movimiento,
+                       COALESCE(aact.cve_almacen, '') AS almacen_actual,
+                       CASE WHEN ult.signo > 0 THEN 'EN_ALMACEN' WHEN ult.signo < 0 THEN 'SALIO' ELSE 'PENDIENTE' END AS situacion
+                       FROM wms_numeros_series ns
+                       INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
+                       LEFT JOIN cat_anio_vin an ON an.codigo = SUBSTRING(ns.numero_serie, 10, 1) COLLATE utf8mb4_general_ci
+                       LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
+                       LEFT JOIN (SELECT id_inventario, MIN(id_sublineaproducto) AS idsub
+                           FROM ing_modelo_configuracion
+                           WHERE deleted_at IS NULL AND id_inventario IS NOT NULL
+                           GROUP BY id_inventario) cfg ON cfg.id_inventario = i.idinventario
+                       LEFT JOIN (SELECT inventarioid, MIN(sublineaproductoid) AS idsub
+                           FROM wms_inventario_linea WHERE estado = 2
+                           GROUP BY inventarioid) il ON il.inventarioid = i.idinventario
+                       LEFT JOIN wms_sublinea_producto sl ON sl.idsublineaproducto = COALESCE(cfg.idsub, il.idsub)
+                       LEFT JOIN wms_vin_facturacion f ON f.id_numeros_serie = ns.id_numeros_serie AND f.estatus IN (1, 2)
+                       LEFT JOIN wms_almacenes af ON af.idalmacen = f.almacenid_salida
+                       LEFT JOIN (SELECT k.id_numeros_serie,
+                                  MAX(CASE WHEN k.signo < 0 AND cm.cve_concep_mov NOT IN ('6', '58') THEN k.idmov END) AS idmov_salida,
+                                  MAX(k.idmov) AS idmov_ultimo
+                           FROM (SELECT x.id_numeros_serie, m.idmovinventario AS idmov, m.signo, m.concepmovid
+                                 FROM wms_movimientos_inventario_series x
+                                 INNER JOIN wms_movimientos_inventario m ON m.idmovinventario = x.idmovinventario
+                                 UNION
+                                 SELECT s2.id_numeros_serie, m.idmovinventario, m.signo, m.concepmovid
+                                 FROM wms_movimientos_inventario m
+                                 INNER JOIN wms_numeros_series s2 ON s2.numero_serie = m.referencia
+                                 WHERE m.estado <> 0
+                                   AND NOT EXISTS (SELECT 1 FROM wms_movimientos_inventario_series x2
+                                                   WHERE x2.idmovinventario = m.idmovinventario)) k
+                           LEFT JOIN wms_conceptos_mov cm ON cm.idconcepmov = k.concepmovid
+                           GROUP BY k.id_numeros_serie) kd ON kd.id_numeros_serie = ns.id_numeros_serie
+                       LEFT JOIN wms_movimientos_inventario ms ON ms.idmovinventario = kd.idmov_salida
+                       LEFT JOIN wms_conceptos_mov cs ON cs.idconcepmov = ms.concepmovid
+                       LEFT JOIN wms_almacenes asal ON asal.idalmacen = ms.almacenid
+                       LEFT JOIN wms_movimientos_inventario ult ON ult.idmovinventario = kd.idmov_ultimo
+                       LEFT JOIN prv_cat_proveedores pv ON pv.id_proveedor = ms.id_proveedor
+                       LEFT JOIN cli_clientes cl ON cl.idcliente = ms.id_cliente
+                       LEFT JOIN wms_almacenes aact ON aact.idalmacen = ns.almacenid
+                       WHERE i.tipo_elemento = 'P'
+                         AND ns.estado <> '0'
+                         AND (f.idfacturacion IS NOT NULL OR kd.idmov_salida IS NOT NULL)
+                       ORDER BY COALESCE(ms.fecha_movimiento, f.fecha_factura) DESC, ns.numero_serie";
+        return $this->select_all($sql);
+    }
 }
