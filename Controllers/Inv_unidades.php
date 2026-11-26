@@ -52,6 +52,19 @@ class Inv_unidades extends Controllers
         die();
     }
 
+    /** Unidades que ya salieron (ventas, salidas a fábrica/proveedor, bajas): se carga al abrir la vista "Salidas". */
+    public function getSalidas()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        echo json_encode([
+            'generado' => date('Y-m-d H:i'),
+            'salidas'  => $this->model->selectSalidas(),
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
     private static function ordenSublinea(string $s): int
     {
         $i = array_search($s, self::ORDEN_SUBLINEAS, true);

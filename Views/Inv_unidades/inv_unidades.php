@@ -104,6 +104,12 @@
 
     .iu-body { padding: 1.25rem; }
     .iu-panel { animation: iuFade .25s ease; }
+    /* Vista Salidas */
+    .iu-sal-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: .25rem 0 1rem; }
+    .iu-sit { display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 600; padding: .12rem .5rem; border-radius: 1rem; white-space: nowrap; }
+    .iu-sit.salio { background: rgba(var(--vz-danger-rgb), .12); color: rgb(var(--vz-danger-rgb)); }
+    .iu-sit.almacen { background: rgba(var(--vz-warning-rgb), .15); color: rgb(var(--vz-warning-rgb)); }
+    .iu-sit.pendiente { background: rgba(var(--vz-secondary-rgb), .12); color: var(--iu-muted); }
 
     /* ---------- Vista: matriz por unidad ---------- */
     .iu-mbar { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
@@ -361,6 +367,9 @@
                         <button type="button" class="iu-tab" data-vista="transito" role="tab" title="Unidades por llegar (Order delivery plan)">
                             <i class="ri-ship-2-line"></i><span class="txt">En tránsito</span><span class="n" id="nVTransito">–</span>
                         </button>
+                        <button type="button" class="iu-tab" data-vista="salidas" role="tab" title="Unidades que ya salieron: vendidas, entregadas a proveedor o dadas de baja">
+                            <i class="ri-logout-box-r-line"></i><span class="txt">Salidas</span><span class="n" id="nVSalidas">–</span>
+                        </button>
                     </div>
                     <div class="iu-busca" id="wrapBuscar">
                         <i class="ri-search-line"></i>
@@ -438,6 +447,36 @@
                         <div class="iu-hint">
                             <span><i class="ri-cursor-line"></i>Clic en el modelo: ver sus contratos (contrato, modelo, QTY, ETA y status)</span>
                         </div>
+                    </div>
+                    <div id="panelSalidas" class="iu-panel d-none">
+                        <div class="iu-odp-nota">
+                            <i class="ri-logout-box-r-line"></i>
+                            <span>Unidades que ya <b>salieron</b> o están <b>facturadas</b>: ventas, salidas a fábrica o a proveedor, devoluciones a proveedor y bajas. Los traspasos entre almacenes no cuentan como salida.
+                            Aplican los filtros de sublínea, año y búsqueda (también por factura o distribuidor); color, planta y almacén no aplican.</span>
+                        </div>
+                        <div class="iu-sal-bar">
+                            <div class="iu-fopts" id="fSalSituacion"></div>
+                            <div class="iu-fopts" id="fSalTipo"></div>
+                            <button type="button" class="btn btn-sm btn-soft-success ms-auto" id="btnSalidasXLSX"><i class="ri-file-excel-2-line align-bottom me-1"></i>Excel</button>
+                        </div>
+                        <div id="salCargando" class="text-center text-muted py-5 d-none"><span class="spinner-border spinner-border-sm me-1"></span> Cargando salidas…</div>
+                        <table id="tSalidas" class="table table-sm table-hover align-middle mb-0" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>VIN</th>
+                                    <th>Modelo</th>
+                                    <th>SKU</th>
+                                    <th>Año</th>
+                                    <th>Tipo de salida</th>
+                                    <th>Situación</th>
+                                    <th>Distribuidor / proveedor</th>
+                                    <th>Factura</th>
+                                    <th>Fecha</th>
+                                    <th>Salió de</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                     <div id="panelAlmacen" class="iu-panel d-none"></div>
                     <div id="panelListado" class="iu-panel d-none">

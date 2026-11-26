@@ -599,13 +599,22 @@ WHERE idinventario = ?";
 
     public function getWebUnidadByInventario(int $inventarioid)
     {
-        $sql = "SELECT * FROM web_unidades WHERE inventarioid = $inventarioid";
+        // marca es FK a wms_sublinea_producto; marca_clave es la clave para mostrar
+        $sql = "SELECT wu.*, sp.cve_sublinea_producto AS marca_clave,
+                CONCAT(sp.cve_sublinea_producto, ' - ', sp.descripcion) AS marca_texto
+            FROM web_unidades wu
+            LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = wu.marca
+            WHERE wu.inventarioid = $inventarioid";
         return $this->select($sql);
     }
 
     public function getWebUnidad(int $idunidad)
     {
-        $sql = "SELECT * FROM web_unidades WHERE idunidad = $idunidad";
+        $sql = "SELECT wu.*, sp.cve_sublinea_producto AS marca_clave,
+                CONCAT(sp.cve_sublinea_producto, ' - ', sp.descripcion) AS marca_texto
+            FROM web_unidades wu
+            LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = wu.marca
+            WHERE wu.idunidad = $idunidad";
         return $this->select($sql);
     }
 
@@ -684,6 +693,39 @@ WHERE idinventario = ?";
 
         $r = $this->select($sql);
         return $r['cve_sublinea_producto'] ?? '';
+    }
+
+    // Sublínea activa del producto (pestaña Línea). Para web_unidades.marca,
+    // que es FK a wms_sublinea_producto. Devuelve null si no tiene línea.
+    public function getSublineaAutoPorLinea(int $inventarioid)
+    {
+        $sql = "SELECT sp.idsublineaproducto, sp.cve_sublinea_producto,
+                sp.descripcion AS sublinea_descripcion, sp.estado AS sublinea_estado,
+                COALESCE(sp.fondo_publicidad, 0) AS fondo_publicidad,
+                lp.idlineaproducto, lp.descripcion AS linea_descripcion, lp.estado AS linea_estado
+            FROM wms_inventario_linea il
+            INNER JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = il.sublineaproductoid
+            LEFT JOIN wms_linea_producto lp ON lp.idlineaproducto = sp.lineaproductoid
+            WHERE il.inventarioid = $inventarioid AND il.estado = 2
+            ORDER BY il.id_inv_linea DESC
+            LIMIT 1";
+
+        $r = $this->select($sql);
+        return !empty($r['idsublineaproducto']) ? $r : null;
+    }
+
+    // Mantiene web_unidades.marca igual a la sublínea asignada en la pestaña Línea.
+    public function sincronizarMarcaWebUnidad(int $inventarioid)
+    {
+        $sub = $this->getSublineaAutoPorLinea($inventarioid);
+        $sql = "UPDATE web_unidades SET marca = ?, fecha_actualizacion = NOW() WHERE inventarioid = ?";
+        return $this->update($sql, [$sub ? (int) $sub['idsublineaproducto'] : null, $inventarioid]);
+    }
+
+    public function getInventarioIdPorLinea(int $id_inv_linea)
+    {
+        $r = $this->select("SELECT inventarioid FROM wms_inventario_linea WHERE id_inv_linea = $id_inv_linea");
+        return (int) ($r['inventarioid'] ?? 0);
     }
 
     public function getPrecioPublicoAuto(int $inventarioid)

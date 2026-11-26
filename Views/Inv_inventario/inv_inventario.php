@@ -883,6 +883,7 @@
                                     <div class="col-md-4">
                                         <label class="form-label">Marca / categoría</label>
                                         <input type="text" id="pw_marca" name="marca" class="form-control" placeholder="Se sugiere según la línea del producto">
+                                        <small class="text-muted" id="pw_marca_hint"></small>
                                     </div>
 
                                     <div class="col-md-4" id="pw_wrap_version">

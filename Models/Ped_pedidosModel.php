@@ -679,7 +679,7 @@ class Ped_pedidosModel extends Mysql
                 u.descripcion,
 
                 u.anio,
-                u.marca,
+                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = u.marca) AS marca,
                 u.motor,
 
                 u.stock,
@@ -1216,7 +1216,7 @@ public function selectDetallesGestionPedido(int $idpedido): array
             u.nombre,
             u.version,
             u.anio,
-            u.marca,
+            (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = u.marca) AS marca,
             u.motor,
             u.stock,
             u.precio_estimado,

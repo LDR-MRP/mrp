@@ -1930,6 +1930,7 @@ function guardarPrecio(idinventario) {
         // O también puedes usar:
         // select.value = "";
 
+        pwRecargaPendiente = true; // Portal Web depende de Línea y Precio
         refrescarTablaPrecios(idinventario);
       } else {
         Swal.fire("Error", data.msg, "error");
@@ -2019,6 +2020,7 @@ function cambiarEstadoPrecio(id_inv_precio, idinventario, estado) {
       .then((data) => {
         if (data.status) {
           Swal.fire({ title: "Correcto", text: data.msg, icon: "success", target: document.getElementById("modalConfigInventario") || "body" });
+          pwRecargaPendiente = true; // Portal Web depende de Línea y Precio
           refrescarTablaPrecios(idinventario);
         } else {
           Swal.fire("Error", data.msg, "error");
@@ -2076,6 +2078,7 @@ function editarPrecio(id_inv_precio, idinventario, precioActual, anioActual = nu
       .then((data) => {
         if (data.status) {
           Swal.fire("Correcto", data.msg, "success");
+          pwRecargaPendiente = true; // Portal Web depende de Línea y Precio
           refrescarTablaPrecios(idinventario);
         } else {
           Swal.fire("Error", data.msg, "error");
@@ -2224,6 +2227,7 @@ function guardarLinea(idinventario) {
         if (res.status) {
           Swal.fire("Actualizado", res.msg, "success");
           limpiarFormularioLinea();
+          pwRecargaPendiente = true; // Portal Web depende de Línea y Precio
           refrescarTablaLineas(idinventario);
         } else {
           Swal.fire("Error", res.msg, "warning"); // 🔥 IMPORTANTE
@@ -2242,6 +2246,7 @@ function guardarLinea(idinventario) {
         if (res.status) {
           Swal.fire("OK", res.msg, "success");
           limpiarFormularioLinea();
+          pwRecargaPendiente = true; // Portal Web depende de Línea y Precio
           refrescarTablaLineas(idinventario);
         } else {
           Swal.fire("Error", res.msg, "warning"); // 🔥 ESTA LÍNEA FALTABA
@@ -3684,7 +3689,19 @@ function toggleCaratulaActualPw(el, mostrar) {
 let pwTipoElementoActual = null;
 let pwModoActual = null;
 
+// Portal Web usa la línea/sublínea (marca, fondo de publicidad) y los precios
+// asignados. Si se cambian en sus pestañas, se recarga al volver a Portal Web
+// (solo entonces, para no perder lo que se esté capturando ahí).
+let pwRecargaPendiente = false;
+document.addEventListener("shown.bs.tab", function (e) {
+  if (e.target.getAttribute("href") !== "#tabPortalWeb") return;
+  if (pwRecargaPendiente && currentInventarioId && cfgPuede("PORTALWEB")) {
+    cargarTabPortalWeb(currentInventarioId);
+  }
+});
+
 function cargarTabPortalWeb(idinventario, tipoElemento) {
+  pwRecargaPendiente = false;
   if (tipoElemento !== undefined) {
     pwTipoElementoActual = tipoElemento;
   }
@@ -3772,7 +3789,8 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
         if (claveModelo) claveModelo.value = registro.clave_modelo || "";
         if (nombre) nombre.value = registro.nombre || "";
         if (version) version.value = registro.version || "";
-        if (marca) marca.value = registro.marca || "";
+        // En unidades marca es el id de la sublínea; se muestra su clave
+        if (marca) marca.value = (pwModoActual === "unidad" ? registro.marca_texto : registro.marca) || "";
         if (motor) motor.value = registro.motor || "";
         if (anio) anio.value = registro.anio || "";
         if (descripcion) descripcion.value = registro.descripcion || "";
@@ -3789,7 +3807,7 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
         if (claveModelo) claveModelo.value = sugerencias.clave_modelo || "";
         if (nombre) nombre.value = sugerencias.nombre || "";
         if (version) version.value = "";
-        if (marca) marca.value = sugerencias.marca || "";
+        if (marca) marca.value = (pwModoActual === "unidad" ? sugerencias.marca_texto : sugerencias.marca) || "";
         if (motor) motor.value = "";
         if (anio) anio.value = new Date().getFullYear();
         if (descripcion) descripcion.value = "";
@@ -3808,6 +3826,16 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
       aplicarDatoIngenieriaPw(nombre, "pw_nombre_hint", ing, "nombre", "nombre comercial");
       aplicarDatoIngenieriaPw(version, "pw_version_hint", ing, "version", "versión");
       aplicarDatoIngenieriaPw(motor, "pw_motor_hint", ing, "motor", "motor");
+
+      // Productos: la marca es la sublínea asignada en la pestaña Línea (solo lectura)
+      if (marca) {
+        const esUnidad = pwModoActual === "unidad";
+        marca.readOnly = esUnidad;
+        marca.classList.toggle("bg-light", esUnidad);
+        marca.placeholder = esUnidad ? "Sin línea asignada (pestaña Línea)" : "Se sugiere según la línea del producto";
+      }
+      const marcaHint = document.getElementById("pw_marca_hint");
+      if (marcaHint) marcaHint.textContent = pwModoActual === "unidad" ? "Se toma de la sublínea asignada en la pestaña Línea." : "";
 
       renderPreciosPortalWeb(res.data.precios || [], registro, puedeGuardarPw);
 
@@ -4186,6 +4214,14 @@ function guardarPortalWeb() {
       if (res.status) {
         Swal.fire("OK", res.msg, "success");
         cargarTabPortalWeb(idinventario);
+      } else if (Array.isArray(res.faltantes) && res.faltantes.length) {
+        // Requisitos para publicar (precio, línea/sublínea, fondo de publicidad)
+        const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        Swal.fire({
+          icon: "warning",
+          title: "No se puede publicar en el portal",
+          html: `<div class="text-start">Falta:<ul class="mt-2 mb-0">${res.faltantes.map((f) => `<li>${esc(f)}</li>`).join("")}</ul></div>`,
+        });
       } else {
         Swal.fire("Error", res.msg, "error");
       }
