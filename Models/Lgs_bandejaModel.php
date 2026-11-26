@@ -1712,13 +1712,13 @@ class Lgs_bandejaModel extends Mysql {
                     $tarifa = $calc->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, max(1, $volumenParaTarifa));
                     $costoPorKm       = round((float)($tarifa['costo_por_km'] ?? 0), 5);
                     $rawFactor        = (float)($tarifa['factor'] ?? 1.0);
-                    $factor           = round($rawFactor > 0 ? $rawFactor : 1.0, 5);
+                    $factor           = ($rawFactor > 0) ? $rawFactor : 1.0;
                     $precioUnitarioKm = round($costoPorKm * $factor, 5);
 
                     if ($tipoServicio === 'SLC') {
-                        $costoTotalEst = round((float)($tarifa['precio_slc'] ?? 0), 5);
+                        $costoTotalEst = round((float)($tarifa['precio_slc'] ?? 0) * $numVins, 5);
                     } elseif ($tipoServicio === 'SLL') {
-                        $costoTotalEst = round((float)($tarifa['precio_sll'] ?? 0), 5);
+                        $costoTotalEst = round((float)($tarifa['precio_sll'] ?? 0) * $numVins, 5);
                     } else {
                         $costoTotalEst = round($precioUnitarioKm * $kmUsar * $numVins, 5);
                     }

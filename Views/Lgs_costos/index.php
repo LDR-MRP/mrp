@@ -634,7 +634,7 @@
                                                     </div>
                                                     <div>
                                                         <span class="d-block text-dark fw-bold">1. Tarifas de Madrina (Con factores de Volumen)</span>
-                                                        <small class="text-muted fw-normal fs-11">Desglose dinámico por unidad (2 a 9 autos) y tarifas planas locales SLC / SLL</small>
+                                                        <small class="text-muted fw-normal fs-11">Desglose dinámico por unidad (1 a 9 autos) y tarifas locales por unidad SLC / SLL</small>
                                                     </div>
                                                 </div>
                                                 <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 fs-11 d-none d-md-inline-block">
@@ -661,7 +661,7 @@
                                                             <th style="display: none;">Costo Base / KM ($ sin IVA)</th>
                                                             <th style="width: 170px;">Local Corto SLC (sin IVA)<br><small class="text-muted">(0-40 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">&ge; 3 unidades</span></th>
                                                             <th style="width: 170px;">Local Largo SLL (sin IVA)<br><small class="text-muted">(41-80 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">&ge; 3 unidades</span></th>
-                                                            <th>Desglose de Factores por Unidad (Precios sin IVA: 2 a 9 Unidades)</th>
+                                                            <th>Desglose de Factores por Unidad (Precios sin IVA: 1 a 9 Unidades)</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="tbodyTarifasMadrina">

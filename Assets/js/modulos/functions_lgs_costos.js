@@ -167,7 +167,7 @@ function calcularDiferenciasConGlobal(madrinaMatriz, plataformaMatriz) {
         if (!b) return;
         const mCost = parseFloat(m.costo_por_km) || 0;
         const bCost = parseFloat(b.costo_por_km) || 0;
-        for (let u = 2; u <= 9; u++) {
+        for (let u = 1; u <= 9; u++) {
             const mFact = m.factores_15 && m.factores_15[u] !== undefined ? parseFloat(m.factores_15[u]) : 1.0;
             const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (1.0 - ((u - 1) * 0.02));
             const mPrice = round5(mCost * mFact);
@@ -413,7 +413,7 @@ function renderTarifasMadrina(madrinaMatriz) {
         tdFactores.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-primary-subtle text-primary border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 2 a 9 VINs</span>
+                    <span class="badge bg-primary-subtle text-primary border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 1 a 9 VINs</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" 
                         data-bs-toggle="collapse" data-bs-target="#collapseMadrinaFactores_${idx}" 
@@ -442,7 +442,7 @@ function renderTarifasMadrina(madrinaMatriz) {
         const factores15 = item.factores_15 || {};
         const baseCost = parseFloat(item.costo_por_km) || 0;
 
-        for (let u = 2; u <= 9; u++) {
+        for (let u = 1; u <= 9; u++) {
             const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
             const initUnitCost = round5(baseCost * fVal);
 
@@ -469,9 +469,10 @@ function renderTarifasMadrina(madrinaMatriz) {
             const cardBorderClass = esDiferente
                 ? "card border-2 border-warning shadow-none rounded-2 mb-2 bg-warning-subtle bg-opacity-10"
                 : "card border border-light-subtle shadow-none rounded-2 mb-2 bg-white";
+            const vinLabel = `${u} ${u === 1 ? 'VIN' : 'VINs'}`;
             const subTitle = esDiferente
-                ? `<small class="fs-9 text-dark-50 fw-semibold">${u} VINs • Global: $${precioGlobalRef}</small>`
-                : `<small class="fs-9 text-white-50">${u} VINs</small>`;
+                ? `<small class="fs-9 text-dark-50 fw-semibold">${vinLabel} • Global: $${precioGlobalRef}</small>`
+                : `<small class="fs-9 text-white-50">${vinLabel}</small>`;
             const badgeIcon = esDiferente ? `<i class="ri-edit-2-fill text-danger ms-1" title="Personalizado (Global: $${precioGlobalRef})"></i>` : '';
 
             cardsHtml += `
@@ -509,7 +510,7 @@ function renderTarifasMadrina(madrinaMatriz) {
             const segGlobal = sysTarifasGlobales.madrina.find(s => s.id_segmento == item.id_segmento);
             if (segGlobal) {
                 const gCost = parseFloat(segGlobal.costo_por_km) || 0;
-                for (let u = 2; u <= 9; u++) {
+                for (let u = 1; u <= 9; u++) {
                     const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
                     const initUnitCost = round5(baseCost * fVal);
                     const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
@@ -833,7 +834,7 @@ function aplicarPresetMadrina(idx, tasaDescuento) {
     const inputCostoKm = document.querySelector(`.madrina-costo-km[data-idx="${idx}"]`);
     const costoKm = parseFloat(inputCostoKm ? inputCostoKm.value : 0) || 0;
 
-    for (let u = 2; u <= 9; u++) {
+    for (let u = 1; u <= 9; u++) {
         let f = 1.0 - ((u - 1) * tasaDescuento);
         if (f < 0.20) f = 0.20;
 
@@ -849,7 +850,7 @@ function recalcularTotalesTarifas() {
         const idx = input.getAttribute("data-idx");
         const costoKm = parseFloat(input.value) || 0;
 
-        for (let u = 2; u <= 9; u++) {
+        for (let u = 1; u <= 9; u++) {
             const inputFactor = document.getElementById(`madrina_factor_${idx}_${u}`);
             const previewSpan = document.querySelector(`.preview-madrina-${idx}-${u}`);
 

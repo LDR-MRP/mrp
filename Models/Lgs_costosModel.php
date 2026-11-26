@@ -175,7 +175,7 @@ class Lgs_costosModel extends Mysql
                 $minU = 1;
                 $maxU = 1;
                 if ($tipoTraslado === 1) {
-                    $minU = 2;
+                    $minU = 1;
                     $maxU = 9;
                 } elseif ($tipoTraslado === 3) {
                     $minU = 1;
@@ -279,7 +279,7 @@ class Lgs_costosModel extends Mysql
                                     num_vins_min, num_vins_max, costo_por_km, precio_plano, precio_slc, precio_sll, factor, es_personalizada
                                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-        // Guardar Madrina (Factores 2-9)
+        // Guardar Madrina (Factores 1-9)
         if (!empty($madrinaSegs)) {
             foreach ($madrinaSegs as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
@@ -292,7 +292,7 @@ class Lgs_costosModel extends Mysql
                     foreach ($seg['factores'] as $unidad => $valIngresado) {
                         $u = intval($unidad);
                         $precioReal = round(floatval($valIngresado), 5);
-                        if ($u >= 2 && $u <= 9) {
+                        if ($u >= 1 && $u <= 9) {
                             $fFinal = ($costoPorKm > 0) ? round($precioReal / $costoPorKm, 8) : 1.0;
                             $stmtIns->execute([$provVal, 1, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                         }
@@ -300,7 +300,7 @@ class Lgs_costosModel extends Mysql
                 } else {
                     $valIngresado = round(floatval($seg['factor'] ?? 0), 5);
                     $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? round($valIngresado / $costoPorKm, 8) : 1.0;
-                    $stmtIns->execute([$provVal, 1, $idSegmento, 2, 9, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
+                    $stmtIns->execute([$provVal, 1, $idSegmento, 1, 9, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                 }
             }
         }
@@ -433,7 +433,7 @@ class Lgs_costosModel extends Mysql
                 $pCost = (float)$p['costo_por_km'];
                 $bCost = (float)$b['costo_por_km'];
 
-                for ($u = 1; $u <= 10; $u++) {
+                for ($u = 1; $u <= 9; $u++) {
                     $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 5);
                     $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 5);
                     if (abs($pUnit - $bUnit) > 0.00001) {

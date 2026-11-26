@@ -330,13 +330,14 @@ class Lgs_enviosService {
                         }
                         $precioLocal = (float)($tarifa['precio_slc'] ?? 0);
                         if ($precioLocal > 0) {
-                            $costoPlano = $precioLocal;
+                            $unidadesLocal = ($idTipoTraslado === 2) ? 1 : $numVinsDest;
+                            $costoPlano = $precioLocal * $unidadesLocal;
                             $distanciaUsar = 0;
                         } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
                             // Blindaje Lowboy: si no tiene tarifa plana SLC configurada, cobrar por KM Lowboy
                             $costoPlano = 0;
                         } else {
-                            $costoPlano = $precioLocal;
+                            $costoPlano = 0;
                             $distanciaUsar = 0;
                         }
                     } elseif ($servicioSubEnvio === 'SLL') {
@@ -345,13 +346,14 @@ class Lgs_enviosService {
                         }
                         $precioLocal = (float)($tarifa['precio_sll'] ?? 0);
                         if ($precioLocal > 0) {
-                            $costoPlano = $precioLocal;
+                            $unidadesLocal = ($idTipoTraslado === 2) ? 1 : $numVinsDest;
+                            $costoPlano = $precioLocal * $unidadesLocal;
                             $distanciaUsar = 0;
                         } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
                             // Blindaje Lowboy: si no tiene tarifa plana SLL configurada, cobrar por KM Lowboy
                             $costoPlano = 0;
                         } else {
-                            $costoPlano = $precioLocal;
+                            $costoPlano = 0;
                             $distanciaUsar = 0;
                         }
                     }
@@ -512,12 +514,13 @@ class Lgs_enviosService {
                         }
                         $precioLocal = (float)($tarifa['precio_slc'] ?? 0);
                         if ($precioLocal > 0) {
-                            $costoPlano = $precioLocal;
+                            $unidadesLocal = ($idTipoTraslado === 2) ? 1 : $volumenTotal;
+                            $costoPlano = $precioLocal * $unidadesLocal;
                             $distanciaUsar = 0;
                         } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
                             $costoPlano = 0;
                         } else {
-                            $costoPlano = $precioLocal;
+                            $costoPlano = 0;
                             $distanciaUsar = 0;
                         }
                     } elseif ($servicioTramo === 'SLL') {
@@ -526,12 +529,13 @@ class Lgs_enviosService {
                         }
                         $precioLocal = (float)($tarifa['precio_sll'] ?? 0);
                         if ($precioLocal > 0) {
-                            $costoPlano = $precioLocal;
+                            $unidadesLocal = ($idTipoTraslado === 2) ? 1 : $volumenTotal;
+                            $costoPlano = $precioLocal * $unidadesLocal;
                             $distanciaUsar = 0;
                         } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
                             $costoPlano = 0;
                         } else {
-                            $costoPlano = $precioLocal;
+                            $costoPlano = 0;
                             $distanciaUsar = 0;
                         }
                     }
@@ -968,6 +972,19 @@ class Lgs_enviosService {
             $stmt->execute([$idProveedor, $idTipoTraslado, $idSegmento, $volumenVins]);
             $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tarifa) return $tarifa;
+
+            // Respaldo dentro del mismo proveedor: si el volumen queda por debajo/encima de sus rangos
+            // (ej. un proveedor sin fila explícita de 1 unidad), usar el escalón más cercano del proveedor
+            $sqlNearest = "SELECT id_tarifa as id, costo_por_km, precio_plano, precio_slc, precio_sll, factor 
+                           FROM lgs_tarifas_proveedores 
+                           WHERE id_proveedor = ? AND id_tipo_traslado = ? AND id_segmento = ? 
+                             AND activo != 0 
+                           ORDER BY ABS(num_vins_min - ?) ASC, num_vins_min ASC 
+                           LIMIT 1";
+            $stmtNearest = $db->prepare($sqlNearest);
+            $stmtNearest->execute([$idProveedor, $idTipoTraslado, $idSegmento, $volumenVins]);
+            $tarifaNearest = $stmtNearest->fetch(PDO::FETCH_ASSOC);
+            if ($tarifaNearest) return $tarifaNearest;
         }
 
         // 2. Intentar tarifa base general (id_proveedor = 0)
@@ -981,6 +998,17 @@ class Lgs_enviosService {
         $stmt->execute([$idTipoTraslado, $idSegmento, $volumenVins]);
         $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($tarifa) return $tarifa;
+
+        $sqlBaseNearest = "SELECT id_tarifa as id, costo_por_km, precio_plano, precio_slc, precio_sll, factor 
+                           FROM lgs_tarifas_proveedores 
+                           WHERE id_proveedor = 0 AND id_tipo_traslado = ? AND id_segmento = ? 
+                             AND activo != 0 
+                           ORDER BY ABS(num_vins_min - ?) ASC, num_vins_min ASC 
+                           LIMIT 1";
+        $stmtBaseNearest = $db->prepare($sqlBaseNearest);
+        $stmtBaseNearest->execute([$idTipoTraslado, $idSegmento, $volumenVins]);
+        $tarifaBaseNearest = $stmtBaseNearest->fetch(PDO::FETCH_ASSOC);
+        if ($tarifaBaseNearest) return $tarifaBaseNearest;
 
         // 3. Fallback en código por si la tabla está vacía
         $defaultSegmentos = [

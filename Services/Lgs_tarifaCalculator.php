@@ -135,6 +135,19 @@ class Lgs_tarifaCalculator
             if ($tarifa) {
                 return $tarifa;
             }
+
+            $sqlNearest = "SELECT id_tarifa, costo_por_km, precio_plano, precio_slc, precio_sll, factor 
+                           FROM lgs_tarifas_proveedores 
+                           WHERE id_proveedor = ? AND id_tipo_traslado = ? AND id_segmento = ? 
+                             AND activo != 0 
+                           ORDER BY ABS(num_vins_min - ?) ASC, num_vins_min ASC 
+                           LIMIT 1";
+            $stmtNearest = $db->prepare($sqlNearest);
+            $stmtNearest->execute([$idProveedor, $idTipoTraslado, $idSegmento, $volumenVins]);
+            $tarifaNearest = $stmtNearest->fetch(PDO::FETCH_ASSOC);
+            if ($tarifaNearest) {
+                return $tarifaNearest;
+            }
         }
 
         // 2. Tarifa base general (id_proveedor = 0)
@@ -149,6 +162,19 @@ class Lgs_tarifaCalculator
         $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($tarifa) {
             return $tarifa;
+        }
+
+        $sqlBaseNearest = "SELECT id_tarifa, costo_por_km, precio_plano, precio_slc, precio_sll, factor 
+                           FROM lgs_tarifas_proveedores 
+                           WHERE id_proveedor = 0 AND id_tipo_traslado = ? AND id_segmento = ? 
+                             AND activo != 0 
+                           ORDER BY ABS(num_vins_min - ?) ASC, num_vins_min ASC 
+                           LIMIT 1";
+        $stmtBaseNearest = $db->prepare($sqlBaseNearest);
+        $stmtBaseNearest->execute([$idTipoTraslado, $idSegmento, $volumenVins]);
+        $tarifaBaseNearest = $stmtBaseNearest->fetch(PDO::FETCH_ASSOC);
+        if ($tarifaBaseNearest) {
+            return $tarifaBaseNearest;
         }
 
         // 3. Fallback por defecto según reglas 2026
@@ -216,15 +242,17 @@ class Lgs_tarifaCalculator
             // Se mantiene dentro del mismo rango de tarifa plana local
             $montoCalculado = 0.00;
         } elseif ($servicioOriginal === 'SLC' && $servicioNuevo === 'SLL') {
-            // Salto de Local Corto a Local Largo: diferencia de tarifa plana
-            $montoCalculado = max(0.0, $precioSll - $precioSlc);
+            // Salto de Local Corto a Local Largo: diferencia de tarifa local por unidad
+            $unidadesLocal = ($tipoTraslado === 2) ? 1 : max(1, $vinsSeleccionadosCount);
+            $montoCalculado = max(0.0, ($precioSll - $precioSlc) * $unidadesLocal);
         } elseif (in_array($servicioOriginal, ['SLC', 'SLL'], true) && $servicioNuevo === 'FORANEO') {
             // Salto de Local a Foráneo: Costo foráneo del nuevo trayecto menos la tarifa local ya contratada
             $costoForaneoNuevo = ($tipoTraslado === 2) 
                 ? ($precioKmUnitario * $kmNuevo)
                 : ($precioKmUnitario * $kmNuevo * $totalVinsEnvio);
 
-            $tarifaPlanaPrevia = ($servicioOriginal === 'SLC') ? $precioSlc : $precioSll;
+            $unidadesLocalPrev = ($tipoTraslado === 2) ? 1 : $totalVinsEnvio;
+            $tarifaPlanaPrevia = (($servicioOriginal === 'SLC') ? $precioSlc : $precioSll) * $unidadesLocalPrev;
             $montoCalculado = max(0.0, $costoForaneoNuevo - $tarifaPlanaPrevia);
         } else {
             // Fallback genérico por km

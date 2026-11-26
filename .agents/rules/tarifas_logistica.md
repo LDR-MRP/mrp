@@ -58,10 +58,10 @@
 ### Reglas de Madrina
 
 1. El precio es **por unidad** y se multiplica: `$/KM_unidad x distancia_km x cantidad_unidades`.
-2. **SLC y SLL en Madrina solo aplican A PARTIR DE 3 UNIDADES.**
-   - Si una madrina lleva 1 o 2 unidades y el envío es local (SLC o SLL), **NO se debe permitir** usar tarifa de madrina local. Deben usar Plataforma u otra modalidad.
-3. El precio de SLC ($3,850.00) y SLL ($5,780.00) es una **tarifa plana única** para todo el trayecto. **NO varía por cantidad de unidades.** Es el mismo precio si llevas 3 o 9 unidades.
-4. El factoraje empieza desde **2 unidades**. No existe factor para 1 unidad en madrina (una madrina con 1 unidad no tiene sentido operativo, para eso se usa Rodando o Plataforma).
+2. **SLC y SLL en Madrina solo aplican A PARTIR DE 3 UNIDADES** en la madrina total del envío.
+   - Si una madrina lleva menos de 3 unidades en total y el envío es local (SLC o SLL), **NO se debe permitir** usar tarifa de madrina local. Deben usar Plataforma u otra modalidad.
+3. El precio de SLC ($3,850.00) y SLL ($5,780.00) es una **tarifa fija por unidad** para cada tramo local (no se multiplica por km, pero **SÍ se multiplica por la cantidad de unidades a bordo en el tramo**: `tarifa_local x cantidad_unidades`).
+4. El factoraje administrable cubre **de 1 a 9 unidades** (el factor de 1 unidad es editable en el tarifario y se utiliza especialmente en tramos finales de envíos escalonados cuando solo resta 1 unidad a bordo).
 5. En el UI, el SLC y SLL de Madrina se muestra como **un solo campo por segmento** (no dentro de los factores).
 
 ---
@@ -132,13 +132,13 @@ costo = $/km_por_unidad x distancia_km x cantidad_unidades
 
 **SLC o SLL (hasta 80 km):**
 ```
-costo = tarifa_plana_slc_o_sll
+costo = tarifa_local_slc_o_sll x cantidad_unidades
 ```
-- Es un precio fijo por el trayecto completo. **NO se multiplica por km ni por unidades.**
-- La tarifa plana se selecciona según:
+- No se multiplica por km, pero en Madrina y Plataforma **se cobra por cada unidad a bordo en el tramo/sub-envío** (`tarifa_local × cantidad_unidades`; en Chofer siempre es 1 unidad).
+- La tarifa local unitaria se selecciona según:
   - Tipo de traslado (Rodando, Madrina, Plataforma)
   - Segmento dominante (solo para Rodando)
-  - Cantidad de unidades (solo para Plataforma: 1 ud vs 2 uds)
+  - Cantidad de unidades (solo para Plataforma: 1 ud vs 2+ uds)
 
 ### Validaciones Obligatorias
 
