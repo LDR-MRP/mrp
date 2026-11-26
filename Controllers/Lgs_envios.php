@@ -1,5 +1,9 @@
 <?php
 
+if (!class_exists('Lgs_tarifaCalculator') && file_exists(__DIR__ . '/../Services/Lgs_tarifaCalculator.php')) {
+    require_once __DIR__ . '/../Services/Lgs_tarifaCalculator.php';
+}
+
 class Lgs_envios extends Controllers
 {
     use ApiResponser;
@@ -137,8 +141,9 @@ class Lgs_envios extends Controllers
             }
 
             $modalidad = strtoupper($reqData['modalidad_calculo'] ?? $_POST['modalidad_calculo'] ?? 'ESCALONADO');
+            $tipoServicio = Lgs_tarifaCalculator::normalizarModoServicio($reqData['tipo_servicio'] ?? $_POST['tipo_servicio'] ?? 'AUTOMATICO');
             $model = new Lgs_enviosModel();
-            $result = $model->verificarDistanciasRuta($nodos, null, $modalidad);
+            $result = $model->verificarDistanciasRuta($nodos, null, $modalidad, $tipoServicio);
 
             echo $this->successResponse($result, "Verificación de distancias completada");
         } catch (Throwable $e) {
@@ -554,10 +559,14 @@ class Lgs_envios extends Controllers
             $db->prepare("UPDATE lgs_envios SET km_total = ? WHERE id_envio = ?")->execute([$kmTotalAcumulado, $idEnvio]);
 
             // Recomputación automática si el envío ya tenía unidades asignadas
+            $recalculoWarning = null;
             try {
                 $service = new Lgs_enviosService();
                 $service->recalcularCostoTotal($idEnvio, $db);
-            } catch (Throwable $e) {}
+            } catch (Throwable $e) {
+                $recalculoWarning = $e->getMessage();
+                error_log("Aviso de recálculo en Lgs_envios::store (envío #{$idEnvio}): " . $recalculoWarning);
+            }
 
             $db->commit();
 
@@ -565,11 +574,16 @@ class Lgs_envios extends Controllers
                 ? "Pre-envío {$folioGuardado} guardado exitosamente con ruta multi-nodo."
                 : "Envío guardado exitosamente con ruta multi-nodo.";
 
-            echo $this->successResponse([
+            $payloadOk = [
                 'id_envio'    => $idEnvio,
                 'folio'       => $folioGuardado,
                 'es_preenvio' => $esPreEnvio,
-            ], $msgOk);
+            ];
+            if ($recalculoWarning !== null) {
+                $payloadOk['recalculo_warning'] = $recalculoWarning;
+            }
+
+            echo $this->successResponse($payloadOk, $msgOk);
 
         } catch (Throwable $e) {
             if (isset($db) && $db->inTransaction()) $db->rollBack();
@@ -724,6 +738,62 @@ class Lgs_envios extends Controllers
             $existentes = $model->getAcomodoExistenteEnvio($idEnvio);
             $paradas    = $model->getParadasEnvio($idEnvio);
             $nodos      = $model->getNodosEnvio($idEnvio);
+
+            // Enriquecer nodos con distancia efectiva (km_directo) y tipo_servicio_detectado
+            if (!empty($nodos)) {
+                $modalidadEnvio = strtoupper($envio['modalidad_calculo'] ?? 'ESCALONADO');
+                $tipoServEnvio  = Lgs_tarifaCalculator::normalizarModoServicio($envio['tipo_servicio'] ?? 'AUTOMATICO');
+                $dbConn         = $model->getConexion();
+
+                foreach ($nodos as $nIdx => &$nd) {
+                    if ($nIdx === 0) {
+                        $nd['km_directo'] = 0.0;
+                        $nd['tipo_servicio_detectado'] = 'ORIGEN';
+                        continue;
+                    }
+                    $kmEfectivo = (float)($nd['km_tramo'] ?? 0);
+                    if ($modalidadEnvio === 'DIRECTO') {
+                        $nodoOrigRef = $nodos[0];
+                        if (!empty($nd['id_origen_referencia'])) {
+                            foreach ($nodos as $cand) {
+                                if ((int)$cand['id_nodo'] === (int)$nd['id_origen_referencia']
+                                    || (int)$cand['orden'] === (int)$nd['id_origen_referencia']
+                                    || (int)$cand['id_ubicacion'] === (int)$nd['id_origen_referencia']) {
+                                    $nodoOrigRef = $cand;
+                                    break;
+                                }
+                            }
+                        }
+                        $idLocA = (int)($nodoOrigRef['id_ubicacion'] ?? 0);
+                        $idLocB = (int)($nd['id_ubicacion'] ?? 0);
+                        $kmDir  = 0.0;
+                        if ($idLocA > 0 && $idLocB > 0) {
+                            $distMem = $model->getDistanciaEntre($idLocA, $idLocB, $dbConn);
+                            if ($distMem !== null && $distMem > 0) {
+                                $kmDir = $distMem;
+                            }
+                        }
+                        if ($kmDir <= 0) {
+                            $ordOrig = (int)($nodoOrigRef['orden'] ?? 0);
+                            $ordDest = (int)($nd['orden'] ?? 0);
+                            $distAcum = 0.0;
+                            foreach ($nodos as $nTmp) {
+                                $ordTmp = (int)($nTmp['orden'] ?? 0);
+                                if ($ordTmp > $ordOrig && $ordTmp <= $ordDest) {
+                                    $distAcum += (float)($nTmp['km_tramo'] ?? 0);
+                                }
+                            }
+                            $kmDir = ($distAcum > 0) ? $distAcum : $kmEfectivo;
+                        }
+                        $kmEfectivo = $kmDir;
+                    }
+                    $nd['km_directo'] = round($kmEfectivo, 2);
+                    $nd['tipo_servicio_detectado'] = ($kmEfectivo > 0)
+                        ? Lgs_tarifaCalculator::resolverTipoServicio($kmEfectivo, $tipoServEnvio)
+                        : 'PENDIENTE';
+                }
+                unset($nd);
+            }
 
             // Filtrar VINs para mostrar solo los que van a los destinos de la ruta
             if (!empty($nodos) && !empty($vins)) {
@@ -1085,8 +1155,9 @@ class Lgs_envios extends Controllers
             }
 
             $modalidad = strtoupper($reqData['modalidad_calculo'] ?? $_POST['modalidad_calculo'] ?? 'ESCALONADO');
+            $tipoServicio = Lgs_tarifaCalculator::normalizarModoServicio($reqData['tipo_servicio'] ?? $_POST['tipo_servicio'] ?? 'AUTOMATICO');
             $model = new Lgs_enviosModel();
-            $verif = $model->verificarDistanciasRuta($nodos, null, $modalidad);
+            $verif = $model->verificarDistanciasRuta($nodos, null, $modalidad, $tipoServicio);
 
             // Mapear respuesta compatible para el frontend
             $paradasCalculadas = [];
@@ -1098,14 +1169,17 @@ class Lgs_envios extends Controllers
                     'nombre_a'             => $t['nombre_a'],
                     'nombre_b'             => $t['nombre_b'],
                     'km_tramo'             => $t['km'],
+                    'tipo_servicio'        => $t['tipo_servicio'] ?? 'PENDIENTE',
+                    'tipo_servicio_label'  => $t['tipo_servicio_label'] ?? '',
                 ];
             }
 
             echo $this->successResponse([
-                'paradas'   => $paradasCalculadas,
-                'km_total'  => $verif['km_total'],
-                'completo'  => $verif['completo'],
-                'faltantes' => $verif['faltantes']
+                'paradas'          => $paradasCalculadas,
+                'km_total'         => $verif['km_total'],
+                'completo'         => $verif['completo'],
+                'faltantes'        => $verif['faltantes'],
+                'resumen_servicio' => $verif['resumen_servicio'] ?? null,
             ], "Ruta y distancias procesadas");
 
         } catch (Throwable $e) {

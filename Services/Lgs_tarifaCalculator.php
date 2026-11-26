@@ -4,6 +4,118 @@ declare(strict_types=1);
 
 class Lgs_tarifaCalculator
 {
+    public const KM_MAX_SLC = 40.0;
+    public const KM_MAX_SLL = 80.0;
+    public const SERVICIOS_VALIDOS = ['AUTOMATICO', 'FORANEO', 'SLC', 'SLL'];
+
+    /**
+     * Normaliza el modo de servicio solicitado contra la lista permitida.
+     */
+    public static function normalizarModoServicio(?string $tipoServicio): string
+    {
+        $modo = strtoupper(trim((string)$tipoServicio));
+        return in_array($modo, self::SERVICIOS_VALIDOS, true) ? $modo : 'AUTOMATICO';
+    }
+
+    /**
+     * Resuelve la clasificación efectiva (SLC, SLL o FORANEO) según la distancia y el modo del envío.
+     */
+    public static function resolverTipoServicio(float $km, string $tipoServicioEnvio = 'AUTOMATICO'): string
+    {
+        $modo = self::normalizarModoServicio($tipoServicioEnvio);
+        if ($modo !== 'AUTOMATICO') {
+            return $modo;
+        }
+
+        if ($km > 0 && $km <= self::KM_MAX_SLC) {
+            return 'SLC';
+        }
+        if ($km > self::KM_MAX_SLC && $km <= self::KM_MAX_SLL) {
+            return 'SLL';
+        }
+        return 'FORANEO';
+    }
+
+    /**
+     * Detecta la clasificación según distancia, devolviendo PENDIENTE si aún no hay KM (> 0).
+     */
+    public static function detectarPorKm(float $km): string
+    {
+        if ($km <= 0) {
+            return 'PENDIENTE';
+        }
+        if ($km <= self::KM_MAX_SLC) {
+            return 'SLC';
+        }
+        if ($km <= self::KM_MAX_SLL) {
+            return 'SLL';
+        }
+        return 'FORANEO';
+    }
+
+    /**
+     * Devuelve la etiqueta legible de una clasificación de servicio.
+     */
+    public static function etiquetaServicio(string $codigo): string
+    {
+        $map = [
+            'SLC'       => 'Local Corto (SLC 0-40 km)',
+            'SLL'       => 'Local Largo (SLL 41-80 km)',
+            'FORANEO'   => 'Foráneo (>80 km)',
+            'MIXTO'     => 'Mixto / Campechaneado',
+            'PENDIENTE' => 'Pendiente de KM',
+        ];
+        $key = strtoupper(trim($codigo));
+        return $map[$key] ?? $map['FORANEO'];
+    }
+
+    /**
+     * Resume las clasificaciones detectadas en las paradas/tramos de una ruta.
+     */
+    public static function resumirServiciosRuta(array $serviciosPorTramo, string $modoSolicitado = 'AUTOMATICO'): array
+    {
+        $modo = self::normalizarModoServicio($modoSolicitado);
+        $conteo = [
+            'SLC'     => 0,
+            'SLL'     => 0,
+            'FORANEO' => 0,
+        ];
+
+        foreach ($serviciosPorTramo as $serv) {
+            $s = strtoupper(trim((string)$serv));
+            if (isset($conteo[$s])) {
+                $conteo[$s]++;
+            }
+        }
+
+        $serviciosUnicos = [];
+        foreach ($conteo as $k => $cantidad) {
+            if ($cantidad > 0) {
+                $serviciosUnicos[] = $k;
+            }
+        }
+
+        $esMixto = count($serviciosUnicos) > 1;
+        $tieneLocales = ($conteo['SLC'] > 0 || $conteo['SLL'] > 0);
+
+        if ($esMixto) {
+            $clasificacionGlobal = 'MIXTO';
+        } elseif (count($serviciosUnicos) === 1) {
+            $clasificacionGlobal = $serviciosUnicos[0];
+        } else {
+            $clasificacionGlobal = 'PENDIENTE';
+        }
+
+        return [
+            'modo_solicitado'      => $modo,
+            'clasificacion_global' => $clasificacionGlobal,
+            'etiqueta_global'      => self::etiquetaServicio($clasificacionGlobal),
+            'es_mixto'             => $esMixto,
+            'tiene_locales'        => $tieneLocales,
+            'servicios_unicos'     => $serviciosUnicos,
+            'conteo'               => $conteo,
+        ];
+    }
     /**
      * Obtiene la tarifa aplicable consultando lgs_tarifas_proveedores
      */
@@ -132,10 +244,10 @@ class Lgs_tarifaCalculator
 
     private function clasificarServicio(float $km): string
     {
-        if ($km <= 40.0) {
+        if ($km <= self::KM_MAX_SLC) {
             return 'SLC';
         }
-        if ($km <= 80.0) {
+        if ($km <= self::KM_MAX_SLL) {
             return 'SLL';
         }
         return 'FORANEO';

@@ -1,5 +1,9 @@
 <?php
 
+if (!class_exists('Lgs_tarifaCalculator') && file_exists(__DIR__ . '/../Services/Lgs_tarifaCalculator.php')) {
+    require_once __DIR__ . '/../Services/Lgs_tarifaCalculator.php';
+}
+
 class Lgs_enviosModel extends Mysql
 {
     use Auditable;
@@ -1514,13 +1518,16 @@ class Lgs_enviosModel extends Mysql
      * En modalidad ESCALONADO, evalúa tramo a tramo consecutivo.
      * Retorna si todas las distancias son conocidas y la lista de tramos faltantes.
      */
-    public function verificarDistanciasRuta(array $nodos, ?PDO $db = null, string $modalidad = 'ESCALONADO'): array
+    public function verificarDistanciasRuta(array $nodos, ?PDO $db = null, string $modalidad = 'ESCALONADO', string $tipoServicio = 'AUTOMATICO'): array
     {
         if ($db === null) $db = $this->getConexion();
         $this->ensureDistanciasTable($db);
 
+        $modoServicio = Lgs_tarifaCalculator::normalizarModoServicio($tipoServicio);
         $faltantes = [];
         $tramos = [];
+        $serviciosEntregas = [];
+        $serviciosTodos = [];
         $kmTotal = 0.0;
 
         // Obtener nombres de ubicaciones para el reporte
@@ -1536,9 +1543,26 @@ class Lgs_enviosModel extends Mysql
         $nodoOrigenInicial = $nodos[0] ?? null;
 
         for ($i = 1; $i < count($nodos); $i++) {
-            // En DIRECTO (reparto) la referencia de distancia es el punto de recolección / origen de partida
-            $nodoPrev = ($esDirecto && $nodoOrigenInicial) ? $nodoOrigenInicial : $nodos[$i - 1];
             $nodoCurr = $nodos[$i];
+            // En DIRECTO (reparto) la referencia de distancia es el origen de referencia asignado o el origen inicial
+            if ($esDirecto) {
+                $nodoPrev = $nodoOrigenInicial;
+                $rawRef = $nodoCurr['id_origen_referencia'] ?? null;
+                if ($rawRef !== null && $rawRef !== '') {
+                    $refInt = intval($rawRef);
+                    foreach ($nodos as $idxCand => $cand) {
+                        if ($idxCand >= $i) continue;
+                        if (intval($cand['orden'] ?? -1) === $refInt
+                            || (!empty($cand['id_nodo']) && intval($cand['id_nodo']) === $refInt)
+                            || (!empty($cand['id_ubicacion']) && intval($cand['id_ubicacion']) === $refInt)) {
+                            $nodoPrev = $cand;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                $nodoPrev = $nodos[$i - 1];
+            }
 
             $idA = intval($nodoPrev['id_ubicacion'] ?? $nodoPrev['id_destino_cat'] ?? 0);
             $idB = intval($nodoCurr['id_ubicacion'] ?? $nodoCurr['id_destino_cat'] ?? 0);
@@ -1586,22 +1610,37 @@ class Lgs_enviosModel extends Mysql
                 $kmTotal += ($km ?: 0.00);
             }
 
+            $kmVal = (float)($km ?: 0.0);
+            $servDetectado = ($kmVal > 0) ? Lgs_tarifaCalculator::resolverTipoServicio($kmVal, $modoServicio) : 'PENDIENTE';
+            if ($kmVal > 0) {
+                $serviciosTodos[] = $servDetectado;
+                $tipoNodoCurr = strtolower(trim((string)($nodoCurr['tipo_nodo'] ?? 'entrega')));
+                if ($tipoNodoCurr !== 'carga') {
+                    $serviciosEntregas[] = $servDetectado;
+                }
+            }
+
             $tramos[] = [
-                'tramo_indice' => $i,
-                'id_ubicacion_a' => $idA,
-                'id_ubicacion_b' => $idB,
-                'nombre_a' => $nomA,
-                'nombre_b' => $nomB,
-                'km' => $km ?: 0.00,
-                'es_abierto' => ($esAbiertoCurr || $esAbiertoPrev)
+                'tramo_indice'        => $i,
+                'id_ubicacion_a'      => $idA,
+                'id_ubicacion_b'      => $idB,
+                'nombre_a'            => $nomA,
+                'nombre_b'            => $nomB,
+                'km'                  => $kmVal,
+                'es_abierto'          => ($esAbiertoCurr || $esAbiertoPrev),
+                'tipo_servicio'       => $servDetectado,
+                'tipo_servicio_label' => Lgs_tarifaCalculator::etiquetaServicio($servDetectado),
             ];
         }
 
+        $serviciosParaResumen = !empty($serviciosEntregas) ? $serviciosEntregas : $serviciosTodos;
+
         return [
-            'completo'  => empty($faltantes),
-            'faltantes' => $faltantes,
-            'tramos'    => $tramos,
-            'km_total'  => round($kmTotal, 2)
+            'completo'         => empty($faltantes),
+            'faltantes'        => $faltantes,
+            'tramos'           => $tramos,
+            'km_total'         => round($kmTotal, 2),
+            'resumen_servicio' => Lgs_tarifaCalculator::resumirServiciosRuta($serviciosParaResumen, $modoServicio),
         ];
     }
 

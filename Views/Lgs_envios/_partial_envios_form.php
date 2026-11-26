@@ -109,13 +109,17 @@ $accentColor       = $esModoPreEnvio ? '#0284C7' : 'var(--brand-primary)';
 
                                     <div class="col-md-6">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Tipo de Servicio</label>
-                                        <select class="form-select border rounded-3" id="tipo_servicio" name="tipo_servicio" onchange="verificarYCalcularRuta()">
-                                            <option value="AUTOMATICO" selected>Automático / Mixto (Detecta SLC, SLL y Foráneo)</option>
+                                        <select class="form-select border rounded-3" id="tipo_servicio" name="tipo_servicio" onchange="actualizarDeteccionAutomaticaRutaUI(); verificarYCalcularRuta()">
+                                            <option value="AUTOMATICO" selected>Automático / Mixto (Detecta SLC 0-40, SLL 41-80 y Foráneo >80 km por parada)</option>
                                             <option value="FORANEO">Foráneo (Costo por KM)</option>
                                             <option value="SLC">Local Corto SLC (0-40 KM)</option>
                                             <option value="SLL">Local Largo SLL (41-80 KM)</option>
                                         </select>
+                                        <div id="badge-deteccion-servicio-form" class="mt-1 d-flex align-items-center flex-wrap gap-1"></div>
                                     </div>
+
+                                    <!-- Alerta dinámica de detección automática (reglas locales / campechaneado) -->
+                                    <div id="alert-regla-local-envio" class="col-md-12 mt-2 d-none"></div>
 
                                     <!-- Pre-confirmación de Cita / Recepción con Cliente para evitar envíos fallidos -->
                                     <div class="col-md-12 mt-2">
@@ -252,9 +256,12 @@ $accentColor       = $esModoPreEnvio ? '#0284C7' : 'var(--brand-primary)';
                                 </div>
 
                                 <!-- Badge Resumen Distancia Total -->
-                                <div id="badge-distancia-total-container" class="alert alert-soft-primary d-flex align-items-center justify-content-between p-2 mb-3 rounded-3" style="display:none !important;">
+                                <div id="badge-distancia-total-container" class="alert alert-soft-primary d-flex align-items-center justify-content-between flex-wrap gap-2 p-2 mb-3 rounded-3" style="display:none !important;">
                                     <span class="fs-12 fw-medium"><i class="ri-road-map-line text-primary me-1"></i>Distancia Total del Recorrido:</span>
-                                    <span id="badge-km-total-val" class="badge bg-primary fs-13">0 km</span>
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span id="badge-km-total-val" class="badge bg-primary fs-13">0 km</span>
+                                        <span id="badge-servicio-ruta-val" class="badge fs-12 d-none"></span>
+                                    </div>
                                 </div>
 
                                 <!-- Contenedor dinámico de nodos del recorrido -->

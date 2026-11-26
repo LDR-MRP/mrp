@@ -1274,11 +1274,12 @@ function agregarNodoRuta(data, isCarga = false) {
 
     div.innerHTML = `
         <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="badge ${esOrigen ? 'bg-success' : 'text-white'} badge-nodo-tipo px-2 py-1 fs-11" style="${esOrigen ? '' : (isCargaVal ? 'background-color: #0d6efd !important;' : 'background-color: #fd7e14 !important;')}">
                     <i class="${esOrigen ? 'ri-map-pin-user-line' : (isCargaVal ? 'ri-map-pin-add-line' : 'ri-map-pin-line')} me-1"></i>
                     <span class="nodo-tipo-txt">${esOrigen ? 'PUNTO 1 (PUNTO DE PARTIDA / CARGA)' : (isCargaVal ? 'PUNTO ' + (index + 1) + ' (CARGA ADICIONAL)' : 'PUNTO ' + (index + 1) + ' (BAJADA / DESCARGA)')}</span>
                 </span>
+                <span class="badge nodo-servicio-badge d-none fs-10 px-2 py-1"></span>
                 <span class="text-muted fs-11 nodo-desc-txt">
                     ${esOrigen ? 'Lugar de salida de la madrina o chofer' : (isCargaVal ? 'Punto de recolección o carga de unidades' : 'Punto de entrega o descarga de unidades')}
                 </span>
@@ -1605,6 +1606,200 @@ function alCambiarNombreLibreNodo(inp) {
     serializarNodos();
 }
 
+/** Clasifica el tipo de servicio de un tramo según KM y modo seleccionado */
+function clasificarServicioPorKmEnvio(km, modoEnvio = 'AUTOMATICO') {
+    const modo = String(modoEnvio || 'AUTOMATICO').toUpperCase().trim();
+    const validos = ['AUTOMATICO', 'SLC', 'SLL', 'FORANEO'];
+    const modoNorm = validos.includes(modo) ? modo : 'AUTOMATICO';
+    const kmNum = parseFloat(km) || 0;
+
+    if (kmNum <= 0 && modoNorm === 'AUTOMATICO') {
+        return 'PENDIENTE';
+    }
+    if (modoNorm !== 'AUTOMATICO') {
+        return modoNorm;
+    }
+    if (kmNum <= 40) {
+        return 'SLC';
+    }
+    if (kmNum <= 80) {
+        return 'SLL';
+    }
+    return 'FORANEO';
+}
+
+/** Aplica clases y texto descriptivo a un badge de servicio usando solo textContent */
+function aplicarEstiloBadgeServicioEnvio(el, codigo, km = 0) {
+    if (!el) return;
+    const cod = String(codigo || 'PENDIENTE').toUpperCase();
+    const kmNum = parseFloat(km) || 0;
+
+    el.className = 'badge fs-10 px-2 py-1';
+    if (el.classList.contains('badge-servicio-grande')) {
+        el.className = 'badge badge-servicio-grande fs-12 ms-1';
+    }
+
+    if (cod === 'SLC') {
+        el.classList.add('bg-soft-success', 'text-success', 'border', 'border-success');
+        el.textContent = kmNum > 0 ? `SLC · Local Corto (${kmNum.toFixed(1)} km)` : 'SLC · Local Corto (0-40 km)';
+    } else if (cod === 'SLL') {
+        el.classList.add('bg-soft-warning', 'text-warning', 'border', 'border-warning');
+        el.textContent = kmNum > 0 ? `SLL · Local Largo (${kmNum.toFixed(1)} km)` : 'SLL · Local Largo (41-80 km)';
+    } else if (cod === 'FORANEO') {
+        el.classList.add('bg-soft-primary', 'text-primary', 'border', 'border-primary');
+        el.textContent = kmNum > 0 ? `FORÁNEO (${kmNum.toFixed(1)} km)` : 'FORÁNEO (>80 km)';
+    } else if (cod === 'MIXTO') {
+        el.classList.add('bg-soft-info', 'text-info', 'border', 'border-info');
+        el.textContent = 'MIXTO / CAMPECHANEADO';
+    } else {
+        el.classList.add('d-none');
+        el.textContent = '';
+    }
+}
+
+/** Actualiza en tiempo real la detección automática de rangos por parada y las alertas de regla local */
+function actualizarDeteccionAutomaticaRutaUI(resumenBackend = null) {
+    const selModo = document.getElementById('tipo_servicio');
+    const modoEnvio = selModo ? String(selModo.value || 'AUTOMATICO').toUpperCase() : 'AUTOMATICO';
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+
+    const conteoEntregas = { SLC: 0, SLL: 0, FORANEO: 0 };
+    const conteoTodos = { SLC: 0, SLL: 0, FORANEO: 0 };
+    let hayEntregasConKm = false;
+
+    items.forEach((card, idx) => {
+        const badgeNodo = card.querySelector('.nodo-servicio-badge');
+        if (idx === 0) {
+            if (badgeNodo) {
+                badgeNodo.className = 'badge nodo-servicio-badge d-none fs-10 px-2 py-1';
+                badgeNodo.textContent = '';
+            }
+            return;
+        }
+
+        const inpKm = card.querySelector('.nodo-km-tramo');
+        const km = inpKm ? (parseFloat(inpKm.value) || 0) : 0;
+        const servAttr = card.getAttribute('data-tipo-servicio-tramo');
+        const codigo = (modoEnvio === 'AUTOMATICO' && servAttr && ['SLC', 'SLL', 'FORANEO'].includes(servAttr) && km > 0)
+            ? servAttr
+            : clasificarServicioPorKmEnvio(km, modoEnvio);
+
+        if (badgeNodo) {
+            if (codigo === 'PENDIENTE') {
+                badgeNodo.className = 'badge nodo-servicio-badge d-none fs-10 px-2 py-1';
+                badgeNodo.textContent = '';
+            } else {
+                badgeNodo.className = 'badge nodo-servicio-badge fs-10 px-2 py-1';
+                if (codigo === 'SLC') {
+                    badgeNodo.classList.add('bg-soft-success', 'text-success', 'border', 'border-success');
+                    badgeNodo.textContent = km > 0 ? `SLC · Local Corto (${km.toFixed(1)} km)` : 'SLC · Local Corto (0-40 km)';
+                } else if (codigo === 'SLL') {
+                    badgeNodo.classList.add('bg-soft-warning', 'text-warning', 'border', 'border-warning');
+                    badgeNodo.textContent = km > 0 ? `SLL · Local Largo (${km.toFixed(1)} km)` : 'SLL · Local Largo (41-80 km)';
+                } else {
+                    badgeNodo.classList.add('bg-soft-primary', 'text-primary', 'border', 'border-primary');
+                    badgeNodo.textContent = km > 0 ? `FORÁNEO (${km.toFixed(1)} km)` : 'FORÁNEO (>80 km)';
+                }
+            }
+        }
+
+        if (km > 0 && ['SLC', 'SLL', 'FORANEO'].includes(codigo)) {
+            conteoTodos[codigo]++;
+            if (card.getAttribute('data-tipo-nodo') !== 'carga') {
+                conteoEntregas[codigo]++;
+                hayEntregasConKm = true;
+            }
+        }
+    });
+
+    const conteoFinal = (resumenBackend && resumenBackend.conteo && modoEnvio === 'AUTOMATICO')
+        ? resumenBackend.conteo
+        : (hayEntregasConKm ? conteoEntregas : conteoTodos);
+
+    const unicos = ['SLC', 'SLL', 'FORANEO'].filter(k => (conteoFinal[k] || 0) > 0);
+    const esMixto = unicos.length > 1;
+    const tieneLocales = ((conteoFinal.SLC || 0) > 0 || (conteoFinal.SLL || 0) > 0);
+    const clasifGlobal = esMixto ? 'MIXTO' : (unicos.length === 1 ? unicos[0] : (modoEnvio !== 'AUTOMATICO' ? modoEnvio : 'PENDIENTE'));
+
+    // Actualizar badge en barra de distancia total
+    const badgeRuta = document.getElementById('badge-servicio-ruta-val');
+    if (badgeRuta) {
+        if (clasifGlobal === 'PENDIENTE') {
+            badgeRuta.className = 'badge fs-12 d-none';
+            badgeRuta.textContent = '';
+        } else {
+            badgeRuta.className = 'badge badge-servicio-grande fs-12 ms-1';
+            aplicarEstiloBadgeServicioEnvio(badgeRuta, clasifGlobal, 0);
+            if (esMixto) {
+                const resumenParts = unicos.map(k => `${k}: ${conteoFinal[k]}`).join(' | ');
+                badgeRuta.textContent = `MIXTO / CAMPECHANEADO (${resumenParts})`;
+            }
+        }
+    }
+
+    // Actualizar resumen bajo el select Tipo de Servicio
+    const contForm = document.getElementById('badge-deteccion-servicio-form');
+    if (contForm) {
+        contForm.replaceChildren();
+        if (clasifGlobal !== 'PENDIENTE') {
+            const lbl = document.createElement('span');
+            lbl.className = 'fs-11 text-muted me-1';
+            lbl.textContent = 'Detectado:';
+            contForm.appendChild(lbl);
+
+            const pill = document.createElement('span');
+            aplicarEstiloBadgeServicioEnvio(pill, clasifGlobal, 0);
+            if (esMixto) {
+                pill.textContent = `MIXTO (${unicos.map(k => `${conteoFinal[k]} ${k}`).join(' + ')})`;
+            }
+            contForm.appendChild(pill);
+        }
+    }
+
+    // Actualizar alerta preventiva de reglas locales
+    const alertBox = document.getElementById('alert-regla-local-envio');
+    if (alertBox) {
+        if (!tieneLocales && !esMixto) {
+            alertBox.className = 'col-md-12 mt-2 d-none';
+            alertBox.replaceChildren();
+        } else {
+            const idTipoTraslado = document.getElementById('id_tipo_traslado') ? String(document.getElementById('id_tipo_traslado').value || '') : '';
+            const esMadrina = (idTipoTraslado === '1');
+            const esChofer = (idTipoTraslado === '2');
+            const esPlataforma = (idTipoTraslado === '3');
+
+            const box = document.createElement('div');
+            box.className = `alert ${esMadrina ? 'alert-soft-warning border border-warning' : 'alert-soft-info border border-info'} py-2 px-3 mb-0 rounded-3 d-flex align-items-start gap-2 fs-12`;
+
+            const icon = document.createElement('i');
+            icon.className = `${esMadrina ? 'ri-alert-line text-warning' : 'ri-information-line text-info'} fs-16 mt-1 flex-shrink-0`;
+            box.appendChild(icon);
+
+            const body = document.createElement('div');
+            const partes = [];
+            if (esMixto) {
+                partes.push('Envío campechaneado detectado: cada parada se cotizará con su clasificación correspondiente (SLC 0-40 km / SLL 41-80 km / Foráneo >80 km).');
+            }
+            if (tieneLocales) {
+                if (esMadrina) {
+                    partes.push('Regla Madrina Local: las paradas SLC/SLL requieren al menos 3 unidades a bordo en la madrina. Para 1 o 2 unidades en trayecto local utilice Plataforma o Chofer (Rodando).');
+                } else if (esPlataforma) {
+                    partes.push('Plataforma Local detectada: se aplicará tarifa plana SLC/SLL según cantidad de unidades (1 ud o 2+ uds; Lowboy aplica tarifa local o $/km según convenio).');
+                } else if (esChofer) {
+                    partes.push('Chofer (Rodando) Local detectado: se aplicará tarifa plana SLC/SLL por segmento de vehículo.');
+                } else {
+                    partes.push('Ruta con paradas locales (SLC/SLL): seleccione el tipo de traslado para validar la regla aplicable.');
+                }
+            }
+            body.textContent = partes.join(' ');
+            box.appendChild(body);
+
+            alertBox.className = 'col-md-12 mt-2';
+            alertBox.replaceChildren(box);
+        }
+    }
+}
+
 /** Recalcula y actualiza visualmente la suma de kilómetros en la tarjeta superior */
 function recalcularKmTotalVisual() {
     const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
@@ -1616,6 +1811,7 @@ function recalcularKmTotalVisual() {
             const inp = card.querySelector('.nodo-km-tramo');
             const km = inp ? (parseFloat(inp.value) || 0) : 0;
             total += km;
+            card.removeAttribute('data-tipo-servicio-tramo');
             const chkAbierto = card.querySelector('.nodo-check-abierto');
             if ((chkAbierto && chkAbierto.checked) || card.getAttribute('data-destino-abierto') === '1') {
                 tieneAbierto = true;
@@ -1631,6 +1827,7 @@ function recalcularKmTotalVisual() {
             spanVal.innerText = total.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + (tieneAbierto ? ' km (Incluye KM manuales)' : ' km (Memoria Progresiva)');
         }
     }
+    actualizarDeteccionAutomaticaRutaUI();
 }
 
 /** Actualiza numeración, badges visuales y botones de los nodos */
@@ -1705,6 +1902,7 @@ function actualizarSecuenciaNodos() {
 
     actualizarOpcionesOrigenReferencia();
     serializarNodos();
+    actualizarDeteccionAutomaticaRutaUI();
 }
 
 /** Serializa los nodos en los campos ocultos del formulario */
@@ -1835,9 +2033,10 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
     let ajaxUrl = base_url + '/Lgs_envios/verificarDistanciasRuta';
 
     const modCalc = (document.getElementById('modalidad_calculo') ? document.getElementById('modalidad_calculo').value : 'DIRECTO') || 'DIRECTO';
+    const tipoServ = (document.getElementById('tipo_servicio') ? document.getElementById('tipo_servicio').value : 'AUTOMATICO') || 'AUTOMATICO';
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader("Content-Type", "application/json");
-    request.send(JSON.stringify({ nodos: nodos, modalidad_calculo: modCalc }));
+    request.send(JSON.stringify({ nodos: nodos, modalidad_calculo: modCalc, tipo_servicio: tipoServ }));
 
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
@@ -1847,7 +2046,7 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
                     const data = res.data;
                     const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
 
-                    // Actualizar distancias conocidas en la UI
+                    // Actualizar distancias conocidas y clasificación detectada en la UI
                     if (Array.isArray(data.tramos)) {
                         data.tramos.forEach(t => {
                             const nodoCard = items[t.tramo_indice];
@@ -1856,11 +2055,17 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
                                 if (inpKm && t.km > 0) {
                                     inpKm.value = t.km;
                                 }
+                                if (t.tipo_servicio) {
+                                    nodoCard.setAttribute('data-tipo-servicio-tramo', String(t.tipo_servicio));
+                                } else {
+                                    nodoCard.removeAttribute('data-tipo-servicio-tramo');
+                                }
                             }
                         });
                     }
 
                     serializarNodos();
+                    actualizarDeteccionAutomaticaRutaUI(data.resumen_servicio || null);
 
                     // Mostrar resumen de KM total
                     const alertTotal = document.getElementById('badge-distancia-total-container');
@@ -2169,6 +2374,32 @@ function openModal() {
     if (document.querySelector('#tipo_servicio')) {
         document.querySelector('#tipo_servicio').value = 'AUTOMATICO';
     }
+    const badgeDetForm = document.getElementById('badge-deteccion-servicio-form');
+    if (badgeDetForm) badgeDetForm.replaceChildren();
+    const alertReglaLocal = document.getElementById('alert-regla-local-envio');
+    if (alertReglaLocal) {
+        alertReglaLocal.replaceChildren();
+        alertReglaLocal.classList.add('d-none');
+    }
+    const badgeServRuta = document.getElementById('badge-servicio-ruta-val');
+    if (badgeServRuta) {
+        badgeServRuta.classList.add('d-none');
+        badgeServRuta.textContent = '';
+    }
+    const alertTotalClear = document.getElementById('badge-distancia-total-container');
+    if (alertTotalClear) alertTotalClear.style.setProperty('display', 'none', 'important');
+    const badgeServClear = document.getElementById('badge-servicio-ruta-val');
+    if (badgeServClear) {
+        badgeServClear.className = 'badge fs-12 d-none';
+        badgeServClear.textContent = '';
+    }
+    const contFormClear = document.getElementById('badge-deteccion-servicio-form');
+    if (contFormClear) contFormClear.replaceChildren();
+    const alertLocalClear = document.getElementById('alert-regla-local-envio');
+    if (alertLocalClear) {
+        alertLocalClear.className = 'col-md-12 mt-2 d-none';
+        alertLocalClear.replaceChildren();
+    }
 
     // Resetear Monto Abierto
     if (document.getElementById('check_monto_abierto')) {
@@ -2324,9 +2555,11 @@ function ejecutarGuardadoEnvioFinal() {
                         if (typeof tableBandeja !== 'undefined' && tableBandeja) tableBandeja.ajax.reload();
                         if (typeof cargarUnidadesPTGlobales === 'function') cargarUnidadesPTGlobales(false);
                         
+                        const msgBase = objData.message || objData.msg || "Guardado exitosamente con ruta multi-nodo.";
+                        const recWarn = (objData.data && objData.data.recalculo_warning) ? `\n\nNota de cálculo: ${objData.data.recalculo_warning}` : '';
                         Swal.fire({
                             title: esPreGuardado ? "¡Pre-envío Guardado!" : "¡Envío Guardado!",
-                            text: objData.message || objData.msg || "Guardado exitosamente con ruta multi-nodo.",
+                            text: msgBase + recWarn,
                             icon: "success",
                             showCancelButton: true,
                             confirmButtonColor: esPreGuardado ? "#0284C7" : "#C46623",
@@ -2791,6 +3024,7 @@ function handleTipoTrasladoEnvio() {
     } else {
         aplicarDefaultModalidadCalculo(false);
     }
+    actualizarDeteccionAutomaticaRutaUI();
 }
 
 /**

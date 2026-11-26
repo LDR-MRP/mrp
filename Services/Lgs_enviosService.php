@@ -1,5 +1,9 @@
 <?php
 
+if (!class_exists('Lgs_tarifaCalculator') && file_exists(__DIR__ . '/Lgs_tarifaCalculator.php')) {
+    require_once __DIR__ . '/Lgs_tarifaCalculator.php';
+}
+
 class Lgs_enviosService {
 
     private Lgs_enviosModel $model;
@@ -167,12 +171,14 @@ class Lgs_enviosService {
 
         $costoTotalEnvio = 0.0;
         $tarifasBasePond = [1 => 27.0, 2 => 30.0, 3 => 40.0, 4 => 50.0, 5 => 60.0];
+        $maxKmSubEnvioDirecto = 0.0;
 
         if ($modalidad === 'DIRECTO') {
             // ══════════════════════════════════════════════════════════════════════
             // MODALIDAD: ENVÍO DIRECTO CON ESCALAS (SUB-ENVÍOS POR DESTINO)
             // ══════════════════════════════════════════════════════════════════════
             foreach ($unidadesAsignadas as $idAgrupador => $vinsGrupo) {
+                $totalVinsVehiculo = count($vinsGrupo);
                 // Agrupar VINs de este transporte por su nodo de destino (bajada)
                 $gruposPorDestino = [];
                 foreach ($vinsGrupo as $vin) {
@@ -293,8 +299,8 @@ class Lgs_enviosService {
                         elseif ($vinsMedianos > 0) $segmentoDominante = 2;
                     }
 
-                    // El factoraje en Envío Directo se calcula según el total de unidades a bordo en la Madrina/Plataforma
-                    $volumenParaTarifa = ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? count($vins) : $numVinsDest;
+                    // El factoraje en Envío Directo se calcula según el total de unidades a bordo en la Madrina/Plataforma asignada
+                    $volumenParaTarifa = ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? $totalVinsVehiculo : $numVinsDest;
                     if ($idTipoTraslado === 1 && $volumenParaTarifa > 9) {
                         $volumenParaTarifa = 9;
                     } elseif ($idTipoTraslado === 3 && $isLowboy) {
@@ -305,6 +311,7 @@ class Lgs_enviosService {
 
                     $tarifa = $this->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenParaTarifa);
 
+                    $maxKmSubEnvioDirecto = max($maxKmSubEnvioDirecto, $kmTramo);
                     $distanciaUsar = $kmTramo;
                     $costoPorKm = (float)($tarifa['costo_por_km'] ?? 0);
                     $factor = ((float)($tarifa['factor'] ?? 0) > 0) ? (float)$tarifa['factor'] : 1.0;
@@ -314,38 +321,39 @@ class Lgs_enviosService {
                         $factor = 1.0;
                     }
 
-                    $tipoServicioEnvio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
-                    $servicioSubEnvio = 'FORANEO';
-
-                    if ($tipoServicioEnvio === 'SLC') {
-                        $servicioSubEnvio = 'SLC';
-                    } elseif ($tipoServicioEnvio === 'SLL') {
-                        $servicioSubEnvio = 'SLL';
-                    } elseif ($tipoServicioEnvio === 'FORANEO') {
-                        $servicioSubEnvio = 'FORANEO';
-                    } else {
-                        // AUTOMATICO o MIXTO: Clasifica según la distancia real hacia este destino
-                        if ($kmTramo > 0 && $kmTramo <= 40) {
-                            $servicioSubEnvio = 'SLC';
-                        } elseif ($kmTramo > 40 && $kmTramo <= 80) {
-                            $servicioSubEnvio = 'SLL';
-                        } else {
-                            $servicioSubEnvio = 'FORANEO';
-                        }
-                    }
+                    $tipoServicioEnvio = Lgs_tarifaCalculator::normalizarModoServicio($envio['tipo_servicio'] ?? 'AUTOMATICO');
+                    $servicioSubEnvio  = Lgs_tarifaCalculator::resolverTipoServicio($kmTramo, $tipoServicioEnvio);
 
                     if ($servicioSubEnvio === 'SLC') {
-                        if ($idTipoTraslado === 1 && count($vins) < 3) {
-                            throw new Exception("El servicio Local Corto (SLC) en Madrina requiere al menos 3 unidades a bordo.");
+                        if ($idTipoTraslado === 1 && $totalVinsVehiculo < 3) {
+                            throw new Exception("El servicio Local Corto (SLC) en Madrina requiere al menos 3 unidades a bordo en la madrina (actualmente {$totalVinsVehiculo}). Para 1 o 2 unidades en trayecto local utilice Plataforma o Chofer (Rodando).");
                         }
-                        $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
-                        $distanciaUsar = 0;
+                        $precioLocal = (float)($tarifa['precio_slc'] ?? 0);
+                        if ($precioLocal > 0) {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
+                            // Blindaje Lowboy: si no tiene tarifa plana SLC configurada, cobrar por KM Lowboy
+                            $costoPlano = 0;
+                        } else {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        }
                     } elseif ($servicioSubEnvio === 'SLL') {
-                        if ($idTipoTraslado === 1 && count($vins) < 3) {
-                            throw new Exception("El servicio Local Largo (SLL) en Madrina requiere al menos 3 unidades a bordo.");
+                        if ($idTipoTraslado === 1 && $totalVinsVehiculo < 3) {
+                            throw new Exception("El servicio Local Largo (SLL) en Madrina requiere al menos 3 unidades a bordo en la madrina (actualmente {$totalVinsVehiculo}). Para 1 o 2 unidades en trayecto local utilice Plataforma o Chofer (Rodando).");
                         }
-                        $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
-                        $distanciaUsar = 0;
+                        $precioLocal = (float)($tarifa['precio_sll'] ?? 0);
+                        if ($precioLocal > 0) {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
+                            // Blindaje Lowboy: si no tiene tarifa plana SLL configurada, cobrar por KM Lowboy
+                            $costoPlano = 0;
+                        } else {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        }
                     }
 
                     $precioUnitarioKm = round($costoPorKm * $factor, 5);
@@ -365,7 +373,7 @@ class Lgs_enviosService {
                         ($idTipoTraslado === 2) ? $idAgrupador : null,
                         $nodoOrigen['id_nodo'],
                         $nodoDestino['id_nodo'],
-                        $distanciaUsar,
+                        $kmTramo,
                         $vinsLigeros,
                         $vinsMedianos,
                         $vinsPesados,
@@ -390,6 +398,7 @@ class Lgs_enviosService {
             // MODALIDAD: ENVÍO ESCALONADO (TRADICIONAL POR TRAMOS CONSECUTIVOS)
             // ══════════════════════════════════════════════════════════════════════
             foreach ($unidadesAsignadas as $idAgrupador => $vinsGrupo) {
+                $totalVinsVehiculo = count($vinsGrupo);
                 
                 for ($i = 1; $i < count($nodos); $i++) {
                     $nodoOrigen = $nodos[$i-1];
@@ -494,38 +503,37 @@ class Lgs_enviosService {
                         $factor = 1.0;
                     }
 
-                    $tipoServicioEnvio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
-                    $servicioTramo = 'FORANEO';
-
-                    if ($tipoServicioEnvio === 'SLC') {
-                        $servicioTramo = 'SLC';
-                    } elseif ($tipoServicioEnvio === 'SLL') {
-                        $servicioTramo = 'SLL';
-                    } elseif ($tipoServicioEnvio === 'FORANEO') {
-                        $servicioTramo = 'FORANEO';
-                    } else {
-                        // AUTOMATICO o MIXTO: Clasifica según la distancia de este tramo
-                        if ($kmTramo > 0 && $kmTramo <= 40) {
-                            $servicioTramo = 'SLC';
-                        } elseif ($kmTramo > 40 && $kmTramo <= 80) {
-                            $servicioTramo = 'SLL';
-                        } else {
-                            $servicioTramo = 'FORANEO';
-                        }
-                    }
+                    $tipoServicioEnvio = Lgs_tarifaCalculator::normalizarModoServicio($envio['tipo_servicio'] ?? 'AUTOMATICO');
+                    $servicioTramo     = Lgs_tarifaCalculator::resolverTipoServicio($kmTramo, $tipoServicioEnvio);
 
                     if ($servicioTramo === 'SLC') {
-                        if ($idTipoTraslado === 1 && count($vins) < 3) {
-                            throw new Exception("El servicio Local Corto (SLC) en Madrina solo está permitido a partir de 3 unidades a bordo.");
+                        if ($idTipoTraslado === 1 && $totalVinsVehiculo < 3) {
+                            throw new Exception("El servicio Local Corto (SLC) en Madrina solo está permitido a partir de 3 unidades a bordo en la madrina (actualmente {$totalVinsVehiculo}). Para 1 o 2 unidades en trayecto local utilice Plataforma o Chofer (Rodando).");
                         }
-                        $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
-                        $distanciaUsar = 0;
+                        $precioLocal = (float)($tarifa['precio_slc'] ?? 0);
+                        if ($precioLocal > 0) {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
+                            $costoPlano = 0;
+                        } else {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        }
                     } elseif ($servicioTramo === 'SLL') {
-                        if ($idTipoTraslado === 1 && count($vins) < 3) {
-                            throw new Exception("El servicio Local Largo (SLL) en Madrina solo está permitido a partir de 3 unidades a bordo.");
+                        if ($idTipoTraslado === 1 && $totalVinsVehiculo < 3) {
+                            throw new Exception("El servicio Local Largo (SLL) en Madrina solo está permitido a partir de 3 unidades a bordo en la madrina (actualmente {$totalVinsVehiculo}). Para 1 o 2 unidades en trayecto local utilice Plataforma o Chofer (Rodando).");
                         }
-                        $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
-                        $distanciaUsar = 0;
+                        $precioLocal = (float)($tarifa['precio_sll'] ?? 0);
+                        if ($precioLocal > 0) {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        } elseif ($idTipoTraslado === 3 && $isLowboy === 1) {
+                            $costoPlano = 0;
+                        } else {
+                            $costoPlano = $precioLocal;
+                            $distanciaUsar = 0;
+                        }
                     }
 
                     $precioUnitarioKm = round($costoPorKm * $factor, 5);
@@ -545,7 +553,7 @@ class Lgs_enviosService {
                         ($idTipoTraslado === 2) ? $idAgrupador : null,
                         $nodoOrigen['id_nodo'],
                         $nodoDestino['id_nodo'],
-                        $distanciaUsar,
+                        $kmTramo,
                         $vinsLigeros,
                         $vinsMedianos,
                         $vinsPesados,
@@ -595,18 +603,11 @@ class Lgs_enviosService {
             $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = costo_unidad + ? WHERE id = ?")->execute([$dif, $lastVinId]);
         }
 
-        // Clasificación de tipo_servicio por VIN para Escalonado o Automático
-        $tipoServicioEnvio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
-        $stmtUpVinServ = $db->prepare("UPDATE lgs_envios_vins SET tipo_servicio = ? WHERE id = ?");
-        foreach ($vins as $v) {
-            $servVin = 'FORANEO';
-            if ($tipoServicioEnvio === 'SLC') {
-                $servVin = 'SLC';
-            } elseif ($tipoServicioEnvio === 'SLL') {
-                $servVin = 'SLL';
-            } elseif ($tipoServicioEnvio === 'FORANEO') {
-                $servVin = 'FORANEO';
-            } else {
+        // Clasificación de tipo_servicio por VIN para Escalonado (en DIRECTO ya fue asignada por sub-envío)
+        if ($modalidad !== 'DIRECTO') {
+            $tipoServicioEnvio = Lgs_tarifaCalculator::normalizarModoServicio($envio['tipo_servicio'] ?? 'AUTOMATICO');
+            $stmtUpVinServ = $db->prepare("UPDATE lgs_envios_vins SET tipo_servicio = ? WHERE id = ?");
+            foreach ($vins as $v) {
                 $ordSub = 0;
                 $ordBaj = count($nodos) - 1;
                 foreach ($nodos as $n) {
@@ -620,15 +621,9 @@ class Lgs_enviosService {
                         $distVin += (float)$n['km_tramo_anterior'];
                     }
                 }
-                if ($distVin > 0 && $distVin <= 40) {
-                    $servVin = 'SLC';
-                } elseif ($distVin > 40 && $distVin <= 80) {
-                    $servVin = 'SLL';
-                } else {
-                    $servVin = 'FORANEO';
-                }
+                $servVin = Lgs_tarifaCalculator::resolverTipoServicio($distVin, $tipoServicioEnvio);
+                $stmtUpVinServ->execute([$servVin, $v['id']]);
             }
-            $stmtUpVinServ->execute([$servVin, $v['id']]);
         }
 
         // 3. Actualizar el Costo Total y KM Total en la Cabecera
@@ -637,12 +632,13 @@ class Lgs_enviosService {
         $rowKmTotal = $stmtKmTotal->fetch(PDO::FETCH_ASSOC);
         $kmTotalCalculado = (float)($rowKmTotal['total_km'] ?? 0);
 
-        $tipoServicio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
-        if ($tipoServicio === 'SLC' && $kmTotalCalculado > 40) {
-            throw new Exception("El envío supera los 40km ({$kmTotalCalculado} km) y no puede ser clasificado como Local Corto (SLC). Utilice la modalidad Automático / Mixto o Foráneo.");
+        $tipoServicio = Lgs_tarifaCalculator::normalizarModoServicio($envio['tipo_servicio'] ?? 'AUTOMATICO');
+        $kmValidacionTope = ($modalidad === 'DIRECTO' && $maxKmSubEnvioDirecto > 0) ? $maxKmSubEnvioDirecto : $kmTotalCalculado;
+        if ($tipoServicio === 'SLC' && $kmValidacionTope > Lgs_tarifaCalculator::KM_MAX_SLC) {
+            throw new Exception("El envío supera los 40km ({$kmValidacionTope} km) y no puede ser clasificado como Local Corto (SLC). Utilice la modalidad Automático / Mixto o Foráneo.");
         }
-        if ($tipoServicio === 'SLL' && ($kmTotalCalculado <= 40 || $kmTotalCalculado > 80)) {
-            throw new Exception("El envío tiene {$kmTotalCalculado} km, lo cual no corresponde al rango de Local Largo SLL (41-80 KM). Utilice la modalidad Automático / Mixto o Foráneo.");
+        if ($tipoServicio === 'SLL' && ($kmValidacionTope <= Lgs_tarifaCalculator::KM_MAX_SLC || $kmValidacionTope > Lgs_tarifaCalculator::KM_MAX_SLL)) {
+            throw new Exception("El envío tiene {$kmValidacionTope} km, lo cual no corresponde al rango de Local Largo SLL (41-80 KM). Utilice la modalidad Automático / Mixto o Foráneo.");
         }
 
         $stmtUpdate = $db->prepare("UPDATE lgs_envios SET costo_total = :costo, km_total = :km WHERE id_envio = :id");
@@ -736,15 +732,7 @@ class Lgs_enviosService {
                     if ($vol === 0) continue;
 
                     $kmSub = (float)$tr['km_tramo'];
-                    $servVin = 'FORANEO';
-                    if ($tipoServicioEnvio === 'SLC') $servVin = 'SLC';
-                    elseif ($tipoServicioEnvio === 'SLL') $servVin = 'SLL';
-                    elseif ($tipoServicioEnvio === 'FORANEO') $servVin = 'FORANEO';
-                    else {
-                        if ($kmSub > 0 && $kmSub <= 40) $servVin = 'SLC';
-                        elseif ($kmSub > 40 && $kmSub <= 80) $servVin = 'SLL';
-                        else $servVin = 'FORANEO';
-                    }
+                    $servVin = Lgs_tarifaCalculator::resolverTipoServicio($kmSub, $tipoServicioEnvio);
 
                     $cUnit = round($costoTramo / $vol, 2);
                     $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = ?, tipo_servicio = ? WHERE id = ?");
@@ -821,15 +809,7 @@ class Lgs_enviosService {
                             $distVin += (float)$n['km_tramo_anterior'];
                         }
                     }
-                    $servVin = 'FORANEO';
-                    if ($tipoServicioEnvio === 'SLC') $servVin = 'SLC';
-                    elseif ($tipoServicioEnvio === 'SLL') $servVin = 'SLL';
-                    elseif ($tipoServicioEnvio === 'FORANEO') $servVin = 'FORANEO';
-                    else {
-                        if ($distVin > 0 && $distVin <= 40) $servVin = 'SLC';
-                        elseif ($distVin > 40 && $distVin <= 80) $servVin = 'SLL';
-                        else $servVin = 'FORANEO';
-                    }
+                    $servVin = Lgs_tarifaCalculator::resolverTipoServicio($distVin, $tipoServicioEnvio);
                     $stmtUpServ->execute([$servVin, $vin['id']]);
                 }
             }

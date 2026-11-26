@@ -632,15 +632,31 @@ function actualizarConteoYSecuencia(listaUl) {
             });
 
             // Calcular KM y tramos a bordo
+            const esDirectoModalidad = (g_envioData && String(g_envioData.modalidad_calculo || '').toUpperCase() === 'DIRECTO');
             let kmVin = 0;
             let tramosVin = 0;
             g_nodosEnvio.forEach(n => {
                 const o = parseInt(n.orden || 0);
                 if (o > ordSub && o <= ordBaj) {
-                    kmVin += parseFloat(n.km_tramo || 0);
+                    if (!esDirectoModalidad) {
+                        kmVin += parseFloat(n.km_tramo || 0);
+                    }
                     tramosVin++;
                 }
             });
+            if (esDirectoModalidad) {
+                const kmDir = parseFloat((objBajada && (objBajada.km_directo || objBajada.km_tramo)) || 0);
+                if (kmDir > 0) {
+                    kmVin = kmDir;
+                } else {
+                    g_nodosEnvio.forEach(n => {
+                        const o = parseInt(n.orden || 0);
+                        if (o > ordSub && o <= ordBaj) {
+                            kmVin += parseFloat(n.km_tramo || 0);
+                        }
+                    });
+                }
+            }
 
             // Determinar tipo de servicio y badge según distancia del VIN
             const tipoServicioEnvio = (g_envioData && g_envioData.tipo_servicio ? g_envioData.tipo_servicio : 'AUTOMATICO').toUpperCase();
@@ -1564,6 +1580,19 @@ function guardarAcomodoAuto() {
         asignaciones: asignaciones
     }));
 
+    const mostrarErrorCosto = (msgError) => {
+        if (!lblCosto) return;
+        const msgLimpio = String(msgError || 'Error al recalcular costo');
+        const span = document.createElement('span');
+        span.className = 'text-danger fs-11 fw-semibold';
+        span.setAttribute('title', msgLimpio);
+        const icon = document.createElement('i');
+        icon.className = 'ri-alert-line me-1';
+        span.appendChild(icon);
+        span.appendChild(document.createTextNode(msgLimpio.length > 65 ? msgLimpio.slice(0, 62) + '...' : msgLimpio));
+        lblCosto.replaceChildren(span);
+    };
+
     request.onreadystatechange = function () {
         if (request.readyState == 4) {
             if (request.status == 200) {
@@ -1572,19 +1601,24 @@ function guardarAcomodoAuto() {
                     if (objData.status === 'success' || objData.code === 200) {
                         if (lblCosto) {
                             let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
-                            lblCosto.innerText = costoTxt;
+                            lblCosto.textContent = costoTxt;
                         }
                         if (objData.data && objData.data.auditoria_financiera) {
                             actualizarAuditoriaFinancieraUI(objData.data.auditoria_financiera);
                         }
                     } else {
-                        if (lblCosto) lblCosto.innerText = prevCostoTxt;
+                        mostrarErrorCosto(objData.message || objData.msg || prevCostoTxt);
                     }
                 } catch (e) {
-                    if (lblCosto) lblCosto.innerText = prevCostoTxt;
+                    if (lblCosto) lblCosto.textContent = prevCostoTxt;
                 }
             } else {
-                if (lblCosto) lblCosto.innerText = prevCostoTxt;
+                try {
+                    let errData = JSON.parse(request.responseText);
+                    mostrarErrorCosto(errData.message || errData.msg || prevCostoTxt);
+                } catch (e) {
+                    if (lblCosto) lblCosto.textContent = prevCostoTxt;
+                }
             }
         }
     }
@@ -1865,7 +1899,32 @@ function renderInfografiaRuta() {
 
         if (i < g_nodosEnvio.length - 1) {
             const nodoSig = g_nodosEnvio[i + 1];
+            const kmEfectivoNum = esDirecto
+                ? parseFloat(nodoSig.km_directo || nodoSig.km_tramo || 0)
+                : parseFloat(nodoSig.km_tramo || 0);
             const kmTramo = parseFloat(nodoSig.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            const tipoServEnvioInf = (g_envioData && g_envioData.tipo_servicio ? String(g_envioData.tipo_servicio) : 'AUTOMATICO').toUpperCase();
+            let servTramoInf = (nodoSig.tipo_servicio_detectado || '').toUpperCase();
+            if (!['SLC', 'SLL', 'FORANEO'].includes(servTramoInf)) {
+                if (tipoServEnvioInf === 'SLC' || tipoServEnvioInf === 'SLL' || tipoServEnvioInf === 'FORANEO') {
+                    servTramoInf = tipoServEnvioInf;
+                } else if (kmEfectivoNum > 0 && kmEfectivoNum <= 40) {
+                    servTramoInf = 'SLC';
+                } else if (kmEfectivoNum > 40 && kmEfectivoNum <= 80) {
+                    servTramoInf = 'SLL';
+                } else if (kmEfectivoNum > 80) {
+                    servTramoInf = 'FORANEO';
+                } else {
+                    servTramoInf = '';
+                }
+            }
+            const badgeServInfHtml = servTramoInf === 'SLC'
+                ? '<span class="badge bg-soft-success text-success border border-success fs-10 mt-1">SLC</span>'
+                : (servTramoInf === 'SLL'
+                    ? '<span class="badge bg-soft-warning text-warning border border-warning fs-10 mt-1">SLL</span>'
+                    : (servTramoInf === 'FORANEO'
+                        ? '<span class="badge bg-soft-primary text-primary border border-primary fs-10 mt-1">FORÁNEO</span>'
+                        : ''));
             
             html += `
             <div class="d-flex flex-column justify-content-center flex-grow-1 position-relative px-2" style="min-width: 140px; margin-top: -30px;">
@@ -1875,6 +1934,7 @@ function renderInfografiaRuta() {
                     <span class="badge bg-light text-dark border border-secondary shadow-sm px-2 py-1 fs-11">
                         <i class="ri-route-line text-muted me-1"></i>${kmTramo} km
                     </span>
+                    ${badgeServInfHtml ? `<div>${badgeServInfHtml}</div>` : ''}
                 </div>
                 <div class="text-center position-relative z-index-2 mt-2">
                     <span class="badge bg-soft-primary text-primary border border-primary px-2 py-1 fs-11 fw-bold shadow-sm">
