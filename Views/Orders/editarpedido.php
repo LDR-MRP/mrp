@@ -232,6 +232,7 @@ function rutaImagenPedido(
             'idunidad'
         ]
     ); ?>"
+    data-fondo="<?= (float)($detalle['fondo_publicidad_unitario'] ?? 0) ?>"
     data-price="<?= floatval(
         $detalle[
             'precio_unitario'
@@ -537,7 +538,7 @@ $cantidadSolicitada =
     );
 
 $importeEstimado =
-    $precioUnitario
+    ($precioUnitario + (float)($detalle['fondo_publicidad_unitario'] ?? 0))
     * $cantidadSolicitada;
 
 ?>
@@ -559,6 +560,7 @@ $importeEstimado =
     </div>
 
 
+    <div class="edit-item-financial-value"><span>Fondo publicidad por unidad (IVA incl.)</span><strong>$<?= number_format((float)($detalle['fondo_publicidad_unitario'] ?? 0), 2, '.', ',') ?></strong></div>
     <div class="edit-item-financial-value">
 
         <span>
@@ -737,15 +739,16 @@ $importeEstimado =
                         </div>
 
                         <div>
-                            <span>Subtotal</span>
+                            <span>Subtotal sin IVA</span>
                             <strong id="editSubtotal">$0.00</strong>
                         </div>
 
                         <div>
-                            <span>IVA</span>
+                            <span>IVA incluido (16 %)</span>
                             <strong id="editIva">$0.00</strong>
                         </div>
 
+                        <div><span>Publicidad incluida en el total (con IVA)</span><strong id="editFondoPublicidad">$0.00</strong></div>
                         <div class="edit-summary-total">
                             <span>Total estimado</span>
                             <strong id="editTotal">$0.00</strong>

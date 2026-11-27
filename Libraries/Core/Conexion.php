@@ -9,7 +9,13 @@ class Conexion{
 		$dbName = getenv('DB_NAME') ?: DB_NAME;
 		$user = getenv('DB_USER') ?: DB_USER;
 		$pass = getenv('DB_PASSWORD') ?: DB_PASSWORD;
-		$connectionString = "mysql:host=".$host.";dbname=".$dbName.";charset=".DB_CHARSET;
+		// $connectionString = "mysql:host=".$host.";dbname=".$dbName.";charset=".DB_CHARSET;
+		$port = getenv('DB_PORT') ?: (defined('DB_PORT') ? DB_PORT : 3306);
+
+     $connectionString = "mysql:host=" . $host
+    . ";port=" . $port
+    . ";dbname=" . $dbName
+    . ";charset=" . DB_CHARSET;
 		try{
 			$this->conect = new PDO($connectionString, $user, $pass);
 			$this->conect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

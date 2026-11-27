@@ -17,13 +17,13 @@ function calcularFila(tr){
  const precioIncluyeIva=Number(tr.querySelector('.rc-precio-iva')?.value??1);
  const bruto=Math.round(qty*precio*100)/100;
  const factor=precioIncluyeIva?1+tasa:1;
- const subtotal=Math.round(bruto/factor*100)/100;
+ const fondoTotal=Math.round(qty*fondo*100)/100;
+ const subtotal=Math.round((bruto+fondoTotal)/factor*100)/100;
  const descuentoCapturado=Math.round((tipo==='PORCENTAJE'?bruto*valor/100:valor)*100)/100;
  const descuento=Math.round(descuentoCapturado/factor*100)/100;
  if(descuentoCapturado>bruto){tr.classList.add('table-danger');return null;}
  tr.classList.remove('table-danger');
- const fondoTotal=Math.round(qty*fondo*100)/100;
- const baseImponible=Math.round((subtotal-descuento+fondoTotal)*100)/100,iva=Math.round(baseImponible*tasa*100)/100,total=Math.round((baseImponible+iva)*100)/100;
+ const total=Math.round((bruto-descuentoCapturado+fondoTotal)*100)/100,baseImponible=Math.round((subtotal-descuento)*100)/100,iva=Math.round((total-baseImponible)*100)/100;
  const set=(selector,txt)=>{const e=tr.querySelector(selector);if(e)e.textContent=txt};
  set('.rc-operacion',`${qty.toLocaleString('es-MX')} × ${dinero(precio)} (${precioIncluyeIva?'IVA incluido':'más IVA'})`);
  set('.rc-subtotal',`Subtotal: ${dinero(subtotal)}`);

@@ -1975,7 +1975,9 @@ class Orders extends Controllers
                 $descuentoDetalle = 0.00;
                 // Precio publicado con IVA incluido: desglosar, nunca agregar 16 % otra vez.
                 $importeConIva = round($precioUnitario * $cantidad, 2);
-                $totalDetalle = round($importeConIva - $descuentoDetalle, 2);
+                $fondoUnitario = round((float)($unidad['fondo_publicidad'] ?? 0), 2);
+                $fondoTotal = round($fondoUnitario * $cantidad, 2);
+                $totalDetalle = round($importeConIva - $descuentoDetalle + $fondoTotal, 2);
                 $subtotalDetalle = round($totalDetalle / (1 + $tasaIva), 2);
                 $ivaDetalle = round($totalDetalle - $subtotalDetalle, 2);
                 $subtotalPedido += $subtotalDetalle;
@@ -1994,6 +1996,8 @@ class Orders extends Controllers
                     'cantidad_solicitada' => $cantidad,
                     'cantidad_pendiente' => $cantidad,
                     'precio_unitario' => $precioUnitario,
+                    'fondo_publicidad_unitario' => $fondoUnitario,
+                    'fondo_publicidad_total' => $fondoTotal,
                     'descuento' => $descuentoDetalle,
                     'subtotal' => $subtotalDetalle,
                     'iva' => $ivaDetalle,
@@ -3219,7 +3223,9 @@ class Orders extends Controllers
 
                 $descuentoDetalle = 0;
                 // Actualización de pedido: el precio de catálogo ya incluye IVA.
-                $totalDetalle = round($precioUnitario * $cantidad, 2);
+                $fondoUnitario = round((float)($unidad['fondo_publicidad'] ?? 0), 2);
+                $fondoTotal = round($fondoUnitario * $cantidad, 2);
+                $totalDetalle = round($precioUnitario * $cantidad + $fondoTotal, 2);
                 $subtotalDetalle = round($totalDetalle / 1.16, 2);
                 $ivaDetalle = round($totalDetalle - $subtotalDetalle, 2);
 
@@ -3263,6 +3269,8 @@ class Orders extends Controllers
                              */
                             'cantidad_pendiente' => $cantidad,
                             'precio_unitario' => $precioUnitario,
+                            'fondo_publicidad_unitario' => $fondoUnitario,
+                            'fondo_publicidad_total' => $fondoTotal,
                             'descuento' => $descuentoDetalle,
                             'subtotal' => $subtotalDetalle,
                             'iva' => $ivaDetalle,
@@ -3391,6 +3399,8 @@ class Orders extends Controllers
                                     'cantidad_facturada' => 0,
                                     'cantidad_pendiente' => $cantidad,
                                     'precio_unitario' => $precioUnitario,
+                                    'fondo_publicidad_unitario' => $fondoUnitario,
+                                    'fondo_publicidad_total' => $fondoTotal,
                                     'descuento' => $descuentoDetalle,
                                     'subtotal' => $subtotalDetalle,
                                     'iva' => $ivaDetalle,

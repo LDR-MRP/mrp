@@ -1254,7 +1254,7 @@ class Ped_pedidos extends Controllers
     {
         header('Content-Type: application/json; charset=utf-8');
         if (empty($_SESSION['login'])) {
-            http_response_code(401);
+            http_response_code(401); 
             echo json_encode(['status' => false, 'msg' => 'Sesión no válida'], JSON_UNESCAPED_UNICODE);
             return;
         }

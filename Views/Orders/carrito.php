@@ -115,6 +115,8 @@ $idusuarioAccesoPortal = (int) (
                         </strong>
                     </div>
 
+                    <div class="summary-row"><span>Publicidad incluida en el total (con IVA)</span><strong id="fondoPublicidadEstimated">$0.00</strong></div>
+
                     <div class="summary-row summary-row-total">
                         <span>Total estimado (IVA incluido)</span>
 

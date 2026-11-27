@@ -3,6 +3,9 @@
 headerOrders($data);
 ?>
 <style>
+.orders-color-reference-notice{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;margin-top:10px;border:1px solid #f3d68c;border-left:3px solid #e9a73d;border-radius:9px;background:#fffaf0;color:#775320;font-size:12px;line-height:1.5}
+.orders-color-reference-notice i{color:#c08b22;font-size:17px;line-height:1.2;flex:none;margin-top:1px}
+.orders-color-reference-notice span{display:block}
 .orders-color-empty{display:flex;gap:16px;align-items:flex-start;padding:20px 22px;border:1px solid #e8c889;border-left:4px solid #d6a341;border-radius:14px;background:linear-gradient(115deg,#fff9e9,#fffdf7);color:#634c20;box-shadow:0 6px 18px rgba(122,93,33,.05);margin:16px 0}
 .orders-color-empty__icon{width:46px;height:46px;flex:none;display:grid;place-items:center;border-radius:12px;background:#fff0c7;color:#a06d0b;font-size:24px}
 .orders-color-empty__content strong{display:block;font-size:15px;margin:1px 0 6px}
@@ -144,6 +147,10 @@ function construirRutaImagenUnidad(
                     <?php endforeach; ?>
                   </select>
                   <small class="unit-color-help">Las fotografías cambian al seleccionar un color.</small>
+                  <div class="orders-color-reference-notice" role="note">
+                    <i class="ri-error-warning-line" aria-hidden="true"></i>
+                    <span>Imágenes de referencia, alusivas únicamente al color.</span>
+                  </div>
                 </div>
                 <?php else: ?>
                 <div class="orders-color-empty" role="status" aria-live="polite">
@@ -759,6 +766,7 @@ function construirRutaImagenUnidad(
                     floatval(
                         $unidad['precio_dealer']
                     ),
+                'fondo_publicidad' => (float)($unidad['fondo_publicidad'] ?? 0),
                 'precio_dealer' =>
                     floatval(
                         $unidad['precio_dealer']

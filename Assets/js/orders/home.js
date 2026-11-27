@@ -487,6 +487,7 @@ function construirItemCarrito(item,cantidad = 1) {
 
     cat:String(item.modelo || 'unidad').toLowerCase(),
 
+    fondo_publicidad:Number(item.fondo_publicidad || 0),
     precio:Number(item.precio || item.precio_dealer || 0),
 
     precio_dealer:
@@ -601,7 +602,8 @@ function addToCartOLD(id) {
 
       precio:Number(item.precio || 0),
 
-      precio_dealer:Number(item.precio || 0),
+      fondo_publicidad:Number(item.fondo_publicidad || 0),
+    precio_dealer:Number(item.precio || 0),
 
       img:String(item.img || ''),
 
@@ -739,6 +741,7 @@ function normalizarProducto(unidad) {
     anio:Number(unidad.anio || 0),
 
     marca:String(unidad.marca || '').trim(),
+    fondo_publicidad:Number(unidad.fondo_publicidad || 0),
 
     motor:String(unidad.motor || '').trim(),
 

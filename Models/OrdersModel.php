@@ -599,24 +599,27 @@ class OrdersModel extends Mysql
 public function selectUnidadesWeb()
 {
     $sql = "SELECT
-                idunidad,
-                modelo,
-                clave_modelo,
-                nombre,
-                version,
-                descripcion,
-                anio,
-                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = web_unidades.marca) AS marca,
-                motor,
-                stock,
-                precio_dealer,
-                imagen_caratula
-            FROM web_unidades
-            WHERE estado = 2
+                u.idunidad,
+                u.modelo,
+                u.clave_modelo,
+                u.nombre,
+                u.version,
+                u.descripcion,
+                u.anio,
+                sp.cve_sublinea_producto AS marca,
+                u.marca AS idsublineaproducto,
+                COALESCE(sp.fondo_publicidad, 0) AS fondo_publicidad,
+                u.motor,
+                u.stock,
+                u.precio_dealer,
+                u.imagen_caratula
+            FROM web_unidades u
+            LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = u.marca
+            WHERE u.estado = 2
             ORDER BY
-                marca ASC,
-                modelo ASC,
-                nombre ASC";
+                sp.cve_sublinea_producto ASC,
+                u.modelo ASC,
+                u.nombre ASC";
 
     return $this->select_all($sql);
 }
@@ -630,24 +633,27 @@ public function selectUnidadDetalle(int $idunidad)
     $idunidad = intval($idunidad);
 
     $sql = "SELECT
-                idunidad,
-                modelo,
-                clave_modelo,
-                nombre,
-                version,
-                descripcion,
-                anio,
-                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = web_unidades.marca) AS marca,
-                motor,
-                stock,
-                precio_dealer,
-                imagen_caratula,
-                estado,
-                fecha_creacion,
-                fecha_actualizacion
-            FROM web_unidades
-            WHERE idunidad = {$idunidad}
-              AND estado = 2
+                u.idunidad,
+                u.modelo,
+                u.clave_modelo,
+                u.nombre,
+                u.version,
+                u.descripcion,
+                u.anio,
+                sp.cve_sublinea_producto AS marca,
+                u.marca AS idsublineaproducto,
+                COALESCE(sp.fondo_publicidad, 0) AS fondo_publicidad,
+                u.motor,
+                u.stock,
+                u.precio_dealer,
+                u.imagen_caratula,
+                u.estado,
+                u.fecha_creacion,
+                u.fecha_actualizacion
+            FROM web_unidades u
+            LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = u.marca
+            WHERE u.idunidad = {$idunidad}
+              AND u.estado = 2
             LIMIT 1";
 
     return $this->select($sql);
@@ -975,21 +981,24 @@ public function generarFolioPedido(): string
         int $idunidad
     ){
         $sql = "SELECT
-                idunidad,
-                modelo,
-                clave_modelo,
-                nombre,
-                version,
-                descripcion,
-                anio,
-                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = web_unidades.marca) AS marca,
-                motor,
-                stock,
-                precio_dealer,
-                estado
-            FROM web_unidades
-            WHERE idunidad = $idunidad
-              AND estado = 2
+                u.idunidad,
+                u.modelo,
+                u.clave_modelo,
+                u.nombre,
+                u.version,
+                u.descripcion,
+                u.anio,
+                sp.cve_sublinea_producto AS marca,
+                u.marca AS idsublineaproducto,
+                COALESCE(sp.fondo_publicidad, 0) AS fondo_publicidad,
+                u.motor,
+                u.stock,
+                u.precio_dealer,
+                u.estado
+            FROM web_unidades u
+            LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = u.marca
+            WHERE u.idunidad = $idunidad
+              AND u.estado = 2
             LIMIT 1
         ";
 
@@ -1087,6 +1096,8 @@ public function insertPedidoDetalle(array $data) {
             cantidad_facturada,
             cantidad_pendiente,
             precio_unitario,
+            fondo_publicidad_unitario,
+            fondo_publicidad_total,
             descuento,
             subtotal,
             iva,
@@ -1106,6 +1117,8 @@ public function insertPedidoDetalle(array $data) {
             ?,
             0,
             0,
+            ?,
+            ?,
             ?,
             ?,
             ?,
@@ -1163,6 +1176,8 @@ public function insertPedidoDetalle(array $data) {
                 'precio_unitario'
             ]
         ),
+        (float)($data['fondo_publicidad_unitario'] ?? 0),
+        (float)($data['fondo_publicidad_total'] ?? 0),
 
         floatval(
             $data[
@@ -1553,6 +1568,8 @@ public function selectDetallesPedidoEditar(int $idpedido) {
             pd.cantidad_facturada,
             pd.cantidad_pendiente,
             pd.precio_unitario,
+            pd.fondo_publicidad_unitario,
+            pd.fondo_publicidad_total,
             pd.descuento,
             pd.subtotal,
             pd.iva,
@@ -1568,7 +1585,8 @@ public function selectDetallesPedidoEditar(int $idpedido) {
             wu.version AS version_unidad,
             wu.descripcion,
             wu.anio,
-            (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = wu.marca) AS marca,
+            sp.cve_sublinea_producto AS marca,
+            COALESCE(sp.fondo_publicidad,0) AS fondo_publicidad_catalogo,
             wu.motor,
             wu.stock,
             wu.precio_dealer,
@@ -1582,6 +1600,7 @@ public function selectDetallesPedidoEditar(int $idpedido) {
         INNER JOIN web_unidades wu
             ON wu.idunidad = pd.idunidad
            AND wu.estado = 2
+        LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto=wu.marca
 
         WHERE pd.idpedido = $idpedido
           AND pd.estado = 2
@@ -1724,6 +1743,8 @@ public function updatePedidoDetalle(int $idpedidoDetalle,int $idpedido,array $da
             cantidad_solicitada = ?,
             cantidad_pendiente = ?,
             precio_unitario = ?,
+            fondo_publicidad_unitario = ?,
+            fondo_publicidad_total = ?,
             descuento = ?,
             subtotal = ?,
             iva = ?,
@@ -1743,6 +1764,8 @@ public function updatePedidoDetalle(int $idpedidoDetalle,int $idpedido,array $da
         $data['cantidad_solicitada'],
         $data['cantidad_pendiente'],
         $data['precio_unitario'],
+        (float)($data['fondo_publicidad_unitario'] ?? 0),
+        (float)($data['fondo_publicidad_total'] ?? 0),
         $data['descuento'],
         $data['subtotal'],
         $data['iva'],
@@ -2022,6 +2045,8 @@ public function selectDetallesPedido(int $idpedido) {
             d.cantidad_pendiente,
 
             d.precio_unitario,
+            d.fondo_publicidad_unitario,
+            d.fondo_publicidad_total,
             d.descuento,
             d.subtotal,
             d.iva,
@@ -2043,7 +2068,7 @@ public function selectDetallesPedido(int $idpedido) {
             u.version,
             u.descripcion,
             u.anio,
-            (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = u.marca) AS marca,
+            sp.cve_sublinea_producto AS marca,
             u.motor,
             u.imagen_caratula,
 
@@ -2060,6 +2085,7 @@ public function selectDetallesPedido(int $idpedido) {
 
         INNER JOIN web_unidades AS u
             ON u.idunidad = d.idunidad
+        LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto=u.marca
 
 
         LEFT JOIN web_unidades_colores AS uc

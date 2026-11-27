@@ -66,7 +66,7 @@ class Ped_backordersModel extends Mysql
         return 'SELECT p.idpedido, MAX(p.clave) AS clave, MAX(p.folio_pedido) AS folio_pedido,
           MAX(p.fecha_creacion) AS fecha_pedido, MAX(p.fecha_requerida) AS fecha_requerida,
           MAX(p.mes_facturacion_deseado) AS mes_facturacion_deseado,
-          MAX(COALESCE(NULLIF(c.nombre_comercial,\'\'),c.razon_social)) AS distribuidor,
+          MAX(c.razon_social) AS distribuidor,
           COUNT(DISTINCT b.idunidad) AS modelos, COUNT(b.idbackorder) AS renglones,
           MIN(b.fecha_creacion) AS fecha_backorder, MAX(b.fecha_actualizacion) AS ultima_actualizacion,
           COALESCE(SUM(b.cantidad_comprometida),0) AS comprometidas,
@@ -112,15 +112,36 @@ class Ped_backordersModel extends Mysql
         $stmt=$db->prepare('SELECT COUNT(*)'.$from);$stmt->execute($params);
         $cantidad=(int)$stmt->fetchColumn();
         if ($cantidad>10000) throw new InvalidArgumentException('El reporte supera 10,000 renglones. Reduce el rango de fechas.');
+        $stmt=$db->prepare('SELECT COALESCE(SUM(b.cantidad_comprometida),0)'.$from);
+        $stmt->execute($params);
+        if ((int)$stmt->fetchColumn() > 30000) throw new InvalidArgumentException('El detalle supera 30,000 unidades. Reduce los filtros o el rango de fechas.');
         $stmt=$db->prepare($this->selectAgrupado().$from.' GROUP BY p.idpedido ORDER BY fecha_backorder DESC,p.idpedido DESC');
         $stmt->execute($params);$pedidos=$stmt->fetchAll(PDO::FETCH_ASSOC);
-        $sql='SELECT p.idpedido,b.idbackorder,b.estatus,b.cantidad_comprometida,b.cantidad_atendida_inicial,
-          b.cantidad_asignada,b.cantidad_pendiente,b.total,b.precio_unitario,
-          u.nombre AS unidad,u.modelo,inv.cve_articulo AS sku,co.nombre AS color,
-          p.fecha_requerida AS entrega_programada,p.mes_facturacion_deseado AS mes_facturar'
+        $sql='SELECT p.idpedido,p.folio_pedido,p.fecha_creacion AS fecha_creacion_pedido,
+          p.fecha_requerida AS entrega_programada,p.mes_facturacion_deseado AS mes_facturar,
+          c.nombre_comercial,c.razon_social,
+          b.idbackorder,b.origen,b.estatus,b.fecha_creacion AS fecha_backorder,
+          b.cantidad_comprometida,b.cantidad_atendida_inicial,b.cantidad_asignada,b.cantidad_pendiente,
+          b.total,b.precio_unitario,b.precio_incluye_iva,b.descuento,
+          b.fondo_publicidad_unitario,b.fondo_publicidad_total,
+          u.nombre AS unidad,u.modelo,inv.cve_articulo AS sku,co.nombre AS color'
           .$from.' ORDER BY p.idpedido DESC,b.idbackorder';
         $stmt=$db->prepare($sql);$stmt->execute($params);$detalles=$stmt->fetchAll(PDO::FETCH_ASSOC);
         return ['pedidos'=>$pedidos,'detalles'=>$detalles,'totales'=>$this->totales($db,$from,$params)];
+    }
+
+    /** Modelos disponibles en Backorders, para el selector del reporte (no modifica datos). */
+    public function modelosDisponibles(): array
+    {
+        $db=$this->getConexion();
+        $sql='SELECT DISTINCT u.nombre AS unidad, u.modelo, inv.cve_articulo AS sku
+             FROM ped_backorder b
+             INNER JOIN ped_pedidos p ON p.idpedido=b.idpedido AND p.estado=2
+             INNER JOIN web_unidades u ON u.idunidad=b.idunidad
+             LEFT JOIN wms_inventario inv ON inv.idinventario=u.inventarioid
+             ORDER BY u.nombre,u.modelo LIMIT 1500';
+        $stmt=$db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /** Se conserva el modal del pedido, agregando el SKU en el detalle. */

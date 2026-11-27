@@ -173,7 +173,8 @@ function generarHTMLNuevaUnidad(
 
   const precioUnitario =Number(item.precio_unitario || item.precio_estimado || item.precio || 0);
   const cantidad =Math.max(1,Number(item.qty || 1));
-  const importeEstimado = precioUnitario * cantidad;
+  const fondoUnitario = Number(item.fondo_publicidad_unitario ?? item.fondo_publicidad ?? item.fondo_publicidad_catalogo ?? 0);
+  const importeEstimado = (precioUnitario + fondoUnitario) * cantidad;
   const imagen =String(item.img || `${base_url}/Assets/images/no-image.png`);
 
   return `
@@ -186,7 +187,7 @@ function generarHTMLNuevaUnidad(
       data-detail-id="0"
       data-unit-id="${idunidad}"
       data-color-id="${Number(item.idunidad_color||0)}"
-      data-price="${precioUnitario}"
+      data-price="${precioUnitario}" data-fondo="${fondoUnitario}"
       data-new-item="1"
     >
 
@@ -849,6 +850,7 @@ function recalcularResumen() {
   const cards =Array.from(document.querySelectorAll('.edit-order-item'));
   let totalUnits =0;
   let subtotal =0;
+  let fondoTotal = 0;
   cards.forEach(
     card => {
       /*
@@ -882,9 +884,8 @@ function recalcularResumen() {
       /*
        * Total estimado de la línea.
        */
-      const lineTotal =
-        price
-        * qty;
+      const fondo = Math.max(0, Number(card.dataset.fondo || 0));
+      const lineTotal = (price + fondo) * qty;
 
 
       /*
@@ -910,6 +911,7 @@ function recalcularResumen() {
        */
       totalUnits +=qty;
       subtotal +=lineTotal;
+      fondoTotal += Math.max(0, Number(card.dataset.fondo || 0)) * qty;
     }
   );
 
@@ -917,19 +919,21 @@ function recalcularResumen() {
   /*
    * IVA 16%.
    */
-  const iva =subtotal * 0.16;
+  const baseSinIva = Math.round(subtotal / 1.16 * 100) / 100;
+  const iva = Math.round((subtotal - baseSinIva)*100)/100;
 
   /*
    * Total final.
    */
-  const total =subtotal+ iva;
+  const total = subtotal;
 
   actualizarTexto('editTotalModels',cards.length);
   actualizarTexto('editTotalUnits',totalUnits);
   actualizarTexto('editSubtotal',
-  formatMoneyEdit(subtotal)
+  formatMoneyEdit(baseSinIva)
   );
 
+  actualizarTexto('editFondoPublicidad',formatMoneyEdit(fondoTotal));
   actualizarTexto('editIva',formatMoneyEdit(iva));
   actualizarTexto('editTotal',formatMoneyEdit(total));
 }

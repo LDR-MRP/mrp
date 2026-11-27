@@ -365,8 +365,9 @@ function calculateCartTotals(cart) {
     0
   );
 
-  // Los precios publicados ya incluyen IVA: desglosar sin volver a cobrarlo.
-  const total = Math.round(subtotal * 100) / 100;
+  // Tanto la unidad como el fondo de publicidad ya incluyen IVA.
+  const publicidad = cart.reduce((acc, item) => acc + parsePrice(item.fondo_publicidad) * Math.max(1, Number(item.qty || 1)), 0);
+  const total = Math.round((subtotal + publicidad) * 100) / 100;
   const baseSinIva = Math.round(total / (1 + IVA_RATE) * 100) / 100;
   const iva = Math.round((total - baseSinIva) * 100) / 100;
 
@@ -374,6 +375,7 @@ function calculateCartTotals(cart) {
     totalModels,
     totalUnits,
     subtotal: baseSinIva,
+    fondo_publicidad: Math.round(publicidad * 100) / 100,
     iva,
     total,
   };
@@ -431,6 +433,9 @@ function renderCartSummary(cart) {
     totalUnits.textContent =
       String(totals.totalUnits);
   }
+
+  const fondoEl = document.getElementById('fondoPublicidadEstimated');
+  if (fondoEl) fondoEl.textContent = formatMoney(totals.fondo_publicidad);
 
   if (subtotalEstimated) {
     subtotalEstimated.textContent =
@@ -534,8 +539,8 @@ function renderCart() {
         item.precio
       );
 
-      const subtotal =
-        price * quantity;
+      const publicidad = parsePrice(item.fondo_publicidad) * quantity;
+      const subtotal = price * quantity + publicidad;
 
       /*
        * Datos de entrega almacenados
@@ -644,7 +649,7 @@ function renderCart() {
                 </div>
 
                 <div>
-                  <span>Subtotal estimado</span>
+                  <span>Importe con publicidad (IVA incluido)</span>
 
                   <strong>
                     ${formatMoney(subtotal)}
@@ -652,6 +657,8 @@ function renderCart() {
                 </div>
 
               </div>
+
+              <div class="cart-product-details"><div><span>Fondo de publicidad (IVA incluido)</span><strong>${formatMoney(publicidad)}</strong></div></div>
 
               <!-- CANTIDAD -->
               <div class="cart-product-actions">

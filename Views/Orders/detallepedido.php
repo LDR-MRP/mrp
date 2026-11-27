@@ -594,7 +594,8 @@ foreach ($detalles as $detalle) {
 
                     $cantidad = intval($detalle['cantidad_solicitada'] ?? 0);
                     $precioUnitario = floatval($detalle['precio_unitario'] ?? 0);
-                    $importeEstimado = $precioUnitario * $cantidad;
+                    $fondoEstimado = (float)($detalle['fondo_publicidad_total'] ?? 0);
+                    $importeEstimado = $precioUnitario * $cantidad + $fondoEstimado;
                     $tipoEntrega = strtoupper(trim($detalle['tipo_entrega'] ?? ''));
                     $destino = 'No especificado';
 
@@ -915,6 +916,11 @@ foreach ($detalles as $detalle) {
 
                 </div>
 
+                <div class="order-detail-total-row">
+                    <span>Fondo de publicidad (IVA incluido, informativo)</span>
+                    <strong><?= formatoMonedaPedidoDetalle(array_sum(array_map(static fn($d) => (float)($d['fondo_publicidad_total'] ?? 0), $detalles ?? []))); ?></strong>
+                </div>
+                <p class="text-muted small">El fondo ya forma parte del subtotal y del IVA desglosado; no se suma por segunda vez.</p>
                 <div class="order-detail-total-row order-detail-grand-total">
 
                     <span>

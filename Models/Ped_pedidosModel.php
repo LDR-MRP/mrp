@@ -653,6 +653,8 @@ class Ped_pedidosModel extends Mysql
                 d.cantidad_pendiente,
 
                 d.precio_unitario,
+                d.fondo_publicidad_unitario,
+                d.fondo_publicidad_total,
                 d.descuento,
 
                 d.subtotal,
@@ -679,7 +681,7 @@ class Ped_pedidosModel extends Mysql
                 u.descripcion,
 
                 u.anio,
-                (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = u.marca) AS marca,
+                sp.cve_sublinea_producto AS marca,
                 u.motor,
 
                 u.stock,
@@ -693,6 +695,7 @@ class Ped_pedidosModel extends Mysql
 
             INNER JOIN web_unidades AS u
                 ON u.idunidad = d.idunidad
+            LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto=u.marca
 
             WHERE
                 d.idpedido = ?
@@ -1203,6 +1206,8 @@ public function selectDetallesGestionPedido(int $idpedido): array
             d.cantidad_pendiente,
 
             d.precio_unitario,
+            d.fondo_publicidad_unitario,
+            d.fondo_publicidad_total,
             d.descuento,
             d.subtotal,
             d.iva,
@@ -1216,7 +1221,7 @@ public function selectDetallesGestionPedido(int $idpedido): array
             u.nombre,
             u.version,
             u.anio,
-            (SELECT sp_m.cve_sublinea_producto FROM wms_sublinea_producto sp_m WHERE sp_m.idsublineaproducto = u.marca) AS marca,
+            sp.cve_sublinea_producto AS marca,
             u.motor,
             u.stock,
             u.precio_estimado,
@@ -1226,6 +1231,7 @@ public function selectDetallesGestionPedido(int $idpedido): array
 
         INNER JOIN web_unidades AS u
             ON u.idunidad = d.idunidad
+        LEFT JOIN wms_sublinea_producto sp ON sp.idsublineaproducto=u.marca
 
         WHERE d.idpedido = $idpedido
           AND d.estado = 2

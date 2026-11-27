@@ -462,15 +462,30 @@ function configurarZoom() {
       'unitZoomNext'
     );
 
-  const images = Array.from(
-    document.querySelectorAll(
-      '.unit-slide-image'
-    )
-  ).map(
-    image =>
-      image.dataset.fullImage
-      || image.src
+  // Mantener los índices originales; navegar solo las imágenes del color visible.
+  const slidesZoom = Array.from(
+    document.querySelectorAll('#unitSliderTrack .unit-slide')
   );
+  const images = slidesZoom.map(slide => {
+    const image = slide.querySelector('.unit-slide-image');
+    return image ? (image.dataset.fullImage || image.src) : '';
+  });
+  function indicesZoomDisponibles() {
+    return slidesZoom
+      .map((slide, index) => (
+        slide.style.display === 'none' || !images[index] ? -1 : index
+      ))
+      .filter(index => index >= 0);
+  }
+  function moverZoom(paso) {
+    const disponibles = indicesZoomDisponibles();
+    if (!disponibles.length) return;
+    const posicion = disponibles.indexOf(currentZoomIndex);
+    const siguiente = posicion === -1
+      ? 0
+      : (posicion + paso + disponibles.length) % disponibles.length;
+    mostrarImagen(disponibles[siguiente]);
+  }
 
   if (
     !modal
@@ -483,15 +498,9 @@ function configurarZoom() {
   let currentZoomIndex = 0;
 
   function mostrarImagen(index) {
-
-    if (index < 0) {
-      index = images.length - 1;
-    }
-
-    if (index >= images.length) {
-      index = 0;
-    }
-
+    const disponibles = indicesZoomDisponibles();
+    if (!disponibles.length) return;
+    if (!disponibles.includes(index)) index = disponibles[0];
     currentZoomIndex = index;
 
     zoomImage.src =
@@ -588,9 +597,7 @@ function configurarZoom() {
     'click',
     () => {
 
-      mostrarImagen(
-        currentZoomIndex - 1
-      );
+      moverZoom(-1);
     }
   );
 
@@ -598,9 +605,7 @@ function configurarZoom() {
     'click',
     () => {
 
-      mostrarImagen(
-        currentZoomIndex + 1
-      );
+      moverZoom(1);
     }
   );
 
@@ -712,16 +717,20 @@ function configurarZoom() {
       }
 
       if (event.key === 'ArrowLeft') {
-        mostrarImagen(
-          currentZoomIndex - 1
-        );
+        moverZoom(-1);
       }
 
       if (event.key === 'ArrowRight') {
-        mostrarImagen(
-          currentZoomIndex + 1
-        );
+        moverZoom(1);
       }
+    }
+  );
+
+  // Mantener el zoom sincronizado si cambia el color seleccionado.
+  document.getElementById('unitSliderTrack')?.addEventListener(
+    'colorGalleryChanged',
+    () => {
+      if (modal.classList.contains('active')) mostrarImagen(currentZoomIndex);
     }
   );
 
@@ -1156,6 +1165,11 @@ function agregarDesdeDetalleCarritoNormal(
 
   if (existing) {
 
+    // Recuperar el fondo únicamente si el artículo anterior no lo tenía.
+    if (existing.fondo_publicidad === undefined || existing.fondo_publicidad === null) {
+      existing.fondo_publicidad = Number(unidad.fondo_publicidad ?? 0);
+    }
+
     existing.qty =
       Math.max(
         1,
@@ -1400,6 +1414,9 @@ function construirItemDetalle(
         || 0
       ),
 
+    // El fondo viene del catálogo WMS y ya incluye IVA.
+    fondo_publicidad: Number(unidad.fondo_publicidad ?? 0),
+
     img:
       String(
         document.querySelector('#unitSliderTrack .unit-slide.active img')?.src
@@ -1518,6 +1535,10 @@ function configurarAgregarCarritoOLD(
 
       if (existing) {
 
+        if (existing.fondo_publicidad === undefined || existing.fondo_publicidad === null) {
+          existing.fondo_publicidad = Number(unidad.fondo_publicidad ?? 0);
+        }
+
         existing.qty =
           Math.max(
             1,
@@ -1602,6 +1623,8 @@ function configurarAgregarCarritoOLD(
               || unidad.precio
               || 0
             ),
+
+          fondo_publicidad: Number(unidad.fondo_publicidad ?? 0),
 
           img:
             String(

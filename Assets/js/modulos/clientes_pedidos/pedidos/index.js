@@ -592,9 +592,8 @@ function crearFilaPedido(pedido) {
     const tr =document.createElement("tr");
     const clave =String(pedido.clave || "");
     const folio =String(pedido.folio_pedido || "Sin folio");
-    const distribuidor = pedido.nombre_comercial || pedido.razon_social || "Sin distribuidor";
+    const distribuidor = pedido.razon_social || "Sin razón social";
     const codigoDistribuidor =pedido.clave_distribuidor || pedido.codigo_cliente || "";
-    const solicitante =obtenerNombreSolicitantePedido(pedido);
     const cantidadUnidades =Number(pedido.total_unidades || 0);
     const estatus =String(pedido.estatus || "").toUpperCase();
     const prioridad =String(pedido.prioridad || "").toUpperCase();
@@ -634,7 +633,7 @@ function crearFilaPedido(pedido) {
 
             <div>
 
-                <div class="fw-medium text-body">
+                <div class="fw-bold text-body">
                     ${escaparHtmlPedidos(distribuidor)}
                 </div>
 
@@ -648,19 +647,6 @@ function crearFilaPedido(pedido) {
                         : ""
                 }
 
-                ${
-                    solicitante
-                        ? `
-                            <div class="text-muted fs-12 mt-1">
-
-                                <i class="ri-user-line me-1"></i>
-
-                                ${escaparHtmlPedidos(solicitante)}
-
-                            </div>
-                        `
-                        : ""
-                }
 
             </div>
 

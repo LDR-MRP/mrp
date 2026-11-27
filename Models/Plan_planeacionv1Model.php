@@ -3722,10 +3722,10 @@ public function selectOrdenesCalendar()
           ORDER BY subensambleid ASC,idsubcomponente ASC";
 
     return $this->select_all($sql);
-  }
+  } 
 
   public function insertMovimientoInventario(array $m)
-  {
+  {   
     $sql = "INSERT INTO wms_movimientos_inventario
     (inventarioid, almacenid, numero_movimiento, concepmovid, referencia, cantidad,
      costo_cantidad, precio, costo, existencia, signo, fecha_movimiento, estado)

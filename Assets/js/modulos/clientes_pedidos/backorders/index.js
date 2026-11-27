@@ -81,5 +81,11 @@ el('boFiltros').addEventListener('submit',e=>{e.preventDefault();pagina=1;cargar
 el('boLimpiar').addEventListener('click',()=>{['boPedido','boModelo','boEstado','boDesde','boHasta','boEntregaDesde','boEntregaHasta','boMes'].forEach(id=>el(id).value='');rapido='';document.querySelectorAll('.bo-quick').forEach(btn=>btn.classList.remove('active'));pagina=1;cargar();});
 document.querySelectorAll('.bo-quick').forEach(btn=>btn.addEventListener('click',()=>{rapido=rapido===btn.dataset.rapido?'':btn.dataset.rapido;document.querySelectorAll('.bo-quick').forEach(b=>b.classList.toggle('active',b.dataset.rapido===rapido));pagina=1;cargar();}));
 el('boAnterior').addEventListener('click',()=>{if(pagina>1){pagina--;cargar();}});el('boSiguiente').addEventListener('click',()=>{if(pagina<paginas){pagina++;cargar();}});
+// Sugerencias de modelos/SKU sin alterar el filtro de texto existente.
+consultar(`${base}/ped_backorders/getModelos`).then(rows=>{
+ const opciones=new Set();
+ (rows||[]).forEach(r=>{if(r.unidad)opciones.add(r.unidad);if(r.modelo)opciones.add(r.modelo);if(r.sku)opciones.add(r.sku);});
+ el('boOpcionesModelos').innerHTML=[...opciones].map(v=>`<option value="${esc(v)}"></option>`).join('');
+}).catch(e=>console.warn('Sugerencias de modelo no disponibles:',e));
 el('boPdf').addEventListener('click',pdf);el('boExcel').addEventListener('click',excel);cargar();
 })();

@@ -850,6 +850,7 @@ async function generarPdfPedido(pedido,detalles) {
 
                                 crearFilaTotalPdf("Subtotal",pedido.subtotal),
                                 crearFilaTotalPdf("Descuento",pedido.descuento),
+                                crearFilaTotalPdf("Publicidad (IVA incluido en total)", detalles.reduce((sum,d)=>sum+Number(d.fondo_publicidad_total||0),0)),
                                 crearFilaTotalPdf("IVA",pedido.iva),
                                 [
 

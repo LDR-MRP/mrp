@@ -57,6 +57,13 @@ class Ped_backorders extends Controllers
             echo 'No se pudo generar el Excel: '.$e->getMessage();
         }
     }
+    public function getModelos()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD']!=='GET') { http_response_code(405); echo json_encode(['status'=>false,'message'=>'Método no permitido']); return; }
+        try { echo json_encode(['status'=>true,'data'=>$this->model->modelosDisponibles()],JSON_UNESCAPED_UNICODE); }
+        catch(Throwable $e) { $this->respuestaError($e,'[PED_BACKORDERS_MODELOS]'); }
+    }
     public function getDetalle()
     {
         header('Content-Type: application/json; charset=utf-8');
