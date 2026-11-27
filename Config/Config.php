@@ -14,6 +14,7 @@ date_default_timezone_set('America/Mexico_City');
 
 
 const DB_HOST = "localhost";
+const DB_PORT = 3307;
 const DB_NAME = "u546825723_dbmrp";
 const DB_USER = "u546825723_mrpuser";
 const DB_PASSWORD = "L=9xlH6~e";
